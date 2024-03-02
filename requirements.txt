@@ -6,3 +6,5 @@ hydra-core
 rich
 pydantic
 tqdm
+scikit-learn
+statsmodels
