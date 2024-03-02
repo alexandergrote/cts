@@ -33,8 +33,6 @@ def main(cfg: DictConfig) -> None:
     output = preprocessor.execute(**output)
     console.log("Finished Preprocessing")
 
-
-
     model = DynamicImport.import_class_from_dict(
         dictionary=cfg['model']
     )
@@ -45,6 +43,17 @@ def main(cfg: DictConfig) -> None:
     output = model.predict(**output)
     console.log("Model Interference with Probabilities")
     output = model.predict_proba(**output)
+
+    evaluator = DynamicImport.import_class_from_dict(
+        dictionary=cfg['evaluation']
+    )
+
+    console.log("Evaluating")
+    output = evaluator.evaluate(**output)
+    console.log(output.get('metrics'))
+
+    print(output.get('y_train').value_counts(normalize=True))
+    print(output.get('y_test').value_counts(normalize=True))
 
 
 if __name__ == '__main__':
