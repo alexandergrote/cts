@@ -34,5 +34,18 @@ def main(cfg: DictConfig) -> None:
     console.log("Finished Preprocessing")
 
 
+
+    model = DynamicImport.import_class_from_dict(
+        dictionary=cfg['model']
+    )
+
+    console.log("Model Training")
+    output = model.fit(**output)
+    console.log("Model Interference")
+    output = model.predict(**output)
+    console.log("Model Interference with Probabilities")
+    output = model.predict_proba(**output)
+
+
 if __name__ == '__main__':
     main()

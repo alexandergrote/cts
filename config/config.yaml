@@ -1,3 +1,4 @@
 defaults:
   - fetch_data: synthetic
   - preprocess: synthetic
+  - model: xgb
