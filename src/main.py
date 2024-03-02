@@ -25,7 +25,14 @@ def main(cfg: DictConfig) -> None:
     console.log("Fetching data")
     output = data_loader.execute()
 
-    print(output)
+    preprocessor = DynamicImport.import_class_from_dict(
+        dictionary=cfg['preprocess']
+    )
+
+    console.log("Starting Preprocessing")
+    output = preprocessor.execute(**output)
+    console.log("Finished Preprocessing")
+
 
 if __name__ == '__main__':
     main()

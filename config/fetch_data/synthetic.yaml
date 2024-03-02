@@ -4,7 +4,7 @@ params:
   static_dataset:
     class_name: src.fetch_data.synthetic.StaticDataset
     params:
-      n_samples: 20000
+      n_samples: 1000
       flip_y: 0.2
       random_seed: 42
   time_series_positive:
@@ -17,7 +17,7 @@ params:
       sequence_generator:
         class_name: src.fetch_data.synthetic.SequenceGenerator
         params:
-          n_sequences: 10000
+          n_sequences: 500
           max_sequence_length: 10
           sequence_weights_splitting_char: '_'
           sequence_weights:
@@ -34,7 +34,7 @@ params:
       sequence_generator:
         class_name: src.fetch_data.synthetic.SequenceGenerator
         params:
-          n_sequences: 10000
+          n_sequences: 500
           max_sequence_length: 10
           sequence_weights_splitting_char: '_'
           sequence_weights:

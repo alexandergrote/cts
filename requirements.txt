@@ -8,3 +8,4 @@ pydantic
 tqdm
 scikit-learn
 statsmodels
+typing_extensions
