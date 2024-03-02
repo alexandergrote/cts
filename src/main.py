@@ -55,6 +55,16 @@ def main(cfg: DictConfig) -> None:
     print(output.get('y_train').value_counts(normalize=True))
     print(output.get('y_test').value_counts(normalize=True))
 
+    exporter = DynamicImport.import_class_from_dict(
+        dictionary=cfg['export']
+    )
+
+    # add config to kwargs
+    # needed for exporting
+    output['config'] = cfg
+
+    exporter.export(**output)
+
 
 if __name__ == '__main__':
     main()

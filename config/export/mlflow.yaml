@@ -1,0 +1,3 @@
+class_name: src.export.mlflow.Exporter
+params:
+  experiment_name: 'F1-Score Analysis XGB'

@@ -3,3 +3,4 @@ defaults:
   - preprocess: synthetic
   - model: xgb
   - evaluation: ml
+  - export: mlflow
