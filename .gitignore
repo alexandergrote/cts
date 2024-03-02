@@ -1,0 +1,13 @@
+venv
+mlruns
+.ipynb_checkpoints
+notebooks/*
+!notebooks/visualize
+notebooks/visualize/*.yaml
+outputs
+*.egg-info
+.env
+data
+__pycache__
+.idea
+multirun
