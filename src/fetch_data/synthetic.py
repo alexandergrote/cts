@@ -172,6 +172,7 @@ class SequenceGenerator(BaseModel):
     def get_sequences(self, events: List[str]) -> List[str]:
 
         sequence_combinations = self._get_random_sequence_combinations(events=events)
+        sequence_combinations = np.array(sequence_combinations, dtype='object')
         #print(sequence_combinations)
 
         weights = self._get_weights(sequence_combinations=sequence_combinations)
@@ -378,15 +379,24 @@ if __name__ == '__main__':
 
     ts_data = TimeSeriesDataset(
 
-        event_generator_kwargs={
-            'max_events': 10
-        },
-        sequence_generator_kwargs={
-            'n_sequences': 100,
-            'max_sequence_length': 3,
-            'sequence_weights': {
-                'a,b': 0.5
+        event_generator={
+            'class_name': 'src.fetch_data.synthetic.EventGenerator',
+            'params': {
+                'max_events': 10
             }
+            
+        },
+        sequence_generator={
+            'class_name': 'src.fetch_data.synthetic.SequenceGenerator',
+            'params':{
+                'n_sequences': 100,
+                'max_sequence_length': 3,
+                'sequence_weights_splitting_char': ',',
+                'sequence_weights': {
+                    'a,b': 0.5
+                }
+            }
+            
         }
     ).get_data()
 
