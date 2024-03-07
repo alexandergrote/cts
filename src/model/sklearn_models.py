@@ -14,7 +14,7 @@ from src.util.logging import Pickler
 class SklearnModel(BaseModel, BaseProcessModel):
 
     model: Optional[Any]
-    model_params: Optional[dict] = None
+    params: Optional[dict] = None
 
     class Config:
         arbitrary_types_allowed = True
@@ -26,7 +26,7 @@ class SklearnModel(BaseModel, BaseProcessModel):
         model_name = self.model
 
         # init model
-        model = DynamicImport.init_class(model_name, params=self.model_params)
+        model = DynamicImport.init_class(model_name, params=self.params)
 
         # overwrite model
         self.model = model
