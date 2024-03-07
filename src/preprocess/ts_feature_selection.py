@@ -212,7 +212,6 @@ class CausalRuleFeatureSelector(BaseModel, BasePreprocessor):
     ts_id_columns: List[str]
     ts_event_column: str
     ts_datetime_column: str
-    case_id_columns: List[str]
 
     multitesting: Optional[dict] = None
 

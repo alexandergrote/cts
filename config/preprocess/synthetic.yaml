@@ -18,8 +18,6 @@ params:
           - 'id_column'
         ts_event_column: 'event_column'
         ts_datetime_column: 'timestamp'
-        case_id_columns:
-          - 'id_column'
         prefixspan_config:
           class_name: 'src.preprocess.ts_feature_selection.PrefixSpan'
           params:
