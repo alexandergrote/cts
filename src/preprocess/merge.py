@@ -101,7 +101,7 @@ class Merger(BaseModel, BasePreprocessor):
 
     @field_validator("filename_merge")
     def _check_filepath_requirements(cls, v):
-
+        
         converter = FilepathConverter(target_dir=Directory.DATA)
         
         return converter.get_filepath(v)

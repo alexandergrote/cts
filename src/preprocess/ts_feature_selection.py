@@ -324,7 +324,7 @@ class CausalRuleFeatureSelector(BaseModel, BasePreprocessor):
             rules.loc[mask, keep_column] = False
 
         # select subset from rules
-        result = rules[rules[keep_column]]
+        result = rules[rules[keep_column]].copy(deep=True)
         result.drop(columns=[keep_column, index_length_column], inplace=True)
 
         return result
@@ -372,7 +372,7 @@ class CausalRuleFeatureSelector(BaseModel, BasePreprocessor):
             rules.loc[mask, keep_column] = False
 
         # select subset from rules
-        result = rules[rules[keep_column]]
+        result = rules[rules[keep_column]].copy(deep=True)
         result.drop(columns=[keep_column, index_length_column], inplace=True)
 
         return result

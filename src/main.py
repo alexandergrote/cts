@@ -1,10 +1,15 @@
 import hydra
+import warnings
+
 from omegaconf import DictConfig, OmegaConf
 
 # load package specific code
 from src.util.dynamic_import import DynamicImport
 from src.util.constants import Directory, File
 from src.util.logging import console
+
+# Ignore all runtime warnings
+warnings.filterwarnings("ignore", category=RuntimeWarning)
 
 
 @hydra.main(
