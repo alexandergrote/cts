@@ -47,3 +47,17 @@ class LabelingFromStatic(BaseModel, BasePreprocessor):
         kwargs['event'] = event_copy
 
         return kwargs
+
+
+class LabelBinarizer(BaseModel, BasePreprocessor):
+
+    target_name: str
+    target_value: str
+
+    def execute(self, *, event: pd.DataFrame, **kwargs) -> dict:
+
+        event[self.target_name] = (event[self.target_name].astype(str) == self.target_value).astype(int) 
+
+        kwargs['event'] = event
+
+        return kwargs

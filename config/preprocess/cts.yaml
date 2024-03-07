@@ -1,0 +1,47 @@
+class_name: src.preprocess.preprocessor.Preprocessor
+params:
+  steps:
+    '0':
+      class_name: src.preprocess.labelling.LabelBinarizer
+      params:
+        target_name: 'Class'
+        target_value: '1'
+    '1':
+      class_name: src.preprocess.ts_feature_selection.CausalRuleFeatureSelector
+      params:
+        repetitions: 5
+        treatment_attr_name: 'Class'
+        treatment_attr_value: '1'
+        splitting_symbol: " --> "
+        ts_id_columns:
+          - 'Series'
+        ts_event_column: 'Value'
+        ts_datetime_column: 'Time'
+        prefixspan_config:
+          class_name: 'src.preprocess.ts_feature_selection.PrefixSpan'
+          params:
+            id_columns: [ 'Series']
+            event_column: 'Value'
+            timestamp_column: Time
+            rule_max_length: 999
+            rule_min_length: 1
+            separator: " --> "
+            itertool_threshold: 5
+        multitesting:
+          method: 'bonferroni'
+        key_in_result_dict: 'data'
+        keep_class: True
+    '2':
+      class_name: src.preprocess.train_test_split.TrainTestSplit
+      params:
+        target_name: 'Class'
+        split_type: 'column_based'
+        split_col: 'Series'
+        test_size: 0.2
+        random_state: 42
+    '3':
+      class_name: src.preprocess.excluder.ColumnExcluder
+      params:
+        columns:
+          - index
+          - Series

@@ -44,6 +44,9 @@ class PrefixSpan(BaseModel):
         # work on copy
         data_copy = data.copy(deep=True)
 
+        # ensure that the events are strings
+        data_copy[self.event_column] = data_copy[self.event_column].astype(str) 
+
         # since we are interested in calculating confidence of rules
         # we need at least a sequence with length 2
         # as a first step, we can remove all sequences with length 1
@@ -214,6 +217,8 @@ class CausalRuleFeatureSelector(BaseModel, BasePreprocessor):
     ts_datetime_column: str
 
     multitesting: Optional[dict] = None
+    key_in_result_dict: str = 'event'
+    keep_class: bool = False
 
     @validator("multitesting")
     def _set_multitesting(cls, v):
@@ -604,14 +609,16 @@ class CausalRuleFeatureSelector(BaseModel, BasePreprocessor):
 
         Pickler.write(rules_logging_dict, 'rules_logging.pickle')
 
-        print(rules.sort_values(by='mean_ranking'))
-
         # applying rules
         console.log(f"{self.__class__.__name__}: Applying rules to time series")
         event_sequences_per_id = self._apply_rule_to_ts(rules=rules, event=event)
 
+        if self.keep_class:
+            data_class = data_copy[self.ts_id_columns +  [self.treatment_attr_name]].drop_duplicates()
+            event_sequences_per_id = event_sequences_per_id.merge(data_class, right_on=self.ts_id_columns, left_on=self.ts_id_columns)
+        
         # save output
         kwargs['rules'] = rules
-        kwargs['event'] = event_sequences_per_id
+        kwargs[self.key_in_result_dict] = event_sequences_per_id
 
         return kwargs
