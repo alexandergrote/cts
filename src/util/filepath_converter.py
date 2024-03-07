@@ -1,7 +1,16 @@
+import os
+import platform
 from pydantic import BaseModel
 from pathlib import Path
 from datetime import date
 
+
+def normalize_to_posix_path(path: str):
+
+    if platform.system() == 'Linux':
+        return path.replace('\\', '/')
+
+    return path
 
 class FilePathDateInserter(BaseModel):
 
@@ -23,10 +32,7 @@ class FilepathConverter(BaseModel):
     target_dir: Path  # relative dir if not absolute filepath is not supplied
 
     def get_filepath(self, filename: str) -> str:
+        filename = normalize_to_posix_path(filename)
+        filename = str(self.target_dir / filename)
 
-        parent_dir = Path(filename).parent
-
-        # check validity of path
-        assert len(str(parent_dir)) > 1, "accessing the root directory is not allowed"
-
-        return filename if parent_dir.exists() else str(self.target_dir / filename)
+        return filename

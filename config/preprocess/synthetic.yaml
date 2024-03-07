@@ -49,7 +49,7 @@ params:
             keep_columns:
         n_rows:
         how: 'right'
-        filename_merge: synthetic/merge_data.parquet
+        filename_merge: synthetic\merge_data.parquet
         merge_params:
         override: True
         save: False
