@@ -5,7 +5,7 @@ from pathlib import Path
 from src.util.constants import Directory
 
 
-def pickle_cache(ignore_caching: bool):
+def pickle_cache(ignore_caching: bool, cachedir: str = 'tmp'):
     """
     A function that creates a decorator which will use "cachefile" for caching the results of the decorated function "fn".
     """
@@ -18,7 +18,7 @@ def pickle_cache(ignore_caching: bool):
                 return fn(*args, **kwargs)
 
             # init directory for caching
-            cache_dir = Directory.OUTPUT_DIR / 'tmp'
+            cache_dir = Directory.OUTPUT_DIR / cachedir
             cache_dir.mkdir(exist_ok=True, parents=True)
 
             # create filename from kwargs

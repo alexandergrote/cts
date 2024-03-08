@@ -1,16 +1,19 @@
 import pandas as pd
 import numpy as np
+import pickle
+import hashlib
 
 from tqdm import tqdm
 from scipy.stats import ttest_1samp
-from typing import List, Optional
-from pydantic import BaseModel, validator
+from typing import List, Optional, Iterable
+from pydantic import BaseModel, validator, model_validator
 from itertools import chain, combinations, product
 from statsmodels.stats.multitest import multipletests
+from pathlib import Path
 
 from src.preprocess.base import BasePreprocessor
 from src.preprocess.util.rules import Rule
-from src.util.constants import RuleFields
+from src.util.constants import RuleFields, Directory
 from src.util.logging import console, Pickler, log_time
 from src.util.dynamic_import import DynamicImport
 from src.util.caching import pickle_cache
@@ -31,13 +34,100 @@ class PrefixSpan(BaseModel):
         if self.itertool_threshold:
             window_size = min(window_size, self.itertool_threshold)
 
-        for idx, el in enumerate(sequence):
+        for idx, _ in enumerate(sequence):
             target_sequence = sequence[idx:window_size + idx]
             target_sequence_combinations = chain.from_iterable(
                 [combinations(target_sequence, r) for r in range(1, window_size + 1)])
             final_combinations.update(set(target_sequence_combinations))
 
         return list(final_combinations)
+
+    @pickle_cache(ignore_caching=False, cachedir='support_dict')
+    def _get_support_dict(self, sequences: Iterable[List[str]]) -> dict:
+
+        # additionally, we need to keep track of the support of each sequence
+        # so we can calculate confidence of rules
+        # we can use a dictionary to store the support of each sequence
+        # the key of the dictionary is the sequence
+        # the value of the dictionary is the support of the sequence
+        sequence_supports = {}
+
+        # we start by creating a list of all possible sequences
+        # this list will contain duplicate sequences
+        # but we need those for calculating support of each unique sequence
+        for sequence in tqdm(sequences, total=len(sequences)):
+
+            # get combinations in sequence
+            # itertool combinations returns " n! / r! / (n-r)! " elements
+            # this is computationally demanding
+            sequence_combinations = self._get_combinations(sequence)
+
+            # to avoid duplicates, keep track of added elements
+            added_elements = []
+
+            for sequence_combination in sequence_combinations:
+
+                # calculate support for rule combination
+                key = self.splitting_symbol.join(sequence_combination)
+
+                # check if key appears multiple times in sequence combination
+                if key in added_elements:
+                    continue
+
+                # init count if sequence not already registered
+                if key not in sequence_supports:
+                    sequence_supports[key] = 1
+                    added_elements.append(key)
+                    continue
+
+                # increment count
+                sequence_supports[key] += 1
+                added_elements.append(key)
+
+        return sequence_supports
+
+    @pickle_cache(ignore_caching=False, cachedir='rules')
+    def _get_rules(self, sequence_supports: dict):
+        
+        # to calculate the confidence of rules, we need to iterate over the sequence_supports dictionary
+        rule_confidences = {}
+        rules = []
+
+        console.log(f"Calculating confidence of rules")
+
+        for sequence, support in tqdm(sequence_supports.items(), total=len(sequence_supports)):
+
+            # we only need to consider sequences with length greater than 1
+            # since we are interested in rules
+            if self.splitting_symbol in sequence:
+
+                # we split the sequence into antecedent and consequent
+                # antecedent is the first item of the sequence
+                # consequent is the remaining items of the sequence
+                sequence_split = sequence.split(self.splitting_symbol)
+
+                for i in range(1, len(sequence_split)):
+                    antecedent = sequence_split[:i]
+                    consequent = sequence_split[i:]
+
+                    # we calculate the confidence of the rule
+                    confidence = support / sequence_supports[self.splitting_symbol.join(antecedent)]
+
+                    # we store the confidence of the rule in the nested rule_confidences dictionary
+                    if self.splitting_symbol.join(antecedent) not in rule_confidences:
+                        rule_confidences[self.splitting_symbol.join(antecedent)] = {}
+
+                    rule_confidences[self.splitting_symbol.join(antecedent)][self.splitting_symbol.join(consequent)] = confidence
+
+                    rule = Rule(
+                        antecedent=self.splitting_symbol.join(antecedent),
+                        precedent=self.splitting_symbol.join(consequent),
+                        support=support,
+                        confidence=confidence
+                    )
+                    rules.append(rule)
+
+        return rules
 
     def execute(self, data: pd.DataFrame, **kwargs) -> pd.DataFrame:
 
@@ -56,91 +146,10 @@ class PrefixSpan(BaseModel):
         data_copy = data_copy[data_copy['to_keep'] == True]
         sequences = data_copy.groupby(self.id_columns)[self.event_column].apply(list)
 
-        # additionally, we need to keep track of the support of each sequence
-        # so we can calculate confidence of rules
-        # we can use a dictionary to store the support of each sequence
-        # the key of the dictionary is the sequence
-        # the value of the dictionary is the support of the sequence
-        sequence_supports = {}
+        # get support of each sequence and store in dict
+        sequence_supports = self._get_support_dict(sequences)
 
-        # we start by creating a list of all possible sequences
-        # this list will contain duplicate sequences
-        # but we need those for calculating support of each unique sequence
-        for sequence in sequences:
-
-            # get combinations in sequence
-            # itertool combinations returns " n! / r! / (n-r)! " elements
-            # this is computationally demanding
-            sequence_combinations = self._get_combinations(sequence)
-
-            # to avoid duplicates, keep track of added elements
-            added_elements = []
-
-            for sequence_combination in sequence_combinations:
-
-                # calculate support for rule combination
-                key = self.splitting_symbol.join(sequence_combination)
-
-                if key in added_elements:
-                    continue
-
-                # init count if sequence not already registered
-                if key not in sequence_supports:
-                    sequence_supports[key] = 1
-                    added_elements.append(key)
-                    continue
-
-                # increment count
-                sequence_supports[key] += 1
-                added_elements.append(key)
-
-        # to calculate the confidence of rules, we need to iterate over the sequence_supports dictionary
-        # and we store the confidence of each rule in a dictionary
-        # however, this time we need to take into account the antecedent and consequent of the rule
-        # thus, we need to have a nested dictionary
-        # the key of the outer dictionary is the antecedent
-        # the value of the outer dictionary is the inner dictionary
-        # which contains the consequent and confidence of the rule
-        # the key of the inner dictionary is the consequent
-        # the value of the inner dictionary is the confidence of the rule
-        rule_confidences = {}
-        rules = []
-
-        for sequence, support in sequence_supports.items():
-
-            # we only need to consider sequences with length greater than 1
-            # since we are interested in rules
-            if self.splitting_symbol in sequence:
-
-                # we split the sequence into antecedent and consequent
-                # antecedent is the first item of the sequence
-                # consequent is the remaining items of the sequence
-                sequence_split = sequence.split(self.splitting_symbol)
-
-                for i in range(1, len(sequence_split)):
-                    antecedent = sequence_split[:i]
-                    consequent = sequence_split[i:]
-
-                    # we calculate the confidence of the rule
-                    confidence = support / sequence_supports[self.splitting_symbol.join(antecedent)]
-
-                    """if (antecedent == ['a']) and (consequent == ['c']):
-                        print(sequence)
-                        from IPython import embed; embed()"""
-
-                    # we store the confidence of the rule in the nested rule_confidences dictionary
-                    if self.splitting_symbol.join(antecedent) not in rule_confidences:
-                        rule_confidences[self.splitting_symbol.join(antecedent)] = {}
-
-                    rule_confidences[self.splitting_symbol.join(antecedent)][self.splitting_symbol.join(consequent)] = confidence
-
-                    rule = Rule(
-                        antecedent=self.splitting_symbol.join(antecedent),
-                        precedent=self.splitting_symbol.join(consequent),
-                        support=support,
-                        confidence=confidence
-                    )
-                    rules.append(rule)
+        rules = self._get_rules(sequence_supports)
 
         result = pd.DataFrame.from_records([rule.dict() for rule in rules])
 
@@ -150,26 +159,51 @@ class PrefixSpan(BaseModel):
 class RuleClassifier(BaseModel):
 
     rule: List[str]
+    _cache: dict = {}
+
+    def _get_cache_filename(self) -> str:
+
+        filename_components = [self.__class__.__name__]
+        filename_components += [str(arg) for arg in self.rule]
+        filename_verbose = "__".join(filename_components)
+
+        # create hash for shorter filenames
+        hash_object = hashlib.sha1(str.encode(filename_verbose))
+        filename_pickle = f"{hash_object.hexdigest()}.pickle"
+
+        return filename_pickle
+
+    def _get_cache_filepath(self) -> Path:
+        directory = Directory.OUTPUT_DIR / 'rule_clf'
+        directory.mkdir(exist_ok=True, parents=True)
+        filename = self._get_cache_filename()
+        return directory / filename
+    
+    def _write_cache(self):
+        cache_file = self._get_cache_filepath()
+        with open(cache_file, 'wb') as cachehandle:
+            pickle.dump(self._cache, cachehandle)
+
+    @model_validator(mode='after')
+    def _init_cache(self):
+
+        if len(self._cache) != 0:
+            self._cache
+
+        cache_file = self._get_cache_filepath()
+
+        if cache_file.exists():
+            with open(cache_file, 'rb') as cachehandle:
+                self._cache = pickle.load(cachehandle)
 
     @staticmethod
     def _check_if_sorted_ascending(x: np.ndarray) -> bool:
         return all(a <= b for a, b in zip(x, x[1:]))
-
-    def apply_rule(self, sequence: List[str]) -> bool:
-
-        """
-        Checks if rule is contained in a sequence
-
-        Args:
-            sequence: list of events
-
-        Returns:
-            boolean indicator if rule is present in sequence
-
-        """
+    
+    def _apply_rule(self, rule, sequence: List[str]) -> bool:
 
         sequence_set = set(sequence)
-        rule_set = set(self.rule)
+        rule_set = set(rule)
 
         # rule is not contained in dataset
         if len(rule_set.difference(sequence_set)) != 0:
@@ -197,6 +231,36 @@ class RuleClassifier(BaseModel):
 
         return False
 
+    def _apply_rule_from_cache(self, sequence: List[str]) -> bool:
+
+        """
+        Checks if rule is contained in a sequence
+
+        Args:
+            sequence: list of events
+
+        Returns:
+            boolean indicator if rule is present in sequence
+
+        """
+
+        # check if sequence is already in cache
+        sequence_str = "__".join(sequence)
+        if sequence_str in self._cache:
+            return self._cache[sequence_str]
+        else:
+            result = self._apply_rule(rule=self.rule, sequence=sequence)
+            self._cache[sequence_str] = result
+            return result 
+
+    def apply_rules(self, sequences: List[List[str]]) -> List[bool]:
+
+        result = [self._apply_rule_from_cache(sequence=sequence) for sequence in sequences]
+
+        # write cache to file
+        self._write_cache()
+
+        return result
 
 class CausalRuleFeatureSelector(BaseModel, BasePreprocessor):
 
@@ -248,7 +312,10 @@ class CausalRuleFeatureSelector(BaseModel, BasePreprocessor):
         assert sum(mask_treatment) < len(data_copy)
         assert sum(mask_treatment) > 0
 
+        console.log(f"Control: {sum(~mask_treatment)}")
         rules_control_df = prefix.execute(data=data_copy[~mask_treatment], **kwargs)
+        
+        console.log(f"Treatment: {sum(mask_treatment)}")
         rules_treatment_df = prefix.execute(data=data_copy[mask_treatment], **kwargs)
 
         # calculate delta
@@ -550,16 +617,11 @@ class CausalRuleFeatureSelector(BaseModel, BasePreprocessor):
 
         for _, row in tqdm(rules_copy.iterrows(), total=len(rules_copy)):
 
-            result = []
-
-            for idx, sequence in event_sequences_df[column_name].items():
-
-                rule = list(filter(None, row['index'].split(self.splitting_symbol)))
-
-                rule_clf = RuleClassifier(rule=rule)
-                sequence_contained: bool = rule_clf.apply_rule(sequence=sequence)
-
-                result.append(sequence_contained)
+            rule = list(filter(None, row['index'].split(self.splitting_symbol)))
+            rule_clf = RuleClassifier(rule=rule)
+            
+            sequences = event_sequences_df[column_name].to_list()
+            result = rule_clf.apply_rules(sequences)
 
             dataframe = pd.DataFrame({row['index']: result})
 
