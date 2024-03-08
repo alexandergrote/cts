@@ -38,6 +38,13 @@ class CTSDataset(BaseModel, BaseDataset):
 
 class CTSDataloader(BaseModel, BaseDataLoader):
 
+    """
+    Data taken from López-Oriona Á, Vilar JA, D’Urso P (2023). “Hard and soft clustering of categorical time series
+based on two novel distances with an application to biological sequences.” Information Sciences,
+624, 467–492.
+
+    """
+
     path: str
 
     class Config:
