@@ -15,27 +15,6 @@ from src.util.filepath_converter import FilepathConverter
 from src.util.constants import Directory
 
 
-class CTSDataset(BaseModel, BaseDataset):
-
-    path: str
-
-    id_column: str = 'id_column'
-    time_column: str = 'timestamp'
-    event_column: str = 'event_column'
-
-    class Config:
-        arbitrary_types_allowed=True
-
-    @field_validator('path')
-    def _set_path(cls, v):
-
-        return str(Directory.DATA / v)
-
-
-    def get_data(self) -> pd.DataFrame:
-        return pd.read_csv(self.path)
-
-
 class CTSDataloader(BaseModel, BaseDataLoader):
 
     """
