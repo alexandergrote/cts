@@ -159,7 +159,7 @@ class PrefixSpan(BaseModel):
 class RuleClassifier(BaseModel):
 
     rule: List[str]
-    _cache: dict = {}
+    _cache: Optional[dict] = None
 
     def _get_cache_filename(self) -> str:
 
@@ -187,7 +187,7 @@ class RuleClassifier(BaseModel):
     @model_validator(mode='after')
     def _init_cache(self):
 
-        if len(self._cache) != 0:
+        if self._cache is None:
             return
 
         cache_file = self._get_cache_filepath()
@@ -255,10 +255,12 @@ class RuleClassifier(BaseModel):
 
     def apply_rules(self, sequences: List[List[str]]) -> List[bool]:
 
-        result = [self._apply_rule_from_cache(sequence=sequence) for sequence in sequences]
+        if self._cache is None:
+            result = [self._apply_rule(rule=self.rule, sequence=sequence) for sequence in sequences]
+        else:
 
-        # write cache to file
-        self._write_cache()
+            result = [self._apply_rule_from_cache(sequence=sequence) for sequence in sequences]
+            self._write_cache()
 
         return result
 
