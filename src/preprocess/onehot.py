@@ -16,6 +16,7 @@ class OneHotEncoder(BaseModel, BasePreprocessor):
         # one hot encode data
         df_pivot = data_copy[['id', 'value']].drop_duplicates().pivot_table(index='id', columns='value', aggfunc='size')
         df_pivot = ~df_pivot.isna()
+        df_pivot = df_pivot.astype(int)
         df_pivot.index.name = 'id'
         df_pivot.reset_index(inplace=True)
 
