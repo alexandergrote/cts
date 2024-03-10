@@ -9,6 +9,7 @@ class Directory:
     DATA = ROOT / 'data'
     CONFIG = ROOT / "config"
     OUTPUT_DIR = ROOT / "outputs"
+    CACHING_DIR = OUTPUT_DIR / "caching"
     MLFLOW_TRACKING_URI = ROOT / "mlruns"
 
 

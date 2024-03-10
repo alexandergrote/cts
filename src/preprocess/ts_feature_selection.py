@@ -174,7 +174,7 @@ class RuleClassifier(BaseModel):
         return filename_pickle
 
     def _get_cache_filepath(self) -> Path:
-        directory = Directory.OUTPUT_DIR / 'rule_clf'
+        directory = Directory.CACHING_DIR / 'rule_clf'
         directory.mkdir(exist_ok=True, parents=True)
         filename = self._get_cache_filename()
         return directory / filename

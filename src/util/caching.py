@@ -16,7 +16,7 @@ class PickleCacheHandler(BaseModel):
 
     @field_validator("filepath")
     def _set_directory(cls, v):
-        return Directory.OUTPUT_DIR / v
+        return Directory.CACHING_DIR / v
 
     def read(self) -> Optional[Any]: 
 
