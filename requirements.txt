@@ -1,5 +1,5 @@
 pandas
-numpy
+numpy==1.20.0
 matplotlib
 seaborn
 hydra-core
@@ -11,3 +11,4 @@ statsmodels
 typing_extensions
 xgboost
 mlflow
+Boruta
