@@ -12,7 +12,7 @@ class TrainTestSplit(BaseModel, BasePreprocessor):
     split_type: str
     test_size: float
     random_state: int
-    split_col: Optional[str]
+    split_col: Optional[str] = None
 
     @model_validator(mode='after')
     def _validate_split_col(self):
