@@ -188,7 +188,7 @@ class RuleClassifier(BaseModel):
     def _init_cache(self):
 
         if len(self._cache) != 0:
-            self._cache
+            return
 
         cache_file = self._get_cache_filepath()
 
@@ -261,6 +261,7 @@ class RuleClassifier(BaseModel):
         self._write_cache()
 
         return result
+
 
 class CausalRuleFeatureSelector(BaseModel, BasePreprocessor):
 
