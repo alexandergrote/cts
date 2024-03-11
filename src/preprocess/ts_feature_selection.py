@@ -17,7 +17,7 @@ from src.preprocess.util.rules import Rule
 from src.util.constants import RuleFields, Directory
 from src.util.logging import console, Pickler, log_time
 from src.util.dynamic_import import DynamicImport
-from src.util.caching import pickle_cache
+from src.util.caching import pickle_cache, PickleCacheHandler, hash_dataframe
 
 
 class PrefixSpan(BaseModel):
@@ -351,7 +351,13 @@ class CausalRuleFeatureSelector(BaseModel, BasePreprocessor):
 
         return rules
 
-    def _select_shorter_subsequence(self, *, data: pd.DataFrame) -> pd.DataFrame:
+    @staticmethod
+    def _select_shorter_subsequence(*, data: pd.DataFrame, splitting_symbol: str) -> pd.DataFrame:
+
+        """
+        example: "a -> b" is contained in "d -> a -> b -> c" and the longer rule will be removed to avoid possible multicollinearity.
+        example: "a -> c" is not a direct subsequence of "a -> b -> c". Hence, the longer rule is not removed.
+        """
 
         # work on copy
         rules = data.copy(deep=True)
@@ -363,7 +369,7 @@ class CausalRuleFeatureSelector(BaseModel, BasePreprocessor):
 
         # calculate the index length
         # since separation symbol is used twice to indicate antecedent and consequent
-        rules[index_length_column] = rules['index'].apply(lambda x: len(x.split(self.splitting_symbol)) - 1)
+        rules[index_length_column] = rules['index'].apply(lambda x: len(x.split(splitting_symbol)) - 1)
 
         # keep per default all rules
         rules[keep_column] = True
@@ -371,8 +377,8 @@ class CausalRuleFeatureSelector(BaseModel, BasePreprocessor):
         rules = rules.sort_values(by=index_length_column)
 
         # prepare rules for vectorized comparison
-        rules_as_list = rules[rule_column].str.split(self.splitting_symbol)
-        rules_as_str = rules_as_list.apply(lambda x: f'{self.splitting_symbol}'.join(list(filter(None, x))))
+        rules_as_list = rules[rule_column].str.split(splitting_symbol)
+        rules_as_str = rules_as_list.apply(lambda x: f'{splitting_symbol}'.join(list(filter(None, x))))
 
         for idx, rule in rules.iterrows():
 
@@ -380,8 +386,8 @@ class CausalRuleFeatureSelector(BaseModel, BasePreprocessor):
             if rules.loc[idx, keep_column] is False:
                 continue
 
-            rule_as_list = rule[rule_column].split(self.splitting_symbol)
-            rule_as_str = f'{self.splitting_symbol}'.join(list(filter(None, rule_as_list)))
+            rule_as_list = rule[rule_column].split(splitting_symbol)
+            rule_as_str = f'{splitting_symbol}'.join(list(filter(None, rule_as_list)))
 
             mask = rules_as_str.str.contains(rule_as_str)
 
@@ -401,6 +407,11 @@ class CausalRuleFeatureSelector(BaseModel, BasePreprocessor):
         return result
 
     def _select_shorter_start_end(self, *, data: pd.DataFrame) -> pd.DataFrame:
+
+        """
+        example: "a -> b -> -> c" is a longer sequence than "a -> c"
+        example 2: "a -> b -> -> c -> d" is a longer sequence than "a -> -> c -> d"
+        """
 
         # work on copy
         rules = data.copy(deep=True)
@@ -594,6 +605,18 @@ class CausalRuleFeatureSelector(BaseModel, BasePreprocessor):
 
     def _apply_rule_to_ts(self, *, rules: pd.DataFrame, event: pd.DataFrame, **kwargs):
 
+        hash_str = '__'.join([hash_dataframe(rules), hash_dataframe(event)])
+
+        cache_handler = PickleCacheHandler(
+            filepath=Path('rule_clf') / f'{hash_str}.pickle'
+        )
+
+        res = cache_handler.read()
+
+        if res is not None:
+            return res
+
+
         # work on copy
         rules_copy = rules.copy(deep=True)
         event_copy = event.copy(deep=True)
@@ -621,7 +644,7 @@ class CausalRuleFeatureSelector(BaseModel, BasePreprocessor):
         for _, row in tqdm(rules_copy.iterrows(), total=len(rules_copy)):
 
             rule = list(filter(None, row['index'].split(self.splitting_symbol)))
-            rule_clf = RuleClassifier(rule=rule)
+            rule_clf = RuleClassifier(rule=rule, _cache={})
             
             sequences = event_sequences_df[column_name].to_list()
             result = rule_clf.apply_rules(sequences)
@@ -638,6 +661,9 @@ class CausalRuleFeatureSelector(BaseModel, BasePreprocessor):
         # drop column name
         event_sequences_df.drop(column_name, axis=1, inplace=True)
         event_sequences_df.reset_index(inplace=True)
+
+        # write to cache
+        cache_handler.write(event_sequences_df)
 
         return event_sequences_df
 
@@ -667,8 +693,8 @@ class CausalRuleFeatureSelector(BaseModel, BasePreprocessor):
         rules = self._select_shorter_start_end(data=rules)
         console.log(f"{len(rules)} rules")
         rules_logging_dict['2_select_shorter_start_end'] = rules
-
-        rules = self._select_shorter_subsequence(data=rules)
+        
+        rules = self._select_shorter_subsequence(data=rules, splitting_symbol=self.splitting_symbol)
         console.log(f"{len(rules)} rules")
         rules_logging_dict['3_select_shorter_subsequence'] = rules
 
