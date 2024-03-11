@@ -7,7 +7,6 @@ from src.preprocess.base import BasePreprocessor
 from src.util.dynamic_import import DynamicImport
 from src.util.filepath_converter import FilepathConverter
 from src.util.constants import Directory
-from src.util.logging import Pickler
 
 
 class MergeDatasetConfig(BaseModel):
@@ -131,26 +130,6 @@ class Merger(BaseModel, BasePreprocessor):
             right_on=dataset_right.config.merge_on,
             how=self.how
         )
-
-        """Paper Analysis Start"""
-
-        rules = kwargs['rules']
-
-        columns = [col for col in data.columns if '-->' in col]
-
-        result = {}
-
-        for column in columns:
-            result[column] = data[data[column]]['target'].sum() / sum(data['target'])
-
-        result = pd.Series(result)
-        result.name = 'avg_target'
-
-        result = rules.merge(result, left_on='index', right_index=True)
-
-        Pickler.write(result, "rules_conf_target.pickle")
-
-        """Paper Analysis End"""
 
         if self.n_rows is not None:
             data = data.head(self.n_rows)
