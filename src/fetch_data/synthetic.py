@@ -119,7 +119,7 @@ class SequenceGenerator(BaseModel):
     def _get_weight_adjustment(elements: List, target_weight: float, clf: RuleClassifier):
 
         # occurence frequency
-        num_occurence = sum([clf.apply_rules(sequences=list(list(el)))[0] for el in elements])
+        num_occurence = sum([clf.apply_rules(sequences=[list(el)])[0] for el in elements])
         num_non_occurence = len(elements) - num_occurence
 
         assert num_occurence + num_non_occurence == len(elements)
@@ -161,7 +161,7 @@ class SequenceGenerator(BaseModel):
         )
 
         for idx, sequence_combination in enumerate(sequence_combinations):
-            if rule_clf.apply_rules(sequences=list(list(sequence_combination)))[0]:
+            if rule_clf.apply_rules(sequences=[list(sequence_combination)])[0]:
                 weights[idx] += weight_adjustment
 
         # normalize weights
@@ -173,7 +173,6 @@ class SequenceGenerator(BaseModel):
 
         sequence_combinations = self._get_random_sequence_combinations(events=events)
         sequence_combinations = np.array(sequence_combinations, dtype='object')
-        #print(sequence_combinations)
 
         weights = self._get_weights(sequence_combinations=sequence_combinations)
 
@@ -183,7 +182,7 @@ class SequenceGenerator(BaseModel):
         rule = 'a_c'.split(self.sequence_weights_splitting_char)
         rule_clf = RuleClassifier(rule=rule)
 
-        print(sum([rule_clf.apply_rules(list(seq))[0] for seq in selected_choices]) / len(selected_choices))
+        print(sum([rule_clf.apply_rules([list(seq)])[0] for seq in selected_choices]) / len(selected_choices))
 
         return selected_choices
 
