@@ -94,8 +94,6 @@ class PrefixSpan(BaseModel):
         rule_confidences = {}
         rules = []
 
-        console.log(f"Calculating confidence of rules")
-
         for sequence, support in tqdm(sequence_supports.items(), total=len(sequence_supports)):
 
             # we only need to consider sequences with length greater than 1
@@ -316,7 +314,6 @@ class CausalRuleFeatureSelector(BaseModel, BasePreprocessor):
         assert sum(mask_treatment) < len(data_copy)
         assert sum(mask_treatment) > 0
 
-        console.log(f"Control: {sum(~mask_treatment)}")
         rules_control_df = prefix.execute(data=data_copy[~mask_treatment], **kwargs)
         
         console.log(f"Treatment: {sum(mask_treatment)}")
