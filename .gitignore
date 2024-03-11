@@ -3,7 +3,7 @@ mlruns
 .ipynb_checkpoints
 notebooks/*
 !notebooks/visualize
-notebooks/visualize/*.yaml
+!notebooks/visualization.ipynb
 outputs
 *.egg-info
 .env
