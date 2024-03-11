@@ -12,3 +12,4 @@ typing_extensions
 xgboost
 mlflow
 Boruta
+imblearn
