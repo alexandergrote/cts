@@ -63,15 +63,11 @@ if __name__ == "__main__":
 
     client = MlflowClient()
 
-    experiments = client.search_experiments(filter_string=f"name LIKE '{args.query}'")
+    experiments = client.search_experiments(filter_string=f"name ILIKE '{args.query}'")
 
     config = {}
 
-    print(experiments)
-
     for experiment in experiments:
-
-        print(experiment)
 
         config[experiment.name] = {
             "id": experiment.experiment_id,
