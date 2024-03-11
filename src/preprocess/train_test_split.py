@@ -2,9 +2,11 @@ import pandas as pd
 from pydantic import BaseModel, model_validator
 import numpy as np
 from typing import Optional
+from sklearn.model_selection import train_test_split, StratifiedShuffleSplit
 
+
+from src.util.logging import Pickler
 from src.preprocess.base import BasePreprocessor
-from sklearn.model_selection import train_test_split
 
 
 class TrainTestSplit(BaseModel, BasePreprocessor):
@@ -20,13 +22,28 @@ class TrainTestSplit(BaseModel, BasePreprocessor):
         split_col = self.split_col
         split_type = self.split_type
 
-        if split_type not in ('random_based', 'column_based'):
+        if split_type not in ('random_based', 'column_based', 'random_stratified'):
             raise ValueError("split_type not correctly specified")
 
         if (split_type == 'column_based') and (split_col is None):
             raise ValueError("split_col must be specified in order to use this split_type")
 
         return self
+
+    def _split_train_test_random_stratified(self, data: pd.DataFrame):
+
+        sss = StratifiedShuffleSplit(n_splits=1, test_size=1-self.test_size, random_state=self.random_state)
+        generator = sss.split(data.values, data[self.target_name].values)
+
+        for train_index, test_index in generator:
+            data_train = data.iloc[train_index]
+            data_test = data.iloc[test_index]
+
+        x_train, y_train = data_train.drop(self.target_name, axis=1), data_train[self.target_name]
+        x_test, y_test = data_test.drop(self.target_name, axis=1), data_test[self.target_name]
+
+        return x_train, x_test, y_train, y_test
+    
 
     def _split_train_test_random_based(self, data: pd.DataFrame):
         # split data into x and y
@@ -70,9 +87,32 @@ class TrainTestSplit(BaseModel, BasePreprocessor):
 
     def execute(self, *, data: pd.DataFrame, **kwargs) -> dict:
 
+        """Paper Analysis Start"""
+
+        if 'rules' in kwargs:
+
+            rules = kwargs['rules']
+
+            columns = [col for col in data.columns if '-->' in col]
+
+            result = {}
+
+            for column in columns:
+                result[column] = data[data[column]][self.target_name].mean() - data[self.target_name].mean()
+
+            result = pd.Series(result)
+            result.name = 'deviation_from_mean_target'
+
+            result = rules.merge(result, left_on='index', right_index=True)
+
+            Pickler.write(result, "rules_conf_target.pickle")
+
+            """Paper Analysis End"""
+
         mapping = {
             'random_based': self._split_train_test_random_based,
-            'column_based': self._split_train_test_column_based
+            'column_based': self._split_train_test_column_based,
+            'random_stratified': self._split_train_test_random_stratified
         }
 
         fun = mapping[self.split_type]
