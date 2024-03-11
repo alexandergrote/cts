@@ -9,6 +9,7 @@ from typing import List, Optional, Iterable
 from pydantic import BaseModel, validator, model_validator
 from itertools import chain, combinations, product
 from statsmodels.stats.multitest import multipletests
+from sklearn.model_selection import StratifiedShuffleSplit
 from pathlib import Path
 
 from src.preprocess.base import BasePreprocessor
@@ -520,15 +521,18 @@ class CausalRuleFeatureSelector(BaseModel, BasePreprocessor):
 
     def _bootstrap_id_selection(self, data: pd.DataFrame, random_state: int) -> pd.DataFrame:
 
-        assert len(self.ts_id_columns) == 1
+        assert len(self.ts_id_columns) == 1, "Only one id column is supported"
         id_column = self.ts_id_columns[0]
-        id_list = data[id_column].unique()
-        sample_size = int(len(id_list) * self.bootstrap_sampling_fraction)
 
-        rng = np.random.default_rng(random_state)
-        selected_ids = rng.choice(id_list, size=sample_size, replace=False)
+        data_unique = data[self.ts_id_columns + [self.treatment_attr_name]].drop_duplicates()
+        
+        assert data_unique[self.ts_id_columns].duplicated().sum() == 0, "id-target-mapping should be unique"
+        
+        sss = StratifiedShuffleSplit(n_splits=1, test_size=1-self.bootstrap_sampling_fraction, random_state=random_state)
+        generator = sss.split(data_unique[self.ts_id_columns].values.reshape(-1,), data_unique[self.treatment_attr_name].values)
 
-        mask = data[id_column].isin(selected_ids)
+        for train_index, _ in generator:
+            mask = data[id_column].isin(data_unique.iloc[train_index][id_column])
 
         return data[mask]
 
