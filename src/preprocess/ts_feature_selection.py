@@ -316,7 +316,6 @@ class CausalRuleFeatureSelector(BaseModel, BasePreprocessor):
 
         rules_control_df = prefix.execute(data=data_copy[~mask_treatment], **kwargs)
         
-        console.log(f"Treatment: {sum(mask_treatment)}")
         rules_treatment_df = prefix.execute(data=data_copy[mask_treatment], **kwargs)
 
         # calculate delta
