@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 
 from string import ascii_lowercase
-from typing import List, Optional, Tuple, Union, Generator
+from typing import List, Optional, Tuple, Union, Generator, Any
 from pydantic import BaseModel, model_validator, field_validator
 from itertools import combinations, chain, count, product
 from sklearn.datasets import make_classification
@@ -38,15 +38,22 @@ class SequenceGenerator(BaseModel):
     max_sequence_length: int
 
     random_seed: int = 42
+    rng: Optional[Any] = None
 
     sequence_weights_splitting_char: str
     sequence_weights: Optional[dict] = None
 
     sequences_to_ignore: Optional[List[str]] = None
 
-    def _get_random_sequence_combinations(self, events: List[str]):
+    class Config:
+        arbitray_types_allowed=True
 
-        rng = np.random.default_rng(seed=self.random_seed)
+    @model_validator(mode='after')
+    def _set_rng(self):
+        self.rng = np.random.default_rng(seed=self.random_seed)
+        return self
+
+    def _get_random_sequence_combinations(self, events: List[str]):
 
         stop = True
         counter_fails = 0
@@ -68,9 +75,9 @@ class SequenceGenerator(BaseModel):
 
         while stop:
 
-            random_rule_length = rng.integers(low=2, high=len(events), size=1)
+            random_rule_length = self.rng.integers(low=2, high=len(events), size=1)
 
-            random_event_sequence = rng.choice(events, size=random_rule_length)
+            random_event_sequence = self.rng.choice(events, size=random_rule_length)
 
             if classifiers:
                 skip: bool = False
@@ -172,12 +179,12 @@ class SequenceGenerator(BaseModel):
     def get_sequences(self, events: List[str]) -> List[str]:
 
         sequence_combinations = self._get_random_sequence_combinations(events=events)
+
         sequence_combinations = np.array(sequence_combinations, dtype='object')
 
         weights = self._get_weights(sequence_combinations=sequence_combinations)
 
-        rng = np.random.default_rng(seed=self.random_seed)
-        selected_choices = rng.choice(sequence_combinations, size=self.n_sequences, p=weights)
+        selected_choices = self.rng.choice(sequence_combinations, size=self.n_sequences, p=weights)
 
         rule = 'a_c'.split(self.sequence_weights_splitting_char)
         rule_clf = RuleClassifier(rule=rule)
