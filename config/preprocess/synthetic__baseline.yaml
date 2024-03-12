@@ -1,0 +1,28 @@
+class_name: src.preprocess.preprocessor.Preprocessor
+params:
+  steps:
+    '0':
+      class_name: src.preprocess.labelling.LabelingFromStatic
+      params:
+        id_column_static: 'id_column'
+        id_column_event: 'id_column'
+        target_column_static: 'target'
+    '1':
+      class_name: src.preprocess.onehot.OneHotEncoder
+      params:
+        id_column: 'id_column'
+        feature_column: 'event_column'
+        target_column: 'target'
+    '3':
+      class_name: src.preprocess.train_test_split.TrainTestSplit
+      params:
+        target_name: 'target'
+        split_type: 'column_based'
+        split_col: 'id_column'
+        test_size: 0.2
+        random_state: 42
+    '4':
+      class_name: src.preprocess.excluder.ColumnExcluder
+      params:
+        columns:
+          - id_column

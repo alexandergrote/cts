@@ -11,6 +11,8 @@ params:
       class_name: src.preprocess.ts_feature_selection.CausalRuleFeatureSelector
       params:
         repetitions: 5
+        key_in_result_dict: 'data'
+        keep_class: True
         treatment_attr_name: 'target'
         treatment_attr_value: '1'
         splitting_symbol: " --> "
@@ -30,27 +32,6 @@ params:
             itertool_threshold: 5
         multitesting:
           method: 'bonferroni'
-    '2':
-      class_name: src.preprocess.merge.Merger
-      params:
-        dataset_left_config:
-          class_name: src.preprocess.merge.MergeDatasetConfig
-          params:
-            merge_on: "id_column"
-            ignore_columns:
-            keep_columns:
-        dataset_right_config:
-          class_name: src.preprocess.merge.MergeDatasetConfig
-          params:
-            merge_on: "id_column"
-            ignore_columns:
-            keep_columns:
-        n_rows:
-        how: 'right'
-        filename_merge: synthetic\merge_data.parquet
-        merge_params:
-        override: True
-        save: False
     '3':
       class_name: src.preprocess.train_test_split.TrainTestSplit
       params:
