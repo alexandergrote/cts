@@ -782,16 +782,6 @@ class CausalRuleFeatureSelector(BaseModel, BasePreprocessor):
         console.log(f"{len(rules)} rules")
         rules_logging_dict['1_unique_rules'] = rules
 
-        # select shorter rules
-        console.log(f"{self.__class__.__name__}: Shorter Rule Selection")
-        rules = self._select_shorter_start_end(data=rules)
-        console.log(f"{len(rules)} rules")
-        rules_logging_dict['2_select_shorter_start_end'] = rules
-        
-        rules = self._select_shorter_subsequence(data=rules, splitting_symbol=self.splitting_symbol)
-        console.log(f"{len(rules)} rules")
-        rules_logging_dict['3_select_shorter_subsequence'] = rules
-
         # applying rules
         console.log(f"{self.__class__.__name__}: Applying rules to time series")
         event_sequences_per_id = self._apply_rule_to_ts(rules=rules, event=event)
@@ -799,7 +789,7 @@ class CausalRuleFeatureSelector(BaseModel, BasePreprocessor):
         console.log(f"{self.__class__.__name__}: Excluding rules due to collinearity")
         event_sequences_per_id = self._reduce_multicollinearity(data=event_sequences_per_id)
         console.log(f"{event_sequences_per_id.shape[1] - 2} rules")
-        rules_logging_dict['4_theils_u'] = event_sequences_per_id
+        rules_logging_dict['2_theils_u'] = event_sequences_per_id
 
         Pickler.write(rules_logging_dict, 'rules_logging.pickle')
 
