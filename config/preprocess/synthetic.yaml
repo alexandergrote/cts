@@ -62,6 +62,8 @@ params:
     '4':
       class_name: src.preprocess.excluder.ColumnExcluder
       params:
+        exclude_all_expressions:
+          - static
         columns:
           - index
           - id_column
