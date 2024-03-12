@@ -14,6 +14,7 @@ from pathlib import Path
 
 from src.preprocess.base import BasePreprocessor
 from src.preprocess.util.rules import Rule
+from src.preprocess.util.correlation import theils_u
 from src.util.constants import RuleFields, Directory
 from src.util.logging import console, Pickler, log_time
 from src.util.dynamic_import import DynamicImport
@@ -282,6 +283,8 @@ class CausalRuleFeatureSelector(BaseModel, BasePreprocessor):
     ts_event_column: str
     ts_datetime_column: str
 
+    corr_threshold: float = 0.5
+
     multitesting: Optional[dict] = None
     key_in_result_dict: str = 'event'
     keep_class: bool = False
@@ -350,6 +353,95 @@ class CausalRuleFeatureSelector(BaseModel, BasePreprocessor):
             rules[RuleFields.RANKING.value] *= rules[attribute.value].abs()
 
         return rules
+
+    def _get_unique_rules(self, *, data: pd.DataFrame, **kwargs) -> pd.DataFrame:
+            
+        # work on copy
+        rules = data.copy(deep=True)
+
+        # init column names
+        rule_column = 'index'
+        sorting_column = 'abs_avg_confidence'
+        confidence_column = 'mean_confidence'
+
+        # sort by abs delta confidence to make drop duplicates easier
+        # keep the rules with the higher absolute delta confidence
+        rules[sorting_column] = rules[confidence_column].abs()
+        rules.sort_values(by=sorting_column, ascending=False, inplace=True)
+
+        # prepare rules for vectorized comparison
+        rules_as_list = rules[rule_column].str.split(self.splitting_symbol)
+        rules_as_str = rules_as_list.apply(lambda x: f'{self.splitting_symbol}'.join(list(filter(None, x))))
+
+        # drop duplicates
+        mask = rules_as_str.duplicated(keep='first')
+        rules = rules[~mask]
+
+        # drop sorting column
+        rules.drop(columns=[sorting_column], inplace=True)
+
+        return rules
+
+    def _reduce_multicollinearity(self, *, data: pd.DataFrame, **kwargs) -> pd.DataFrame:
+
+        # work on copy
+        data_copy = data.copy(deep=True)
+
+        # get all rules from dataframe
+        rules = data_copy.filter(like=self.splitting_symbol).columns.to_list()
+        rule_lengths = [len(list(filter(None, rule.split(self.splitting_symbol)))) for rule in rules]
+        
+        # for easier manipulation, we summarize the rules and their length in a new dataframe
+        df_rules = pd.DataFrame({
+            'rules': rules,
+            'length': rule_lengths
+        })
+
+        # sort by length
+        df_rules = df_rules.sort_values(by='length', ascending=False)
+
+        # assume all rules are to be kept
+        df_rules['keep'] = True
+        df_rules['checked'] = False
+
+        # start by calculating theil's u for each rule and stop if a rule correlates with another rule
+        for idx, rule_x in df_rules.iterrows():
+
+            # get subset of rules to compare with
+            # we only need to compare with rules that shorter or equal in length
+            # additionally, we only need to compare with rules that have not been flagged as False
+            mask_checked = df_rules['checked'] == False
+
+            # get all other rules
+            remaining_rules = df_rules[mask_checked].drop(index=idx)
+
+            for _, rule_y in remaining_rules.iterrows():
+
+                # calculate theil's u, ranging from 0 to 1, for each rule
+                # 0 means that feature y does not provide any information about feature x
+                # 1 means that feature y provides full information about feature x
+
+                # we want to keep potentially longer rules if they are not correlated with potentially shorter rules
+                # rule_x thereby represents the potential longer rule (x) and rule_y the potential shorter or equally long rule (y)
+                # if rule_y (potentially shorter) can explain rule_x (potentially longer) sufficiently, we drop rule_x
+                # otherwise, the rule contains unique information and we keep it
+                array_x = data_copy[rule_x['rules']].to_numpy()
+                array_y = data_copy[rule_y['rules']].to_numpy()
+                theil_u = theils_u(array_x, array_y)
+
+                # if theil's u is greater than a user specified threshold, drop the rule
+                if theil_u > self.corr_threshold:
+                    df_rules.loc[idx, 'keep'] = False
+                    break
+
+            # flag rule as checked
+            df_rules.loc[idx, 'checked'] = True
+
+        # select subset from rules
+        columns2drop = df_rules[~df_rules['keep']]['rules'].to_list()
+        data_copy.drop(columns=columns2drop, inplace=True)
+
+        return data_copy
 
     @staticmethod
     def _select_shorter_subsequence(*, data: pd.DataFrame, splitting_symbol: str) -> pd.DataFrame:
@@ -676,17 +768,19 @@ class CausalRuleFeatureSelector(BaseModel, BasePreprocessor):
         console.log(f"{self.__class__.__name__}: Bootstrapped Rule Mining")
         rules = self._bootstrap(data=data_copy, **kwargs)
         console.log(f"{len(rules)} rules")
-
-        rules_logging_dict = {
-            '0_bootstrapped': rules,
-        }
+        rules_logging_dict = {'0_bootstrapped': rules}
 
         # select only statistically significant rules
         console.log(f"{self.__class__.__name__}: Excluding statistically insignificant rules")
         rules = self._select_significant_greater_than_zero(data=rules)
-
         console.log(f"{len(rules)} rules")
         rules_logging_dict['1_significant_greater'] = rules
+
+        # select unique rules
+        console.log(f"{self.__class__.__name__}: Selecting unique rules")
+        rules = self._get_unique_rules(data=rules)
+        console.log(f"{len(rules)} rules")
+        rules_logging_dict['1_unique_rules'] = rules
 
         # select shorter rules
         console.log(f"{self.__class__.__name__}: Shorter Rule Selection")
@@ -698,11 +792,16 @@ class CausalRuleFeatureSelector(BaseModel, BasePreprocessor):
         console.log(f"{len(rules)} rules")
         rules_logging_dict['3_select_shorter_subsequence'] = rules
 
-        Pickler.write(rules_logging_dict, 'rules_logging.pickle')
-
         # applying rules
         console.log(f"{self.__class__.__name__}: Applying rules to time series")
         event_sequences_per_id = self._apply_rule_to_ts(rules=rules, event=event)
+
+        console.log(f"{self.__class__.__name__}: Excluding rules due to collinearity")
+        event_sequences_per_id = self._reduce_multicollinearity(data=event_sequences_per_id)
+        console.log(f"{event_sequences_per_id.shape[1] - 2} rules")
+        rules_logging_dict['4_theils_u'] = event_sequences_per_id
+
+        Pickler.write(rules_logging_dict, 'rules_logging.pickle')
 
         if self.keep_class:
             data_class = data_copy[self.ts_id_columns +  [self.treatment_attr_name]].drop_duplicates()
