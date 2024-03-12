@@ -32,7 +32,7 @@ params:
             itertool_threshold: 5
         multitesting:
           method: 'bonferroni'
-    '3':
+    '2':
       class_name: src.preprocess.train_test_split.TrainTestSplit
       params:
         target_name: 'target'
@@ -40,7 +40,7 @@ params:
         split_col: 'id_column'
         test_size: 0.2
         random_state: 42
-    '4':
+    '3':
       class_name: src.preprocess.excluder.ColumnExcluder
       params:
         exclude_all_expressions:
