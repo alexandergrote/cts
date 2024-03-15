@@ -23,31 +23,42 @@ def main(cfg: DictConfig) -> None:
 
     cfg = OmegaConf.to_container(cfg)
 
+    # loading all components
     data_loader = DynamicImport.import_class_from_dict(
         dictionary=cfg['fetch_data']
     )
-
-    console.log("Fetching data")
-    output = data_loader.execute()
 
     preprocessor = DynamicImport.import_class_from_dict(
         dictionary=cfg['preprocess']
     )
 
-    console.log("Starting Preprocessing")
-    output = preprocessor.execute(**output)
-    console.log("Finished Preprocessing")
-
     train_test_split = DynamicImport.import_class_from_dict(
         dictionary=cfg['train_test_split']
     )
 
-    console.log("Splitting data")
-    output = train_test_split.execute(**output)
-
     model = DynamicImport.import_class_from_dict(
         dictionary=cfg['model']
     )
+
+    evaluator = DynamicImport.import_class_from_dict(
+        dictionary=cfg['evaluation']
+    )
+
+    exporter = DynamicImport.import_class_from_dict(
+        dictionary=cfg['export']
+    )
+
+    # execute all components
+
+    console.log("Fetching data")
+    output = data_loader.execute()
+
+    console.log("Starting Preprocessing")
+    output = preprocessor.execute(**output)
+    console.log("Finished Preprocessing")
+
+    console.log("Splitting data")
+    output = train_test_split.execute(**output)
 
     console.log("Model Training")
     output = model.fit(**output)
@@ -56,20 +67,12 @@ def main(cfg: DictConfig) -> None:
     console.log("Model Interference with Probabilities")
     output = model.predict_proba(**output)
 
-    evaluator = DynamicImport.import_class_from_dict(
-        dictionary=cfg['evaluation']
-    )
-
     console.log("Evaluating")
     output = evaluator.evaluate(**output)
     console.log(output.get('metrics'))
 
     print(output.get('y_train').value_counts(normalize=True))
     print(output.get('y_test').value_counts(normalize=True))
-
-    exporter = DynamicImport.import_class_from_dict(
-        dictionary=cfg['export']
-    )
 
     # add config to kwargs
     # needed for exporting
