@@ -21,6 +21,12 @@ class BaseFeatureSelector(ABC):
 
         data_hash = hash_dataframe(data=data)
 
+        feat_id = '__features_'
+        if getattr(self, 'n_features') is not None:
+            data_hash += f"{feat_id}{str(self.n_features)}"
+        else:
+            data_hash += f'{feat_id}all' 
+
         cache_handler = PickleCacheHandler(
             filepath=Path(self.__class__.__name__) / data_hash
         )

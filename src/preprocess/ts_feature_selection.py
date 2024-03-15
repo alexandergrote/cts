@@ -288,6 +288,7 @@ class CausalRuleFeatureSelector(BaseModel, BasePreprocessor):
     multitesting: Optional[dict] = None
     key_in_result_dict: str = 'event'
     keep_class: bool = False
+    n_features: Optional[int] = None
 
     @validator("multitesting")
     def _set_multitesting(cls, v):
@@ -796,6 +797,18 @@ class CausalRuleFeatureSelector(BaseModel, BasePreprocessor):
         if self.keep_class:
             data_class = data_copy[self.ts_id_columns +  [self.treatment_attr_name]].drop_duplicates()
             event_sequences_per_id = event_sequences_per_id.merge(data_class, right_on=self.ts_id_columns, left_on=self.ts_id_columns)
+        
+        if self.n_features is not None:
+            
+            all_rules = event_sequences_per_id.filter(like=self.splitting_symbol).columns.to_list()
+            rules = rules[rules['index'].isin(all_rules)]
+            rules.sort_values(by='mean_ranking', ascending=False, inplace=True)
+
+            important_sequences = rules['index'].head(self.n_features).to_list()
+            event_sequences_per_id = event_sequences_per_id[self.ts_id_columns + important_sequences + [self.treatment_attr_name]]
+
+        # drop id columns
+        event_sequences_per_id.drop(columns= self.ts_id_columns +['index'], inplace=True, errors='ignore')
         
         # save output
         kwargs['rules'] = rules

@@ -13,14 +13,12 @@ class MutInfoFeatSelection(BaseModel, BaseFeatureSelector):
 
     def _select_features(self, data: pd.DataFrame) -> pd.DataFrame:
 
-        # define Boruta feature selection method
+        if self.n_features is None:
+            return data
 
         # find all relevant features - 5 features should be selected
         X = data.drop(columns=[self.target_column])
         y = data[self.target_column]
-
-        if self.n_features is None:
-            self.n_features = len(X.columns)
 
         selector = SelectKBest(mutual_info_classif, k=self.n_features)
         X_sub = selector.fit_transform(X, y)
@@ -29,7 +27,6 @@ class MutInfoFeatSelection(BaseModel, BaseFeatureSelector):
 
         return df
 
-    
     
 if __name__ == '__main__':
 

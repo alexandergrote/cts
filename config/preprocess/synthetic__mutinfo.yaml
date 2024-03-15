@@ -17,6 +17,7 @@ params:
       class_name: src.preprocess.mutual_info.MutInfoFeatSelection
       params:
         target_column: 'target'
+        n_features: null
     '3':
       class_name: src.preprocess.train_test_split.TrainTestSplit
       params:

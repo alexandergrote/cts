@@ -2,6 +2,7 @@ import pandas as pd
 from pydantic import BaseModel
 from sklearn.ensemble import RandomForestClassifier
 from boruta import BorutaPy
+from typing import Optional
 
 from src.preprocess.base import BaseFeatureSelector
 
@@ -9,8 +10,12 @@ from src.preprocess.base import BaseFeatureSelector
 class BorutaFeatSelection(BaseModel, BaseFeatureSelector):
 
     target_column: str
+    n_features: Optional[int] = None
 
     def _select_features(self, data: pd.DataFrame) -> pd.DataFrame:
+
+        if self.n_features is None:
+            return data
 
         rf = RandomForestClassifier(n_jobs=-1, max_depth=5)
 
@@ -24,10 +29,12 @@ class BorutaFeatSelection(BaseModel, BaseFeatureSelector):
 
         feat_selector.fit(X.values, y.values)
 
-        # call transform() on X to filter it down to selected features
-        X_sub = feat_selector.transform(X.values)
+        df_importances = pd.DataFrame({
+            'feature': X.columns,
+            'importance': feat_selector.ranking_
+        })
 
-        df = pd.DataFrame(X_sub, columns=X.columns[feat_selector.support_])
-        df[self.target_column] = y
+        df_importances = df_importances.sort_values(by='importance', ascending=False)
+        selected_features = df_importances['feature'].head(self.n_features).to_list()
 
-        return df
+        return data[selected_features + [self.target_column]]

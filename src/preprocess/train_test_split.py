@@ -87,6 +87,8 @@ class TrainTestSplit(BaseModel, BasePreprocessor):
 
     def execute(self, *, data: pd.DataFrame, **kwargs) -> dict:
 
+        print(data.shape)
+
         """Paper Analysis Start"""
 
         if 'rules' in kwargs:
@@ -107,7 +109,7 @@ class TrainTestSplit(BaseModel, BasePreprocessor):
 
             Pickler.write(result, "rules_conf_target.pickle")
 
-            """Paper Analysis End"""
+        """Paper Analysis End"""
 
         mapping = {
             'random_based': self._split_train_test_random_based,

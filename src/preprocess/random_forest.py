@@ -2,7 +2,6 @@ import pandas as pd
 from pydantic import BaseModel
 from typing import Optional
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.feature_selection import mutual_info_classif, SelectKBest
 
 from src.preprocess.base import BaseFeatureSelector
 
@@ -14,14 +13,12 @@ class RFFeatSelection(BaseModel, BaseFeatureSelector):
 
     def _select_features(self, data: pd.DataFrame) -> pd.DataFrame:
 
-        # define Boruta feature selection method
+        if self.n_features is None:
+            return data
 
         # find all relevant features - 5 features should be selected
         X = data.drop(columns=[self.target_column])
         y = data[self.target_column]
-
-        if self.n_features is None:
-            self.n_features = len(X.columns)
 
         # train random forest
         rf = RandomForestClassifier(n_estimators=100, random_state=42)

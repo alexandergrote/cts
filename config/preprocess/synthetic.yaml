@@ -11,6 +11,7 @@ params:
       class_name: src.preprocess.ts_feature_selection.CausalRuleFeatureSelector
       params:
         repetitions: 5
+        n_features: null
         key_in_result_dict: 'data'
         keep_class: True
         treatment_attr_name: 'target'
@@ -36,7 +37,7 @@ params:
       class_name: src.preprocess.train_test_split.TrainTestSplit
       params:
         target_name: 'target'
-        split_type: 'column_based'
+        split_type: 'random_stratified'
         split_col: 'id_column'
         test_size: 0.2
         random_state: 42
@@ -45,6 +46,3 @@ params:
       params:
         exclude_all_expressions:
           - static
-        columns:
-          - index
-          - id_column
