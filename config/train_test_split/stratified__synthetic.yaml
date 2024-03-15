@@ -1,0 +1,5 @@
+class_name: src.train_test_split.stratified.StratifiedSplit
+params:
+  random_state: 42
+  target_name: 'target'
+  test_size: 0.8

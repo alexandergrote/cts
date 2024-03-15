@@ -38,6 +38,13 @@ def main(cfg: DictConfig) -> None:
     output = preprocessor.execute(**output)
     console.log("Finished Preprocessing")
 
+    train_test_split = DynamicImport.import_class_from_dict(
+        dictionary=cfg['train_test_split']
+    )
+
+    console.log("Splitting data")
+    output = train_test_split.execute(**output)
+
     model = DynamicImport.import_class_from_dict(
         dictionary=cfg['model']
     )

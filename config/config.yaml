@@ -1,6 +1,7 @@
 defaults:
   - fetch_data: synthetic
   - preprocess: synthetic
+  - train_test_split: stratified
   - model: xgb
   - evaluation: ml
   - export: mlflow
