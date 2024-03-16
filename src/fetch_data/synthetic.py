@@ -1,421 +1,157 @@
 import numpy as np
 import pandas as pd
+from collections import Counter
+from pydantic import BaseModel, model_validator
+from typing import List, Dict
 
-from string import ascii_lowercase
-from typing import List, Optional, Tuple, Union, Generator, Any
-from pydantic import BaseModel, model_validator, field_validator
-from itertools import combinations, chain, count, product
-from sklearn.datasets import make_classification
-
-from src.fetch_data.base import BaseDataLoader, BaseDataset
+from src.fetch_data.base import BaseDataLoader
 from src.preprocess.ts_feature_selection import RuleClassifier
-from src.util.dynamic_import import DynamicImport
-from src.util.caching import pickle_cache
 
+#np.random.seed(0)
 
-class EventGenerator(BaseModel):
+rng = np.random.default_rng(seed=0)
 
-    max_events: int
 
-    def get_events(self) -> List[str]:
+class DataLoader(BaseModel, BaseDataLoader):
 
-        counter = 0
-        result: List[str] = []
-
-        for size in count(1):
-            for s in product(ascii_lowercase, repeat=size):
-                event: str = "".join(s)
-                result.append(event)
-                counter += 1
-
-                if counter >= self.max_events:
-                    return result
-
-
-class SequenceGenerator(BaseModel):
-
-    n_sequences: int
-    max_sequence_length: int
-
-    random_seed: int = 42
-    rng: Optional[Any] = None
-
-    sequence_weights_splitting_char: str
-    sequence_weights: Optional[dict] = None
-
-    sequences_to_ignore: Optional[List[str]] = None
-
-    class Config:
-        arbitray_types_allowed=True
-
-    @model_validator(mode='after')
-    def _set_rng(self):
-        self.rng = np.random.default_rng(seed=self.random_seed)
-        return self
-
-    def _get_random_sequence_combinations(self, events: List[str]):
-
-        stop = True
-        counter_fails = 0
-
-        n_samples = set()
-        if self.sequence_weights is not None:
-            n_samples = set(self.sequence_weights.keys())
-
-        classifiers = []
-        if self.sequences_to_ignore is not None:
-
-            for rule in self.sequences_to_ignore:
-
-                rule = rule.split(self.sequence_weights_splitting_char)
-
-                classifiers.append(
-                    RuleClassifier(rule=rule)
-                )
-
-        while stop:
-
-            random_rule_length = self.rng.integers(low=2, high=len(events), size=1)
-
-            random_event_sequence = self.rng.choice(events, size=random_rule_length)
-
-            if classifiers:
-                skip: bool = False
-                for clf in classifiers:
-                    if clf.apply_rules(sequences=[random_event_sequence])[0]:
-                        skip = True
-                        break
-
-                if skip:
-                    continue
-
-            random_event_sequence_str = self.sequence_weights_splitting_char.join(random_event_sequence)
-            len_n_samples = len(n_samples)
-            n_samples.add(random_event_sequence_str)
-
-            # increment counter if
-            if len_n_samples == len(n_samples):
-                counter_fails += 1
-
-            if counter_fails == max(self.n_sequences, 1000):
-                raise ValueError("Sampling failed. Consider increasing the possible value combinations")
-
-            if len(n_samples) == self.n_sequences:
-                stop = False
-
-        return [tuple(el.split(self.sequence_weights_splitting_char)) for el in n_samples]
-
-    def _get_temporal_constrained_sequence_combinations(self, events: List[str]):
-
-        sequence_combinations = [combinations(events, r) for r in range(1, self.max_sequence_length + 1)]
-        sequence_combinations = list(chain.from_iterable(sequence_combinations))
-
-        return sequence_combinations
-
-    @field_validator("sequence_weights")
-    def _check_length(cls, v):
-
-        if v is None:
-            return v
-
-        assert len(v.keys()) == 1
-
-        return v
-
-    @staticmethod
-    def _get_weight_adjustment(elements: List, target_weight: float, clf: RuleClassifier):
-
-        # occurence frequency
-        num_occurence = sum([clf.apply_rules(sequences=[list(el)])[0] for el in elements])
-        num_non_occurence = len(elements) - num_occurence
-
-        assert num_occurence + num_non_occurence == len(elements)
-
-        # default weight
-        default_w = 1 / len(elements)
-
-        numerator = target_weight * default_w * (num_occurence + num_non_occurence) - num_occurence * default_w
-        denominator = num_occurence * (1 - target_weight)
-
-        # weight adjustment
-        if denominator == 0:
-            weight_adjustment = 999999999
-        else:
-            weight_adjustment = numerator / denominator
-
-        return weight_adjustment
-
-    def _get_weights(self, sequence_combinations: List[Tuple[str]]) -> Optional[np.ndarray]:
-
-        if self.sequence_weights is None:
-            return None
-
-        weights = np.ones((len(sequence_combinations))) / len(sequence_combinations)
-
-        # unpack dict
-        sequence, target_weight = list(self.sequence_weights.items())[0]
-
-        # check dict contents
-        assert self.sequence_weights_splitting_char in sequence
-
-        rule = sequence.split(self.sequence_weights_splitting_char)
-        rule_clf = RuleClassifier(rule=rule)
-
-        weight_adjustment = self._get_weight_adjustment(
-            elements=sequence_combinations,
-            target_weight=target_weight,
-            clf=rule_clf
-        )
-
-        for idx, sequence_combination in enumerate(sequence_combinations):
-            if rule_clf.apply_rules(sequences=[list(sequence_combination)])[0]:
-                weights[idx] += weight_adjustment
-
-        # normalize weights
-        weights = weights / weights.sum()
-
-        return weights
-
-    def get_sequences(self, events: List[str]) -> List[str]:
-
-        sequence_combinations = self._get_random_sequence_combinations(events=events)
-
-        sequence_combinations = np.array(sequence_combinations, dtype='object')
-
-        weights = self._get_weights(sequence_combinations=sequence_combinations)
-
-        selected_choices = self.rng.choice(sequence_combinations, size=self.n_sequences, p=weights)
-
-        rule = 'a_c'.split(self.sequence_weights_splitting_char)
-        rule_clf = RuleClassifier(rule=rule)
-
-        print(sum([rule_clf.apply_rules([list(seq)])[0] for seq in selected_choices]) / len(selected_choices))
-
-        return selected_choices
-
-
-class TimeSeriesDataset(BaseModel, BaseDataset):
-
-    event_generator: Union[dict, EventGenerator]
-    sequence_generator: Union[dict, SequenceGenerator]
-
-    id_column: str = 'id_column'
-    time_column: str = 'timestamp'
-    event_column: str = 'event_column'
-
-    data: Optional[pd.DataFrame] = None
-    ids: Optional[List[str]] = None
-
-    random_seed: int = 42
-
-    class Config:
-        arbitrary_types_allowed=True
-
-    @field_validator("event_generator", "sequence_generator")
-    def _init_classes(cls, v):
-        return DynamicImport.import_class_from_dict(v)
-
-    def _get_dataframes(self, sequences: List[str], ids: List[int]):
-
-        assert len(sequences) == len(ids)
-
-        for sequence, id in zip(sequences, ids):
-
-            data = pd.DataFrame({
-                self.id_column: id,
-                self.time_column: range(len(sequence)),
-                self.event_column: sequence
-            })
-
-            yield data
-
-    def _get_ids(self, sequences: Optional[List]) -> List:
-
-        ids = list(range(len(sequences)))
-
-        if self.ids is not None:
-            rng = np.random.default_rng(seed=self.random_seed)
-            ids = rng.choice(self.ids, len(sequences), replace=False)
-
-        return ids
-
-    def get_data(self) -> pd.DataFrame:
-
-        event_list = self.event_generator.get_events()
-
-        sequences = self.sequence_generator.get_sequences(events=event_list)
-
-        ids = self._get_ids(sequences=sequences)
-
-        dataframes = self._get_dataframes(sequences=sequences, ids=ids)
-
-        data = pd.concat(dataframes)
-
-        return data
-
-
-class StaticDataset(BaseModel, BaseDataset):
-
+    configuration: Dict[str, Dict[str, float]]
     n_samples: int
-    random_seed: int
 
-    n_features: int = 20
-    n_informative: int = 2
-    n_redundant: int = 0
-    n_repateted: int = 0
-
-    flip_y: float = 0.1
-    weights: Optional[np.ndarray] = None  # class weights
-
-    n_classes: int = 2
-    n_clusters_per_class: int = 2
+    sequence_elements: List[str]
+    separator: str
 
     id_column: str = 'id_column'
-    target_column: str = 'target'
+    event_column: str = 'event_column'
+    time_column: str = 'timestamp'
+    class_column: str = 'target'
 
-    data: Optional[pd.DataFrame] = None
-
-    class Config:
-        arbitrary_types_allowed=True
+    # config columns
+    select_key: str = 'selection'
+    class_key: str = 'class'
+    configuration_result_column: str = 'configuration'
 
     @model_validator(mode='after')
-    def _validate_n_features(self):
-        assert self.n_features >= self.n_informative - self.n_repateted - self.n_redundant
-        return self
+    def check_configuration(self):
 
-    def get_data(self) -> pd.DataFrame:
-
-        X, y = make_classification(
-            n_samples=self.n_samples,
-            n_features=self.n_features,
-            n_informative=self.n_informative,
-            n_repeated=self.n_redundant,
-            n_redundant=self.n_redundant,
-            n_clusters_per_class=self.n_clusters_per_class,
-            weights=self.weights,
-            flip_y=self.flip_y,
-            n_classes=self.n_classes,
-            shuffle=False
-        )
-
-        data = pd.DataFrame(np.concatenate([X, y.reshape(-1, 1)], axis=1))
-
-        # assign column labels
-        base_id = 'static'
-        n_other = self.n_features - self.n_informative - self.n_repateted - self.n_redundant
-        columns = [f"{base_id}_informative_{i}" for i in range(self.n_informative)]
-        columns += [f"{base_id}_redundant_{i}" for i in range(self.n_redundant)]
-        columns += [f"{base_id}_repeated_{i}" for i in range(self.n_repateted)]
-        columns += [f"{base_id}_other_{i}" for i in range(n_other)]
-        columns += [self.target_column]
-
-        data.columns = columns
-
-        data[self.id_column] = range(len(data))
-
-        self.data = data
-
-        return data
+        # check if columns are present
+        for key in self.configuration:
+            if self.select_key not in self.configuration[key] or self.class_key not in self.configuration[key]:
+                raise ValueError(f'Configuration for {key} is not complete')
+            
+        # check if selection probabilities are greater than 0 and smaller than 1
+        for key in self.configuration:
+            if not 0 <= self.configuration[key][self.select_key] <= 1:
+                raise ValueError(f'Probability for {key} is not in [0, 1]')
+            
+        # check if class probabilities are greater than 0 and smaller than 1
+        for key in self.configuration:
+            if not 0 <= self.configuration[key][self.class_key] <= 1:
+                raise ValueError(f'Probability for {key} is not in [0, 1]')
+            
+        # check if sum of selection probabilities is greater equal 0 but smaller equal 1
+        for key in [self.select_key]:
+            if not 0 <= sum([self.configuration[k][key] for k in self.configuration]) <= 1:
+                raise ValueError(f'Sum of probabilities is not in [0, 1]')
 
 
-class SyntheticDatasets(BaseModel, BaseDataLoader):
+    def execute(self):
 
-    static_dataset: Union[dict, StaticDataset]
-    time_series_positive: Union[dict, TimeSeriesDataset]
-    time_series_negative: Union[dict, TimeSeriesDataset]
+        sequence_goals = {k: self.configuration[k][self.select_key] * self.n_samples for k in self.configuration}
+        sequence_goals[None] = self.n_samples - sum(sequence_goals.values())
 
-    static_only: bool = False
-    time_series_only: bool = False
+        # list of elements that will be drawn randomly if they are not part of the configuration
+        result = []
 
-    class Config:
-        arbitrary_types_allowed=True
+        # draw classes for sampled elements
+        classes = []
 
-    @field_validator("static_dataset", "time_series_positive", "time_series_negative")
-    def _init_datasets(cls, v):
-        return DynamicImport.import_class_from_dict(v)
+        # configuration list
+        configuration_results = []
 
-    @staticmethod
-    def _get_time_series_data_with_aligned_index(static_dataset: StaticDataset, ts_datasets: List[TimeSeriesDataset]) -> Generator[pd.DataFrame, None, None]:
+        default_class_probability = 0.5
 
-        data = static_dataset.data.copy(deep=True)
+        # draw elements according to their weights
+        while len(result) < self.n_samples:
 
-        if data is None:
-            raise ValueError("Data is not set")
+            random_rule_length = rng.integers(low=2, high=len(self.sequence_elements), size=1)[0]
+            random_rule = rng.choice(self.sequence_elements, size=random_rule_length, replace=False)
+            random_rule_str = self.separator.join(random_rule)
 
-        unique_values = data[static_dataset.target_column].unique()
-        unique_values.sort()
+            # is drawn rule contained in the configuration?
+            classifiers = [RuleClassifier(rule=key.split(self.separator)) for key in self.configuration.keys()]
+            configuration_indicator = [clf.apply_rules(sequences=[random_rule])[0] for clf in classifiers]
+            num_rules = sum(configuration_indicator)
 
-        for unique_val, ts in zip(unique_values, ts_datasets):
+            # exclude potential conflicting rules
+            if num_rules > 1:
+                continue
 
-            data_sub = data[data[static_dataset.target_column] == unique_val]
-            ids = data_sub[static_dataset.id_column].unique()
+            configuration_result = list(self.configuration.keys())[np.argmax(configuration_indicator)] if num_rules == 1 else None
 
-            ts.sequence_generator.n_sequences = len(ids)
-            ts.ids = ids
+            counter = Counter(configuration_results)
+            
+            if sequence_goals[configuration_result] - counter.get(configuration_result, 0) <= 0:
+                continue
 
-            data_ts = ts.get_data()
+            class_probability = self.configuration[configuration_result][self.class_key] if configuration_result is not None else default_class_probability
+            class_result = rng.choice([0, 1], p=[1 - class_probability, class_probability])
 
-            yield data_ts
 
-    @pickle_cache(ignore_caching=True)
-    def execute(self) -> dict:
+            result.append(random_rule_str)
+            classes.append(class_result)
+            configuration_results.append(configuration_result)
 
-        n_observations = self.static_dataset.n_samples
-        n_ts_pos = self.time_series_positive.sequence_generator.n_sequences
-        n_ts_neg = self.time_series_negative.sequence_generator.n_sequences
 
-        assert n_observations == n_ts_neg + n_ts_pos
+        # summarize data in a pandas dataframe
+        data = pd.DataFrame({
+            self.event_column: result,
+            self.class_column: classes,
+            self.configuration_result_column: configuration_results
+        })
 
-        static_data = self.static_dataset.get_data()
+        data.fillna('None', inplace=True)
 
-        if self.static_only:
-            return {'data': static_data}
+        # calculate the relative frequency of each element
+        relative_frequencies = data[self.configuration_result_column].value_counts(normalize=True).sort_values(ascending=False)
 
-        ts_data_all = list(self._get_time_series_data_with_aligned_index(
-            static_dataset=self.static_dataset,
-            ts_datasets=[self.time_series_negative, self.time_series_positive]
-        ))
+        # calculate the probability of class 1 for each element
+        probabilities = data.groupby(self.configuration_result_column)[self.class_column].mean().sort_values(ascending=False)
 
-        ts_data = pd.concat(ts_data_all)
 
-        return {'case': static_data, 'event': ts_data}
+        print('--relative frequencies--')
+        print(relative_frequencies)
+
+        print('--probabilities--')
+        print(probabilities)
+
+        print('--data--')
+        records = []
+
+        for idx, (rule, target) in enumerate(zip(data[self.event_column], data[self.class_column])):
+
+            time_idx = 0
+            for rule_el in rule.split(self.separator):
+                records.append({self.id_column: idx, self.time_column: time_idx, self.event_column: rule_el, self.class_column: target})
+                time_idx += 1
+
+
+        data = pd.DataFrame.from_records(records)
+
+        return {'event': data}
 
 
 if __name__ == '__main__':
 
-    ts_data = TimeSeriesDataset(
+    # configuration that often an element is selected in percent and how likely, also in percent, it is assigned to a binary class
+    configuration = {
+        'one-four': {'selection': 0.25, 'class': 1},
+        'two-five': {'selection': 0.25, 'class': 0},
+    }
 
-        event_generator={
-            'class_name': 'src.fetch_data.synthetic.EventGenerator',
-            'params': {
-                'max_events': 10
-            }
-            
-        },
-        sequence_generator={
-            'class_name': 'src.fetch_data.synthetic.SequenceGenerator',
-            'params':{
-                'n_sequences': 100,
-                'max_sequence_length': 3,
-                'sequence_weights_splitting_char': ',',
-                'sequence_weights': {
-                    'a,b': 0.5
-                }
-            }
-            
-        }
-    ).get_data()
+    events = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten']
 
-    print(ts_data)
-
-    static_data = StaticDataset(
-        n_samples=200,
-        random_seed=42
-    ).get_data()
-
-    print(static_data)
+    n_samples = 1000
 
 
-
-
-
+    data_loader = DataLoader(configuration=configuration, n_samples=n_samples, sequence_elements=events)
+    data_loader.execute()

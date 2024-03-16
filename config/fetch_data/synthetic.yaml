@@ -1,43 +1,22 @@
-class_name: src.fetch_data.synthetic.SyntheticDatasets
+class_name: src.fetch_data.synthetic.DataLoader
 params:
-  static_only: False
-  static_dataset:
-    class_name: src.fetch_data.synthetic.StaticDataset
-    params:
-      n_samples: 1000
-      flip_y: 0.2
-      random_seed: 42
-  time_series_positive:
-    class_name: src.fetch_data.synthetic.TimeSeriesDataset
-    params:
-      event_generator:
-        class_name: src.fetch_data.synthetic.EventGenerator
-        params:
-          max_events: 10
-      sequence_generator:
-        class_name: src.fetch_data.synthetic.SequenceGenerator
-        params:
-          n_sequences: 500
-          max_sequence_length: 10
-          sequence_weights_splitting_char: '_'
-          sequence_weights:
-            'a_c': 0.5
-          sequences_to_ignore:
-            - 'd_f'
-  time_series_negative:
-    class_name: src.fetch_data.synthetic.TimeSeriesDataset
-    params:
-      event_generator:
-        class_name: src.fetch_data.synthetic.EventGenerator
-        params:
-          max_events: 10
-      sequence_generator:
-        class_name: src.fetch_data.synthetic.SequenceGenerator
-        params:
-          n_sequences: 500
-          max_sequence_length: 10
-          sequence_weights_splitting_char: '_'
-          sequence_weights:
-            'd_f': 0.5
-          sequences_to_ignore:
-            - 'a_c'
+  n_samples: 10000
+  configuration:
+    'a-c':
+      selection: 0.25
+      class: 1
+    'd-f':
+      selection: 0.25
+      class: 0
+  separator: '-'
+  sequence_elements:
+    - a
+    - b
+    - c
+    - d
+    - e
+    - f
+    - g
+    - h
+    - i
+    - j

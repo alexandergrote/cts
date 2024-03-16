@@ -1,12 +1,6 @@
 class_name: src.preprocess.preprocessor.Preprocessor
 params:
   steps:
-    '0':
-      class_name: src.preprocess.labelling.LabelingFromStatic
-      params:
-        id_column_static: 'id_column'
-        id_column_event: 'id_column'
-        target_column_static: 'target'
     '1':
       class_name: src.preprocess.onehot.OneHotEncoder
       params:
