@@ -1,4 +1,5 @@
 defaults:
+  - constants: synthetic
   - fetch_data: synthetic
   - preprocess: synthetic
   - train_test_split: stratified

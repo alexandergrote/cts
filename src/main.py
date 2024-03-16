@@ -5,12 +5,12 @@ from omegaconf import DictConfig, OmegaConf
 
 # load package specific code
 from src.util.dynamic_import import DynamicImport
-from src.util.constants import Directory, File
+from src.util.constants import Directory, File, replace_placeholder_in_dict
 from src.util.logging import console
 
 # Ignore all runtime warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)
-
+warnings.filterwarnings("ignore", category=UserWarning)
 
 @hydra.main(
     config_path=str(Directory.CONFIG),
@@ -22,6 +22,17 @@ def main(cfg: DictConfig) -> None:
     console.rule("Executing experiment")
 
     cfg = OmegaConf.to_container(cfg)
+
+    for _, value in cfg['constants'].items():
+
+        placeholder = value['placeholder']
+        replacement = value['value']
+
+        cfg = replace_placeholder_in_dict(
+            dictionary=cfg,
+            placeholder=placeholder,
+            replacement=replacement
+        )
 
     # loading all components
     data_loader = DynamicImport.import_class_from_dict(

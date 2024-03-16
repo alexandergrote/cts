@@ -39,3 +39,37 @@ class RuleFields(BaseEnum):
     CONFIDENCE = 'confidence'
     SUPPORT = 'support'
     RANKING = 'ranking'
+
+
+def replace_placeholder_in_dict(dictionary, placeholder, replacement):
+    """
+    Replace all occurrences of a placeholder in a dictionary with a replacement.
+
+    Args:
+        dictionary (dict): The dictionary to search for placeholders.
+        placeholder (str): The placeholder to search for.
+        replacement (str): The replacement for the placeholder.
+
+    Returns:
+        dict: The dictionary with all placeholders replaced.
+    """
+    for key, value in dictionary.items():
+        if isinstance(value, list):
+            for i, item in enumerate(value):
+                if isinstance(item, dict):
+                    dictionary[key][i] = replace_placeholder_in_dict(
+                        dictionary=item,
+                        placeholder=placeholder,
+                        replacement=replacement
+                    )
+                elif isinstance(item, str):
+                    dictionary[key][i] = item.replace(placeholder, replacement)
+        elif isinstance(value, dict):
+            dictionary[key] = replace_placeholder_in_dict(
+                dictionary=value,
+                placeholder=placeholder,
+                replacement=replacement
+            )
+        elif isinstance(value, str):
+            dictionary[key] = value.replace(placeholder, replacement)
+    return dictionary

@@ -4,11 +4,11 @@ params:
     '1':
       class_name: src.preprocess.onehot.OneHotEncoder
       params:
-        id_column: 'id_column'
-        feature_column: 'event_column'
-        target_column: 'target'
+        id_column: '%id_column%'
+        feature_column: '%event_column%'
+        target_column: '%target_column%'
     '2':
       class_name: src.preprocess.random_forest.RFFeatSelection
       params:
-        target_column: 'target'
+        target_column: '%target_column%'
         n_features: null

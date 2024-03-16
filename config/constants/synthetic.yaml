@@ -1,0 +1,12 @@
+target_column:
+  placeholder: '%target_column%'
+  value: "target"
+id_column:
+  placeholder: '%id_column%'
+  value: 'id_column'
+time_column:
+  placeholder: '%time_column%'
+  value: 'timestamp'
+event_column:
+  placeholder: '%event_column%'
+  value: 'event_column'

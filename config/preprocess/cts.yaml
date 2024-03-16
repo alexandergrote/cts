@@ -1,29 +1,29 @@
 class_name: src.preprocess.preprocessor.Preprocessor
 params:
   steps:
-    '1':
+    '2':
       class_name: src.preprocess.ts_feature_selection.CausalRuleFeatureSelector
       params:
         repetitions: 5
         n_features: null
         key_in_result_dict: 'data'
         keep_class: True
-        treatment_attr_name: 'target'
+        treatment_attr_name: '%target_column%'
         treatment_attr_value: '1'
         splitting_symbol: " --> "
         ts_id_columns:
-          - 'id_column'
-        ts_event_column: 'event_column'
-        ts_datetime_column: 'timestamp'
+          - '%id_column%'
+        ts_event_column: '%event_column%'
+        ts_datetime_column: '%time_column%'
         prefixspan_config:
           class_name: 'src.preprocess.ts_feature_selection.PrefixSpan'
           params:
-            id_columns: [ 'id_column']
-            event_column: 'event_column'
-            timestamp_column: eventtime
+            id_columns: [ '%id_column%']
+            event_column: '%event_column%'
+            timestamp_column: '%time_column%'
             rule_max_length: 999
             rule_min_length: 1
             separator: " --> "
-            itertool_threshold: 5
+            itertool_threshold: 3
         multitesting:
           method: 'bonferroni'

@@ -20,10 +20,10 @@ class DataLoader(BaseModel, BaseDataLoader):
     sequence_elements: List[str]
     separator: str
 
-    id_column: str = 'id_column'
-    event_column: str = 'event_column'
-    time_column: str = 'timestamp'
-    class_column: str = 'target'
+    id_column: str
+    event_column: str
+    time_column: str
+    class_column: str
 
     # config columns
     select_key: str = 'selection'

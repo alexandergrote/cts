@@ -4,6 +4,6 @@ params:
     '1':
       class_name: src.preprocess.onehot.OneHotEncoder
       params:
-        id_column: 'id_column'
-        feature_column: 'event_column'
-        target_column: 'target'
+        id_column: '%id_column%'
+        feature_column: '%event_column%'
+        target_column: '%target_column%'
