@@ -31,7 +31,7 @@ class BorutaFeatSelection(BaseModel, BaseFeatureSelector):
 
         df_importances = pd.DataFrame({
             'feature': X.columns,
-            'importance': feat_selector.ranking_
+            'importance': feat_selector._get_imp(X, y)
         })
 
         df_importances = df_importances.sort_values(by='importance', ascending=False)
