@@ -1,7 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional
-from src.util.dict_extraction import DictExtraction
-from src.util.logging import console
+from src.util.dict_extraction import DictExtraction 
 
 
 class DynamicImport(BaseModel):

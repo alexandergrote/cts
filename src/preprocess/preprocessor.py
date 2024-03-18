@@ -2,7 +2,7 @@ from pydantic import BaseModel, field_validator
 from typing import Union, Dict, Any
 
 from src.util.dynamic_import import DynamicImport
-from src.util.logging import console
+from src.util.custom_logging import console
 
 
 class FeatureMaker(BaseModel):

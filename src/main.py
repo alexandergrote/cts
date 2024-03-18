@@ -6,7 +6,7 @@ from omegaconf import DictConfig, OmegaConf
 # load package specific code
 from src.util.dynamic_import import DynamicImport
 from src.util.constants import Directory, File, replace_placeholder_in_dict
-from src.util.logging import console
+from src.util.custom_logging import console
 
 # Ignore all runtime warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)

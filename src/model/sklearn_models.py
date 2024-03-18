@@ -8,7 +8,7 @@ import pandas as pd
 from src.model.base import BaseProcessModel
 from src.util.dynamic_import import DynamicImport
 from src.util.constants import Directory
-from src.util.logging import Pickler
+from src.util.custom_logging import Pickler
 
 
 class SklearnModel(BaseModel, BaseProcessModel):

@@ -16,7 +16,7 @@ from src.preprocess.base import BaseFeatureEncoder
 from src.preprocess.util.rules import Rule
 from src.preprocess.util.correlation import theils_u
 from src.util.constants import RuleFields, Directory
-from src.util.logging import console, Pickler, log_time
+from src.util.custom_logging import console, Pickler, log_time
 from src.util.dynamic_import import DynamicImport
 from src.util.caching import pickle_cache, PickleCacheHandler, hash_dataframe
 

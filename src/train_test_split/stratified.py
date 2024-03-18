@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from sklearn.model_selection import StratifiedShuffleSplit
 
 from src.train_test_split.base import BaseTrainTestSplit
-from src.util.logging import Pickler
+from src.util.custom_logging import Pickler
 
 class StratifiedSplit(BaseModel, BaseTrainTestSplit):
 

@@ -2,7 +2,7 @@ import pandas as pd
 from abc import ABC, abstractmethod
 from typing import Tuple
 
-from src.util.logging import Pickler
+from src.util.custom_logging import Pickler
 
 class BaseTrainTestSplit(ABC):
 
