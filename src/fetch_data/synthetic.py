@@ -135,7 +135,7 @@ class DataLoader(BaseModel, BaseDataLoader):
 
         data = pd.DataFrame.from_records(records)
 
-        return {'event': data}
+        return {'data': data}
 
 
 if __name__ == '__main__':

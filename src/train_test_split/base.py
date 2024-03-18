@@ -20,21 +20,23 @@ class BaseTrainTestSplit(ABC):
 
             rules = kwargs['rules']
 
-            columns = [col for col in data.columns if '-->' in col]
+            if rules is not None:
 
-            result = {}
+                columns = [col for col in data.columns if '-->' in col]
 
-            for column in columns:
-                result[column] = data[data[column]][self.target_name].mean() - data[self.target_name].mean()
+                result = {}
 
-            result = pd.Series(result)
-            result.name = 'deviation_from_mean_target'
+                for column in columns:
+                    result[column] = data[data[column]][self.target_name].mean() - data[self.target_name].mean()
 
-            result = rules.merge(result, left_on='index', right_index=True)
+                result = pd.Series(result)
+                result.name = 'deviation_from_mean_target'
 
-            Pickler.write(result, "rules_conf_target.pickle")
+                result = rules.merge(result, left_on='index', right_index=True)
 
-        """Paper Analysis End"""
+                Pickler.write(result, "rules_conf_target.pickle")
+
+            """Paper Analysis End"""
 
         kwargs['x_train'], kwargs['x_test'], kwargs['y_train'], kwargs['y_test'] = self.split(data=data)
 

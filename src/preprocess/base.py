@@ -21,17 +21,19 @@ class BaseFeatureEncoder(ABC):
         result = cache_handler.read()
 
         if result is None:
-            result = self._encode(data)
+            result = self._encode(data=data, **kwargs)
             cache_handler.write(obj=result)
 
-        kwargs['data'] = result
+        kwargs['data'] = result['data']
+        kwargs['rules'] = result.get('rules', None)
 
         return kwargs
+        
 
 class BaseFeatureSelector(ABC):
 
     @abstractmethod
-    def _select_features(self, *args, **kwargs) -> dict:
+    def _select_features(self, *args, **kwargs) -> pd.DataFrame:
         raise NotImplementedError()
     
     def execute(self, *, data: pd.DataFrame, **kwargs) -> dict:
@@ -51,7 +53,7 @@ class BaseFeatureSelector(ABC):
         result = cache_handler.read()
 
         if result is None:
-            result = self._select_features(data)
+            result = self._select_features(data=data, **kwargs)
             cache_handler.write(obj=result)
 
         kwargs['data'] = result

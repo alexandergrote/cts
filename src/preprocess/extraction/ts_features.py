@@ -760,10 +760,10 @@ class CausalRuleFeatureSelector(BaseModel, BaseFeatureEncoder):
 
         return event_sequences_df
 
-    def _encode(self, *args, event: pd.DataFrame, **kwargs):
+    def _encode(self, *args, data: pd.DataFrame, **kwargs):
 
         # work on copy
-        data_copy = event.copy(deep=True)
+        data_copy = data.copy(deep=True)
 
         # bootstrap rules
         console.log(f"{self.__class__.__name__}: Bootstrapped Rule Mining")
@@ -785,7 +785,7 @@ class CausalRuleFeatureSelector(BaseModel, BaseFeatureEncoder):
 
         # applying rules
         console.log(f"{self.__class__.__name__}: Applying rules to time series")
-        event_sequences_per_id = self._apply_rule_to_ts(rules=rules, event=event)
+        event_sequences_per_id = self._apply_rule_to_ts(rules=rules, event=data)
 
         console.log(f"{self.__class__.__name__}: Excluding rules due to collinearity")
         event_sequences_per_id = self._reduce_multicollinearity(data=event_sequences_per_id)

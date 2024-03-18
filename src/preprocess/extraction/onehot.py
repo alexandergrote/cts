@@ -10,9 +10,9 @@ class OneHotEncoder(BaseModel, BaseFeatureEncoder):
     feature_column: str
     target_column: str  
 
-    def _encode(self, *, event: pd.DataFrame, **kwargs) -> dict:
+    def _encode(self, *, data: pd.DataFrame, **kwargs) -> dict:
 
-        data_copy = event.copy()
+        data_copy = data.copy()
 
         # one hot encode data
         df_pivot = data_copy[[self.id_column, self.feature_column]].drop_duplicates().pivot_table(index=self.id_column, columns=self.feature_column, aggfunc='size')
@@ -27,6 +27,6 @@ class OneHotEncoder(BaseModel, BaseFeatureEncoder):
 
         assert df_pivot.shape[0] == data_copy[self.id_column].nunique()
 
-        kwargs['data'] = df_pivot
+        kwargs['data'] = df_pivot.drop(columns=[self.id_column], errors='ignore')
         
         return kwargs

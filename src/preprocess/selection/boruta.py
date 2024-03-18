@@ -12,7 +12,7 @@ class BorutaFeatSelection(BaseModel, BaseFeatureSelector):
     target_column: str
     n_features: Optional[int] = None
 
-    def _select_features(self, data: pd.DataFrame) -> pd.DataFrame:
+    def _select_features(self, data: pd.DataFrame, **kwargs) -> pd.DataFrame:
 
         if self.n_features is None:
             return data

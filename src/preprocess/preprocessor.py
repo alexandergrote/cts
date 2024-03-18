@@ -1,8 +1,6 @@
 from pydantic import BaseModel, field_validator
-from typing import Union, Dict, Type, Any
-from typing_extensions import Annotated
+from typing import Union, Dict, Any
 
-from src.preprocess.base import BaseFeatureSelector, BaseFeatureEncoder
 from src.util.dynamic_import import DynamicImport
 from src.util.logging import console
 
@@ -22,12 +20,10 @@ class FeatureMaker(BaseModel):
     def execute(self, **kwargs):
 
         console.log("Extracting features")
-        output = self.extractor._encode(**kwargs)
+        output = self.extractor.execute(**kwargs)
 
         console.log("Selecting features")
-        result = self.selector._select_features(**output)
-
-        output['data'] = result
+        output = self.selector.execute(**output)
 
         return output
 
