@@ -4,6 +4,6 @@ REM my/path/multi_file.bat synthetic
 
 for %%f in ("boruta", "mutinfo", "rf", "cts") do (
 
-    start bat\main\single_file %1 %%f
+    start bat\_mult_file_session.bat %1 %%~f
 
 )

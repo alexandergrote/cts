@@ -11,4 +11,4 @@ preprocess=%2 preprocess.params.selector.params.n_features=%5 ^
 train_test_split=stratified train_test_split.params.random_state=%4 ^
 model=%3 ^
 evaluation=ml.yaml ^
-export=mlflow.yaml export.params.experiment_name="clf__"%1"__"%2
+export=mlflow.yaml export.params.experiment_name=%1"__feat_selection__"%2"__model__"%3"__features__"%5

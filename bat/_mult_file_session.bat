@@ -8,7 +8,7 @@ for %%m in ("logistic_regression", "xgb") do (
 
         for %%f in (null, 2, 4, 6, 8, 10) do (
 
-            call bat\main\single_file.bat %1 %2 %%~m %%s %%f
+            call bat\single_file.bat %1 %2 %%~m %%s %%f
 
         )
     )

@@ -7,6 +7,7 @@ from omegaconf import DictConfig, OmegaConf
 from src.util.dynamic_import import DynamicImport
 from src.util.constants import Directory, File, replace_placeholder_in_dict
 from src.util.custom_logging import console
+from src.util.check_experiment import experiment_exists
 
 # Ignore all runtime warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)
@@ -22,6 +23,15 @@ def main(cfg: DictConfig) -> None:
     console.rule("Executing experiment")
 
     cfg = OmegaConf.to_container(cfg)
+
+    # check if experiment already exists
+    experiment_name = cfg['export']['params']['experiment_name']
+    random_seed = cfg['train_test_split']['params']['random_state']
+
+    if experiment_exists(experiment_name=experiment_name, random_seed=random_seed):
+        console.log("Experiment already exists")
+        return
+
 
     for _, value in cfg['constants'].items():
 
