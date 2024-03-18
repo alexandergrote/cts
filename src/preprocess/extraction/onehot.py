@@ -1,16 +1,16 @@
 import pandas as pd
 from pydantic import BaseModel
 
-from src.preprocess.base import BasePreprocessor
+from src.preprocess.base import BaseFeatureEncoder
 
 
-class OneHotEncoder(BaseModel, BasePreprocessor):
+class OneHotEncoder(BaseModel, BaseFeatureEncoder):
 
     id_column: str
     feature_column: str
     target_column: str  
 
-    def execute(self, *, event: pd.DataFrame, **kwargs) -> dict:
+    def _encode(self, *, event: pd.DataFrame, **kwargs) -> dict:
 
         data_copy = event.copy()
 

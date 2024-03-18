@@ -5,9 +5,7 @@ from pydantic import BaseModel, model_validator
 from typing import List, Dict
 
 from src.fetch_data.base import BaseDataLoader
-from src.preprocess.ts_feature_selection import RuleClassifier
-
-#np.random.seed(0)
+from src.preprocess.extraction.ts_features import RuleClassifier
 
 rng = np.random.default_rng(seed=0)
 

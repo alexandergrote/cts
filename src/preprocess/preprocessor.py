@@ -1,31 +1,33 @@
-from pydantic import BaseModel
-from typing import List, Union, Dict
+from pydantic import BaseModel, field_validator
+from typing import Union, Dict, Type, Any
+from typing_extensions import Annotated
 
+from src.preprocess.base import BaseFeatureSelector, BaseFeatureEncoder
 from src.util.dynamic_import import DynamicImport
-from src.util.constants import YamlField
 from src.util.logging import console
 
 
-class Preprocessor(BaseModel):
+class FeatureMaker(BaseModel):
 
-    steps: Union[List[dict], Dict[str, dict]]
+    extractor: Union[Dict[str, dict], Any]
+    selector: Union[Dict[str, dict],  Any]
+
+    class Config:
+        arbitrary_types_allowed=True
+
+    @field_validator("extractor", "selector")
+    def _init_model(cls, v):
+        return DynamicImport.import_class_from_dict(dictionary=v)
 
     def execute(self, **kwargs):
 
-        # define result variable
-        output = {}
+        console.log("Extracting features")
+        output = self.extractor._encode(**kwargs)
 
-        # get iterable
-        steps = self.steps
-        if isinstance(self.steps, dict):
-            steps = [v for _, v in self.steps.items()]
+        console.log("Selecting features")
+        result = self.selector._select_features(**output)
 
-        for step in steps:
-            console.log(f"Executing {step[YamlField.CLASS_NAME.value]}")
-
-            preprocessor = DynamicImport.import_class_from_dict(step)
-            output = preprocessor.execute(**kwargs)
-            kwargs.update(output)
+        output['data'] = result
 
         return output
 

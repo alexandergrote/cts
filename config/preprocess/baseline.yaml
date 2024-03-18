@@ -1,9 +1,12 @@
-class_name: src.preprocess.preprocessor.Preprocessor
+class_name: src.preprocess.preprocessor.FeatureMaker
 params:
-  steps:
-    '1':
-      class_name: src.preprocess.onehot.OneHotEncoder
-      params:
-        id_column: '%id_column%'
-        feature_column: '%event_column%'
-        target_column: '%target_column%'
+  extractor:
+    class_name: src.preprocess.extraction.onehot.OneHotEncoder
+    params:
+      id_column: '%id_column%'
+      feature_column: '%event_column%'
+      target_column: '%target_column%'
+  selector:
+    class_name: src.preprocess.selection.identity.FeatureIdentity
+    params:
+      n_features: null

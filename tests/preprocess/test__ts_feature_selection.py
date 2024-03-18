@@ -1,5 +1,5 @@
 import unittest
-from src.preprocess.ts_feature_selection import PrefixSpan
+from src.preprocess.extraction.ts_features import PrefixSpan
 
 class TestPrefixSpan(unittest.TestCase):
 

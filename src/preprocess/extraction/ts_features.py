@@ -12,7 +12,7 @@ from statsmodels.stats.multitest import multipletests
 from sklearn.model_selection import StratifiedShuffleSplit
 from pathlib import Path
 
-from src.preprocess.base import BasePreprocessor
+from src.preprocess.base import BaseFeatureEncoder
 from src.preprocess.util.rules import Rule
 from src.preprocess.util.correlation import theils_u
 from src.util.constants import RuleFields, Directory
@@ -265,7 +265,7 @@ class RuleClassifier(BaseModel):
         return result
 
 
-class CausalRuleFeatureSelector(BaseModel, BasePreprocessor):
+class CausalRuleFeatureSelector(BaseModel, BaseFeatureEncoder):
 
     treatment_attr_name: str
     treatment_attr_value: str
@@ -760,7 +760,7 @@ class CausalRuleFeatureSelector(BaseModel, BasePreprocessor):
 
         return event_sequences_df
 
-    def execute(self, *args, event: pd.DataFrame, **kwargs):
+    def _encode(self, *args, event: pd.DataFrame, **kwargs):
 
         # work on copy
         data_copy = event.copy(deep=True)
@@ -798,15 +798,7 @@ class CausalRuleFeatureSelector(BaseModel, BasePreprocessor):
             data_class = data_copy[self.ts_id_columns +  [self.treatment_attr_name]].drop_duplicates()
             event_sequences_per_id = event_sequences_per_id.merge(data_class, right_on=self.ts_id_columns, left_on=self.ts_id_columns)
         
-        if self.n_features is not None:
-            
-            all_rules = event_sequences_per_id.filter(like=self.splitting_symbol).columns.to_list()
-            rules = rules[rules['index'].isin(all_rules)]
-            rules.sort_values(by='mean_ranking', ascending=False, inplace=True)
-
-            important_sequences = rules['index'].head(self.n_features).to_list()
-            event_sequences_per_id = event_sequences_per_id[self.ts_id_columns + important_sequences + [self.treatment_attr_name]]
-
+        
         # drop id columns
         event_sequences_per_id.drop(columns= self.ts_id_columns +['index'], inplace=True, errors='ignore')
         
