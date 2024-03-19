@@ -4,6 +4,7 @@ params:
     class_name: src.preprocess.extraction.ts_features.CausalRuleFeatureSelector
     params:
       repetitions: 5
+      corr_threshold: 0.5
       key_in_result_dict: 'data'
       keep_class: True
       treatment_attr_name: '%target_column%'
