@@ -1,0 +1,4 @@
+class_name: src.fetch_data.churn.ChurnDataloader
+params:
+  path: release_10_23_2020.csv
+  resampling_fraction: 1
