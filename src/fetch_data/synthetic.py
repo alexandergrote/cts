@@ -6,6 +6,8 @@ from typing import List, Dict
 
 from src.fetch_data.base import BaseDataLoader
 from src.preprocess.extraction.ts_features import RuleClassifier
+from src.util.caching import pickle_cache
+from src.util.constants import Directory
 
 rng = np.random.default_rng(seed=0)
 
@@ -52,6 +54,7 @@ class DataLoader(BaseModel, BaseDataLoader):
                 raise ValueError(f'Sum of probabilities is not in [0, 1]')
 
 
+    @pickle_cache(ignore_caching=False, cachedir=Directory.CACHING_DIR / 'synthetic')
     def execute(self):
 
         sequence_goals = {k: self.configuration[k][self.select_key] * self.n_samples for k in self.configuration}
