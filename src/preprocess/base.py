@@ -12,10 +12,14 @@ class BaseFeatureEncoder(ABC):
     
     def execute(self, *, data: pd.DataFrame, **kwargs) -> dict:
 
+        assert 'case_name' in kwargs
+
         data_hash = hash_dataframe(data=data)
 
+        case_name = kwargs['case_name']
+
         cache_handler = PickleCacheHandler(
-            filepath=Path(self.__class__.__name__) / data_hash
+            filepath=Path(self.__class__.__name__) / f"{case_name}__{data_hash}"
         )
 
         result = cache_handler.read()

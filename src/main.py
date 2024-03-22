@@ -75,7 +75,7 @@ def main(cfg: DictConfig) -> None:
     output = data_loader.execute()
 
     console.log("Starting Preprocessing")
-    output = preprocessor.execute(**output)
+    output = preprocessor.execute(**output, case_name=experiment_name)
     console.log("Finished Preprocessing")
 
     console.log("Splitting data")
