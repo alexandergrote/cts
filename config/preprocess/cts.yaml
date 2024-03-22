@@ -26,6 +26,7 @@ params:
           itertool_threshold: 3
       multitesting:
         method: 'bonferroni'
+        alpha: 0.01
   selector:
     class_name: src.preprocess.selection.ts_features.TimeSeriesFeatureSelection
     params:
