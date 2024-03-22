@@ -591,7 +591,8 @@ class CausalRuleFeatureSelector(BaseModel, BaseFeatureEncoder):
         p_value_column_idx = result.columns.get_loc(p_value_column_name)
 
         for idx, el in enumerate(result_as_list):
-            t_test_result = ttest_1samp(el, 0, nan_policy='omit')
+
+            t_test_result = ttest_1samp(el, 0, nan_policy='raise')
             result.iloc[idx, p_value_column_idx] = t_test_result.pvalue
 
         for column in [RuleFields.SUPPORT.value, RuleFields.CONFIDENCE.value, RuleFields.RANKING.value]:
