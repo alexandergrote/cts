@@ -792,8 +792,9 @@ class CausalRuleFeatureSelector(BaseModel, BaseFeatureEncoder):
         event_sequences_per_id = self._apply_rule_to_ts(rules=rules, event=data)
 
         console.log(f"{self.__class__.__name__}: Excluding rules due to collinearity")
-        if self.corr_threshold > 0:
+        if self.corr_threshold < 1:
             event_sequences_per_id = self._reduce_multicollinearity(data=event_sequences_per_id)
+        
         console.log(f"{event_sequences_per_id.shape[1] - 2} rules")
         rules_logging_dict['2_theils_u'] = event_sequences_per_id
 
