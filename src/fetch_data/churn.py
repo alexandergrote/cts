@@ -45,7 +45,7 @@ class ChurnDataloader(BaseModel, BaseDataLoader):
 
         trimmed_sequences = sequences.apply(lambda x: x[:x.index('purchase')] if 'purchase' in x else x)
 
-        trimmed_sequences = trimmed_sequences[trimmed_sequences.apply(len).between(2,80)]
+        trimmed_sequences = trimmed_sequences[trimmed_sequences.apply(len).between(5,155)]
 
         records = []
 
