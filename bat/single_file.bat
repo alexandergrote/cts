@@ -7,8 +7,16 @@ echo --- case %1, feature_selection %2, model %3, random_state %4 and features %
 set theilu= 
 
 if %1==churn if %2==cts (
-    set theilu=preprocess.params.extractor.params.corr_threshold=0
-) 
+    set theilu=preprocess.params.extractor.params.corr_threshold=1
+)
+
+if %1==synthetic if %2==cts (
+    set theilu=preprocess.params.extractor.params.corr_threshold=0.25
+)
+
+if %1==malware if %2==cts (
+    set theilu=preprocess.params.extractor.params.corr_threshold=0.5
+)
 
 python src\main.py ^
 constants=%1 ^
