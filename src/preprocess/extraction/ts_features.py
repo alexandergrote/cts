@@ -339,6 +339,8 @@ class CausalRuleFeatureSelector(BaseModel, BaseFeatureEncoder):
         # init ranking column
         rules[RuleFields.RANKING.value] = 1
 
+        num_sequences = data[self.ts_id_columns[0]].nunique()
+
         for attribute in [RuleFields.SUPPORT, RuleFields.CONFIDENCE]:
 
             string_control = f"{attribute.value}_x"
@@ -347,13 +349,14 @@ class CausalRuleFeatureSelector(BaseModel, BaseFeatureEncoder):
             if attribute == RuleFields.CONFIDENCE:
                 rules[attribute.value] = rules[string_treatment] - rules[string_control]
             elif attribute == RuleFields.SUPPORT:
-                rules[attribute.value] = (rules[string_treatment] + rules[string_control]) / len(data)
+                rules[attribute.value] = (rules[string_treatment] + rules[string_control]) / num_sequences
             else:
                 raise ValueError(f"Attribute values does not match expectations")
 
             rules[RuleFields.RANKING.value] *= rules[attribute.value].abs()
+            mask_support = rules[RuleFields.SUPPORT.value] * num_sequences >= 100
 
-        return rules
+        return rules[mask_support]
 
     def _get_unique_rules(self, *, data: pd.DataFrame, **kwargs) -> pd.DataFrame:
             
