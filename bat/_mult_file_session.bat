@@ -6,6 +6,14 @@ if "%1" == "synthetic" (
     set features=null, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
 )
 
+if "%1" == "malware" (
+    set features=null, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+)
+
+if "%1" == "churn" (
+    set features=null, 1, 2, 3, 4, 5
+)
+
 for %%m in ("logistic_regression", "xgb", "nb") do (
 
     for %%s in (0, 1) do (
