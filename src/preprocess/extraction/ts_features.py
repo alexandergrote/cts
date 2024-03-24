@@ -15,6 +15,7 @@ from pathlib import Path
 from src.preprocess.base import BaseFeatureEncoder
 from src.preprocess.util.rules import Rule
 from src.preprocess.util.correlation import theils_u
+from src.preprocess.selection.mrmr import MRMRFeatSelection
 from src.util.constants import RuleFields, Directory
 from src.util.custom_logging import console, Pickler, log_time
 from src.util.dynamic_import import DynamicImport
@@ -385,6 +386,26 @@ class CausalRuleFeatureSelector(BaseModel, BaseFeatureEncoder):
         rules.drop(columns=[sorting_column], inplace=True)
 
         return rules
+
+    def _apply_mrmr(self, *, data: pd.DataFrame, **kwargs) -> pd.DataFrame:
+
+        # work on copy
+        data_copy = data.copy(deep=True)
+
+        if self.n_features is None:
+            perc = 1
+        else:
+            perc = self.n_features / (len(data_copy.columns) - 1)
+
+
+        selector = MRMRFeatSelection(
+            target_column=self.treatment_attr_name,
+            perc_features=perc
+        )
+
+        result = selector.execute(data=data_copy, **kwargs)
+
+        return result['data']
 
     def _reduce_multicollinearity(self, *, data: pd.DataFrame, **kwargs) -> pd.DataFrame:
 
@@ -791,19 +812,13 @@ class CausalRuleFeatureSelector(BaseModel, BaseFeatureEncoder):
         console.log(f"{self.__class__.__name__}: Applying rules to time series")
         event_sequences_per_id = self._apply_rule_to_ts(rules=rules, event=data)
 
-        console.log(f"{self.__class__.__name__}: Excluding rules due to collinearity")
-        if self.corr_threshold < 1:
-            event_sequences_per_id = self._reduce_multicollinearity(data=event_sequences_per_id)
-        
-        console.log(f"{event_sequences_per_id.shape[1] - 2} rules")
-        rules_logging_dict['2_theils_u'] = event_sequences_per_id
+        # apply mrmr
+        console.log(f"{self.__class__.__name__}: Applying mrmr")
+        data_class = data_copy[self.ts_id_columns +  [self.treatment_attr_name]].drop_duplicates()
+        event_sequences_per_id = event_sequences_per_id.merge(data_class, right_on=self.ts_id_columns, left_on=self.ts_id_columns)
+        event_sequences_per_id = self._apply_mrmr(data=event_sequences_per_id, **kwargs)
 
-        Pickler.write(rules_logging_dict, 'rules_logging.pickle')
-
-        if self.keep_class:
-            data_class = data_copy[self.ts_id_columns +  [self.treatment_attr_name]].drop_duplicates()
-            event_sequences_per_id = event_sequences_per_id.merge(data_class, right_on=self.ts_id_columns, left_on=self.ts_id_columns)
-        
+        Pickler.write(rules_logging_dict, 'rules_logging.pickle')           
         
         # drop id columns
         event_sequences_per_id.drop(columns= self.ts_id_columns +['index'], inplace=True, errors='ignore')
