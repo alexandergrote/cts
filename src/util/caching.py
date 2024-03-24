@@ -39,6 +39,8 @@ class PickleCacheHandler(BaseModel):
 def hash_dataframe(data: pd.DataFrame) -> str:
     return joblib.hash(data)
 
+def hash_string(string: str) -> str:
+    return hashlib.sha1(str.encode(string)).hexdigest()
 
 
 def pickle_cache(ignore_caching: bool, cachedir: str = 'tmp'):
