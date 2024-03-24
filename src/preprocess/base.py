@@ -44,18 +44,10 @@ class BaseFeatureSelector(ABC):
 
         data_hash = hash_dataframe(data=data)
 
-        if hasattr(self, 'n_features') and hasattr(self, 'perc_features'):
-            raise ValueError("Only one of n_features or perc_features can be set")
+        if not hasattr(self, 'n_features'):
+            raise ValueError("Attribute 'n_features' must be set.")
 
         feat_id = '__features_'
-        if hasattr(self, 'perc_features'):
-
-            perc_features = getattr(self, 'perc_features')
-
-            if perc_features is None:
-                data_hash += f"{feat_id}all"
-            else:
-                data_hash += f"{feat_id}{str(getattr(self, 'perc_features'))}" 
 
         if hasattr(self, 'n_features'):
 

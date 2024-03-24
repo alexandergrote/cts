@@ -49,21 +49,11 @@ def theils_u_wrapper(target_column: str, features: List[str], X: pd.DataFrame) -
 class MRMRFeatSelection(BaseModel, BaseFeatureSelector):
 
     target_column: str
-    perc_features: Optional[float] = None
+    n_features: Optional[int] = None
 
     relevance_func: Callable = random_forest_classif
     redundancy_func: Callable = theils_u_wrapper
     denominator_func: Callable = np.mean
-
-    @field_validator('perc_features')
-    def check_perc_features(cls, v):
-
-        if v is None:
-            return v
-
-        if v > 1.0:
-            return v / 100
-        return v
     
     def _mrmr(self, X: pd.DataFrame, y: pd.Series, n: int) -> List[str]:
 
@@ -110,15 +100,13 @@ class MRMRFeatSelection(BaseModel, BaseFeatureSelector):
 
     def _select_features(self, data: pd.DataFrame, **kwargs) -> pd.DataFrame:
 
-        if self.perc_features is None:
+        if self.n_features is None:
             return data
         
         # find all relevant features - 5 features should be selected
         X = data.drop(columns=[self.target_column])
         y = data[self.target_column]
 
-        n_features = int(self.perc_features * len(X.columns))
-        
-        selected_features = self._mrmr(X, y, n_features)
+        selected_features = self._mrmr(X, y, self.n_features)
 
         return data[selected_features + [self.target_column]]

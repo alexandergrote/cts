@@ -392,15 +392,15 @@ class CausalRuleFeatureSelector(BaseModel, BaseFeatureEncoder):
         # work on copy
         data_copy = data.copy(deep=True)
 
-        if self.n_features is None:
-            perc = 1
-        else:
-            perc = self.n_features / (len(data_copy.columns) - 1)
+        n_features = len(data_copy.columns) - 1
+
+        if self.n_features is not None:
+            n_features = self.n_features
 
 
         selector = MRMRFeatSelection(
             target_column=self.treatment_attr_name,
-            perc_features=perc
+            n_features=n_features
         )
 
         result = selector.execute(data=data_copy, **kwargs)

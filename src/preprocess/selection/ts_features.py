@@ -32,5 +32,4 @@ class TimeSeriesFeatureSelection(BaseModel, BaseFeatureSelector):
         important_sequences = rules['index'].head(self.n_features).to_list()
         data_copy = data_copy[important_sequences + [self.target_column]]
 
-        
         return data_copy

@@ -31,21 +31,11 @@ class RFImportance(BaseModel):
 class RFFeatSelection(BaseModel, BaseFeatureSelector):
 
     target_column: str
-    perc_features: Optional[float] = None
-
-    @field_validator('perc_features')
-    def check_perc_features(cls, v):
-
-        if v is None:
-            return v
-
-        if v > 1.0:
-            return v / 100
-        return v
+    n_features: Optional[int] = None
 
     def _select_features(self, data: pd.DataFrame, **kwargs) -> pd.DataFrame:
 
-        if self.perc_features is None:
+        if self.n_features is None:
             return data
 
         # find all relevant features - 5 features should be selected
@@ -57,8 +47,7 @@ class RFFeatSelection(BaseModel, BaseFeatureSelector):
         feature_importance = rf_importance.get_feature_importance(X, y)
         feature_importance.sort_values(ascending=False, inplace=True)
 
-        n_features = int(self.perc_features * len(feature_importance))
-        selected_features = feature_importance.head(n_features).index.tolist()
+        selected_features = feature_importance.head(self.n_features).index.tolist()
 
         return data[selected_features + [self.target_column]]
 

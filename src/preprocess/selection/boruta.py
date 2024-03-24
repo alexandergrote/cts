@@ -39,21 +39,11 @@ class BorutaImportance(BaseModel):
 class BorutaFeatSelection(BaseModel, BaseFeatureSelector):
 
     target_column: str
-    perc_features: Optional[float] = None
-
-    @field_validator('perc_features')
-    def check_perc_features(cls, v):
-
-        if v is None:
-            return v
-
-        if v > 1.0:
-            return v / 100
-        return v
+    n_features: Optional[int] = None
 
     def _select_features(self, data: pd.DataFrame, **kwargs) -> pd.DataFrame:
 
-        if self.perc_features is None:
+        if self.n_features is None:
             return data
 
         importances = BorutaImportance().get_feature_importance(
@@ -61,9 +51,7 @@ class BorutaFeatSelection(BaseModel, BaseFeatureSelector):
             y=data[self.target_column]
         )
 
-        n_features = int(self.perc_features * len(importances))
-
         importances.sort_values(ascending=False, inplace=True)
-        selected_features = importances.head(n_features).index.to_list()
+        selected_features = importances.head(self.n_features).index.to_list()
 
         return data[selected_features + [self.target_column]]
