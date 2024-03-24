@@ -1,0 +1,5 @@
+class_name: src.model.sklearn_models.SklearnModel
+params:
+  model: 'sklearn.naive_bayes.GaussianNB'
+  params:
+    
