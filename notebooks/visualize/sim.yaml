@@ -1,264 +1,192 @@
-clf_sim_sparsity_0.5_noise_0:
-  id: '863934029096463392'
+synthetic__feat_selection__boruta__model__logistic_regression__features__10:
+  id: '345541360472937941'
   query: ''
   runs: 99
-clf_sim_sparsity_0.5_noise_0.1:
-  id: '345854740951908115'
+synthetic__feat_selection__boruta__model__logistic_regression__features__2:
+  id: '363615934096169136'
   query: ''
   runs: 99
-clf_sim_sparsity_0.5_noise_0.2:
-  id: '398725933590634464'
+synthetic__feat_selection__boruta__model__logistic_regression__features__4:
+  id: '874040037510988316'
   query: ''
   runs: 99
-clf_sim_sparsity_0.5_noise_0.3:
-  id: '828244668593676432'
+synthetic__feat_selection__boruta__model__logistic_regression__features__6:
+  id: '175255309780143325'
   query: ''
   runs: 99
-clf_sim_sparsity_0.5_noise_0.4:
-  id: '156350091543249903'
+synthetic__feat_selection__boruta__model__logistic_regression__features__8:
+  id: '425473650588825766'
   query: ''
   runs: 99
-clf_sim_sparsity_0.5_noise_0.5:
-  id: '951431762200516297'
+synthetic__feat_selection__boruta__model__logistic_regression__features__null:
+  id: '984342547529988929'
   query: ''
   runs: 99
-clf_sim_sparsity_0.5_noise_0.6:
-  id: '799145428624770336'
+synthetic__feat_selection__boruta__model__xgb__features__10:
+  id: '147193359069061312'
   query: ''
   runs: 99
-clf_sim_sparsity_0.5_noise_0.7:
-  id: '425436060592286145'
+synthetic__feat_selection__boruta__model__xgb__features__2:
+  id: '619202251917940737'
   query: ''
   runs: 99
-clf_sim_sparsity_0.5_noise_0.8:
-  id: '286107368472373556'
+synthetic__feat_selection__boruta__model__xgb__features__4:
+  id: '565789150770916286'
   query: ''
   runs: 99
-clf_sim_sparsity_0.5_noise_0.9:
-  id: '252832882993042072'
+synthetic__feat_selection__boruta__model__xgb__features__6:
+  id: '471007356107523828'
   query: ''
   runs: 99
-clf_sim_sparsity_0.5_noise_1:
-  id: '814933952295384986'
+synthetic__feat_selection__boruta__model__xgb__features__8:
+  id: '308438192869824390'
   query: ''
   runs: 99
-clf_sim_sparsity_0.6_noise_0:
-  id: '647997352256465089'
+synthetic__feat_selection__boruta__model__xgb__features__null:
+  id: '904866798116821053'
   query: ''
   runs: 99
-clf_sim_sparsity_0.6_noise_0.1:
-  id: '816610069537748517'
+synthetic__feat_selection__cts__model__logistic_regression__features__10:
+  id: '182163027210925342'
   query: ''
   runs: 99
-clf_sim_sparsity_0.6_noise_0.2:
-  id: '365338632838511229'
+synthetic__feat_selection__cts__model__logistic_regression__features__2:
+  id: '155742742479106775'
   query: ''
   runs: 99
-clf_sim_sparsity_0.6_noise_0.3:
-  id: '535684898340894121'
+synthetic__feat_selection__cts__model__logistic_regression__features__4:
+  id: '368409455578230542'
   query: ''
   runs: 99
-clf_sim_sparsity_0.6_noise_0.4:
-  id: '361970451807282449'
+synthetic__feat_selection__cts__model__logistic_regression__features__6:
+  id: '980130149785334880'
   query: ''
   runs: 99
-clf_sim_sparsity_0.6_noise_0.5:
-  id: '730915999823703890'
+synthetic__feat_selection__cts__model__logistic_regression__features__8:
+  id: '718761484285194395'
   query: ''
   runs: 99
-clf_sim_sparsity_0.6_noise_0.6:
-  id: '524547129296824834'
+synthetic__feat_selection__cts__model__logistic_regression__features__null:
+  id: '154828733048077379'
   query: ''
   runs: 99
-clf_sim_sparsity_0.6_noise_0.7:
-  id: '881129196310058341'
+synthetic__feat_selection__cts__model__xgb__features__10:
+  id: '181150511013692493'
   query: ''
   runs: 99
-clf_sim_sparsity_0.6_noise_0.8:
-  id: '904342049441355411'
+synthetic__feat_selection__cts__model__xgb__features__2:
+  id: '726172014656283143'
   query: ''
   runs: 99
-clf_sim_sparsity_0.6_noise_0.9:
-  id: '563043770899875622'
+synthetic__feat_selection__cts__model__xgb__features__4:
+  id: '660094640491370886'
   query: ''
   runs: 99
-clf_sim_sparsity_0.6_noise_1:
-  id: '408095690737857882'
+synthetic__feat_selection__cts__model__xgb__features__6:
+  id: '208044070682536189'
   query: ''
   runs: 99
-clf_sim_sparsity_0.7_noise_0:
-  id: '754388395715626126'
+synthetic__feat_selection__cts__model__xgb__features__8:
+  id: '567025144504365022'
   query: ''
   runs: 99
-clf_sim_sparsity_0.7_noise_0.1:
-  id: '321779822916289023'
+synthetic__feat_selection__cts__model__xgb__features__null:
+  id: '634550001522985550'
   query: ''
   runs: 99
-clf_sim_sparsity_0.7_noise_0.2:
-  id: '984323969227989079'
+synthetic__feat_selection__mutinfo__model__logistic_regression__features__10:
+  id: '639127266891376563'
   query: ''
   runs: 99
-clf_sim_sparsity_0.7_noise_0.3:
-  id: '721716086004072369'
+synthetic__feat_selection__mutinfo__model__logistic_regression__features__2:
+  id: '543402905382853843'
   query: ''
   runs: 99
-clf_sim_sparsity_0.7_noise_0.4:
-  id: '476268676902971461'
+synthetic__feat_selection__mutinfo__model__logistic_regression__features__4:
+  id: '981254666066976392'
   query: ''
   runs: 99
-clf_sim_sparsity_0.7_noise_0.5:
-  id: '676795592035138338'
+synthetic__feat_selection__mutinfo__model__logistic_regression__features__6:
+  id: '404645640681887844'
   query: ''
   runs: 99
-clf_sim_sparsity_0.7_noise_0.6:
-  id: '911180103451151039'
+synthetic__feat_selection__mutinfo__model__logistic_regression__features__8:
+  id: '519227903368810955'
   query: ''
   runs: 99
-clf_sim_sparsity_0.7_noise_0.7:
-  id: '141614181695137529'
+synthetic__feat_selection__mutinfo__model__logistic_regression__features__null:
+  id: '674432996122832439'
   query: ''
   runs: 99
-clf_sim_sparsity_0.7_noise_0.8:
-  id: '557299308024716531'
+synthetic__feat_selection__mutinfo__model__xgb__features__10:
+  id: '685898290514448143'
   query: ''
   runs: 99
-clf_sim_sparsity_0.7_noise_0.9:
-  id: '606743732489695122'
+synthetic__feat_selection__mutinfo__model__xgb__features__2:
+  id: '746269358180108343'
   query: ''
   runs: 99
-clf_sim_sparsity_0.7_noise_1:
-  id: '612151854691954217'
+synthetic__feat_selection__mutinfo__model__xgb__features__4:
+  id: '517860761012631622'
   query: ''
   runs: 99
-clf_sim_sparsity_0.8_noise_0:
-  id: '746859969497066967'
+synthetic__feat_selection__mutinfo__model__xgb__features__6:
+  id: '943518423067644150'
   query: ''
   runs: 99
-clf_sim_sparsity_0.8_noise_0.1:
-  id: '176531459314577060'
+synthetic__feat_selection__mutinfo__model__xgb__features__8:
+  id: '741078260242678418'
   query: ''
   runs: 99
-clf_sim_sparsity_0.8_noise_0.2:
-  id: '200897982716521595'
+synthetic__feat_selection__mutinfo__model__xgb__features__null:
+  id: '746713933510831093'
   query: ''
   runs: 99
-clf_sim_sparsity_0.8_noise_0.3:
-  id: '576044049418128400'
+synthetic__feat_selection__rf__model__logistic_regression__features__10:
+  id: '736636886201205780'
   query: ''
   runs: 99
-clf_sim_sparsity_0.8_noise_0.4:
-  id: '597898557820907737'
+synthetic__feat_selection__rf__model__logistic_regression__features__2:
+  id: '416901179101415356'
   query: ''
   runs: 99
-clf_sim_sparsity_0.8_noise_0.5:
-  id: '817220010566796922'
+synthetic__feat_selection__rf__model__logistic_regression__features__4:
+  id: '186071305256143797'
   query: ''
   runs: 99
-clf_sim_sparsity_0.8_noise_0.6:
-  id: '664629775436084993'
+synthetic__feat_selection__rf__model__logistic_regression__features__6:
+  id: '183209575863975149'
   query: ''
   runs: 99
-clf_sim_sparsity_0.8_noise_0.7:
-  id: '743807009073680226'
+synthetic__feat_selection__rf__model__logistic_regression__features__8:
+  id: '857495407733970166'
   query: ''
   runs: 99
-clf_sim_sparsity_0.8_noise_0.8:
-  id: '903448939375552601'
+synthetic__feat_selection__rf__model__logistic_regression__features__null:
+  id: '442359569409527336'
   query: ''
   runs: 99
-clf_sim_sparsity_0.8_noise_0.9:
-  id: '794848934274927241'
+synthetic__feat_selection__rf__model__xgb__features__10:
+  id: '667193665065599959'
   query: ''
   runs: 99
-clf_sim_sparsity_0.8_noise_1:
-  id: '496446209543174637'
+synthetic__feat_selection__rf__model__xgb__features__2:
+  id: '523259461039682931'
   query: ''
   runs: 99
-clf_sim_sparsity_0.9_noise_0:
-  id: '490588609672910516'
+synthetic__feat_selection__rf__model__xgb__features__4:
+  id: '180713712002519190'
   query: ''
   runs: 99
-clf_sim_sparsity_0.9_noise_0.1:
-  id: '154575926447368331'
+synthetic__feat_selection__rf__model__xgb__features__6:
+  id: '855169875639934294'
   query: ''
   runs: 99
-clf_sim_sparsity_0.9_noise_0.2:
-  id: '578746678712645572'
+synthetic__feat_selection__rf__model__xgb__features__8:
+  id: '260616733473574705'
   query: ''
   runs: 99
-clf_sim_sparsity_0.9_noise_0.3:
-  id: '580304981641292645'
-  query: ''
-  runs: 99
-clf_sim_sparsity_0.9_noise_0.4:
-  id: '627428883847357893'
-  query: ''
-  runs: 99
-clf_sim_sparsity_0.9_noise_0.5:
-  id: '341843050172385703'
-  query: ''
-  runs: 99
-clf_sim_sparsity_0.9_noise_0.6:
-  id: '822091701022031336'
-  query: ''
-  runs: 99
-clf_sim_sparsity_0.9_noise_0.7:
-  id: '650426894391269234'
-  query: ''
-  runs: 99
-clf_sim_sparsity_0.9_noise_0.8:
-  id: '100823877476835226'
-  query: ''
-  runs: 99
-clf_sim_sparsity_0.9_noise_0.9:
-  id: '234653632736143419'
-  query: ''
-  runs: 99
-clf_sim_sparsity_0.9_noise_1:
-  id: '583088736359861550'
-  query: ''
-  runs: 99
-clf_sim_sparsity_1_noise_0:
-  id: '976565741834531839'
-  query: ''
-  runs: 99
-clf_sim_sparsity_1_noise_0.1:
-  id: '441509423719453361'
-  query: ''
-  runs: 99
-clf_sim_sparsity_1_noise_0.2:
-  id: '472465942454232624'
-  query: ''
-  runs: 99
-clf_sim_sparsity_1_noise_0.3:
-  id: '406685216117524959'
-  query: ''
-  runs: 99
-clf_sim_sparsity_1_noise_0.4:
-  id: '361024945341913385'
-  query: ''
-  runs: 99
-clf_sim_sparsity_1_noise_0.5:
-  id: '352010541812331459'
-  query: ''
-  runs: 99
-clf_sim_sparsity_1_noise_0.6:
-  id: '505199139028721942'
-  query: ''
-  runs: 99
-clf_sim_sparsity_1_noise_0.7:
-  id: '191473148162773162'
-  query: ''
-  runs: 99
-clf_sim_sparsity_1_noise_0.8:
-  id: '289792600431315533'
-  query: ''
-  runs: 99
-clf_sim_sparsity_1_noise_0.9:
-  id: '666174231355805157'
-  query: ''
-  runs: 99
-clf_sim_sparsity_1_noise_1:
-  id: '962582139727550281'
+synthetic__feat_selection__rf__model__xgb__features__null:
+  id: '851071853877428256'
   query: ''
   runs: 99

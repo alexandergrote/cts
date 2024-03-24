@@ -2,27 +2,19 @@
 
 REM example call: my\path\single_file.bat malware baseline xgb 0 null
 
-echo --- case %1, feature_selection %2, model %3, random_state %4 and features %5 ---
+echo --- case %1, feature_selection %2, model %3, random_state %4, features %5 and spm %6 ---
 
-set theilu= 
+set feat_algo=%2
 
-if %1==churn if %2==cts (
-    set theilu=preprocess.params.extractor.params.corr_threshold=1
-)
-
-if %1==synthetic if %2==cts (
-    set theilu=preprocess.params.extractor.params.corr_threshold=0.25
-)
-
-if %1==malware if %2==cts (
-    set theilu=preprocess.params.extractor.params.corr_threshold=0.5
-)
+if "%6"=="spm" (
+    set feat_algo=%2_spm
+) 
 
 python src\main.py ^
 constants=%1 ^
 fetch_data=%1 ^
-preprocess=%2 preprocess.params.selector.params.n_features=%5 %theilu% ^
+preprocess=%feat_algo% preprocess.params.selector.params.perc_features=%5 ^
 train_test_split=stratified train_test_split.params.random_state=%4 ^
 model=%3 ^
 evaluation=ml.yaml ^
-export=mlflow.yaml export.params.experiment_name=%1"__feat_selection__"%2"__model__"%3"__features__"%5
+export=mlflow.yaml export.params.experiment_name=%1"__feat_selection__"%feat_algo%"__model__"%3"__features__"%5

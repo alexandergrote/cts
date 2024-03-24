@@ -1,5 +1,5 @@
 import pandas as pd
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Optional
 from sklearn.ensemble import RandomForestClassifier
 
@@ -9,11 +9,21 @@ from src.preprocess.base import BaseFeatureSelector
 class RFFeatSelection(BaseModel, BaseFeatureSelector):
 
     target_column: str
-    n_features: Optional[int] = None
+    perc_features: Optional[float] = None
+
+    @field_validator('perc_features')
+    def check_perc_features(cls, v):
+
+        if v is None:
+            return v
+
+        if v > 1.0:
+            return v / 100
+        return v
 
     def _select_features(self, data: pd.DataFrame, **kwargs) -> pd.DataFrame:
 
-        if self.n_features is None:
+        if self.perc_features is None:
             return data
 
         # find all relevant features - 5 features should be selected
@@ -27,7 +37,8 @@ class RFFeatSelection(BaseModel, BaseFeatureSelector):
         df_importances = pd.DataFrame(rf.feature_importances_, index=X.columns, columns=['importance'])
         df_importances = df_importances.reset_index().sort_values(by='importance', ascending=False)
 
-        selected_features = df_importances['index'].head(self.n_features).tolist()
+        n_features = int(self.perc_features * len(df_importances))
+        selected_features = df_importances['index'].head(n_features).tolist()
 
         return data[selected_features + [self.target_column]]
 

@@ -31,6 +31,9 @@ def experiment_exists(experiment_name: str, random_seed: int) -> bool:
         experiment_ids=[experiment.experiment_id]
     )
 
+    if runs.empty:
+        return False
+
     random_seeds = runs['params.train_test_split.params.random_state'].to_list()
 
     if str(random_seed) not in random_seeds:

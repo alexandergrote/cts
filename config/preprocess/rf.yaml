@@ -10,4 +10,4 @@ params:
     class_name: src.preprocess.selection.random_forest.RFFeatSelection
     params:
       target_column: '%target_column%'
-      n_features: null
+      perc_features: null

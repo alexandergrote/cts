@@ -1,5 +1,5 @@
 import pandas as pd
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Optional
 from sklearn.feature_selection import mutual_info_classif, SelectKBest
 
@@ -9,18 +9,29 @@ from src.preprocess.base import BaseFeatureSelector
 class MutInfoFeatSelection(BaseModel, BaseFeatureSelector):
 
     target_column: str
-    n_features: Optional[int] = None
+    perc_features: Optional[float] = None
+
+    @field_validator('perc_features')
+    def check_perc_features(cls, v):
+
+        if v is None:
+            return v
+
+        if v > 1.0:
+            return v / 100
+        return v
 
     def _select_features(self, data: pd.DataFrame, **kwargs) -> pd.DataFrame:
 
-        if self.n_features is None:
+        if self.perc_features is None:
             return data
 
         # find all relevant features - 5 features should be selected
         X = data.drop(columns=[self.target_column])
         y = data[self.target_column]
 
-        selector = SelectKBest(mutual_info_classif, k=self.n_features)
+        n_features = int(self.perc_features * len(X.columns))
+        selector = SelectKBest(mutual_info_classif, k=n_features)
         X_sub = selector.fit_transform(X, y)
         df = pd.DataFrame(X_sub, columns=selector.get_feature_names_out(input_features=X.columns))
         df[self.target_column] = y

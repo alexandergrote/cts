@@ -16,7 +16,11 @@ def delete_all_experiments():
     for experiment in experiments:
 
         exp_id = experiment.experiment_id
+
         if exp_id == "0":
+            continue
+
+        if not experiment.name.startswith("synthetic__feat_selection"):
             continue
 
         # Delete the experiment by ID

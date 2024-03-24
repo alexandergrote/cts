@@ -16,7 +16,7 @@ class BaseFeatureEncoder(ABC):
 
         data_hash = hash_dataframe(data=data)
 
-        case_name = kwargs['case_name']
+        case_name = kwargs['case_name'].split('__')[0]
 
         cache_handler = PickleCacheHandler(
             filepath=Path(self.__class__.__name__) / f"{case_name}__{data_hash}"
@@ -44,11 +44,27 @@ class BaseFeatureSelector(ABC):
 
         data_hash = hash_dataframe(data=data)
 
+        if hasattr(self, 'n_features') and hasattr(self, 'perc_features'):
+            raise ValueError("Only one of n_features or perc_features can be set")
+
         feat_id = '__features_'
-        if getattr(self, 'n_features') is not None:
-            data_hash += f"{feat_id}{str(self.n_features)}"
-        else:
-            data_hash += f'{feat_id}all' 
+        if hasattr(self, 'perc_features'):
+
+            perc_features = getattr(self, 'perc_features')
+
+            if perc_features is None:
+                data_hash += f"{feat_id}all"
+            else:
+                data_hash += f"{feat_id}{str(getattr(self, 'perc_features'))}" 
+
+        if hasattr(self, 'n_features'):
+
+            n_features = getattr(self, 'n_features')
+
+            if n_features is None:
+                data_hash += f"{feat_id}all"
+            else:
+                data_hash += f"{feat_id}{str(getattr(self, 'n_features'))}"
 
         cache_handler = PickleCacheHandler(
             filepath=Path(self.__class__.__name__) / data_hash

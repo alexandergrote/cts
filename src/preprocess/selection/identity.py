@@ -7,7 +7,7 @@ from src.preprocess.base import BaseFeatureSelector
 
 class FeatureIdentity(BaseModel, BaseFeatureSelector):
 
-    n_features: Optional[int] = None
+    perc_features: Optional[float] = None
 
     def _select_features(self, *, data: pd.DataFrame, **kwargs) -> pd.DataFrame:
         return data

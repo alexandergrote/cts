@@ -1,11 +1,14 @@
 class_name: src.preprocess.preprocessor.FeatureMaker
 params:
   extractor:
-    class_name: src.preprocess.extraction.onehot.OneHotEncoder
+    class_name: src.preprocess.extraction.spm.SPM
     params:
-      id_column: '%id_column%'
-      feature_column: '%event_column%'
+      id_columns: 
+        - '%id_column%'
+      event_column: '%event_column%'
+      time_column: '%time_column%'
       target_column: '%target_column%'
+      itertool_threshold: 3
   selector:
     class_name: src.preprocess.selection.mutual_info.MutInfoFeatSelection
     params:
