@@ -393,25 +393,6 @@ class CausalRuleFeatureSelector(BaseModel, BaseFeatureEncoder):
 
         return rules
 
-    def _apply_mrmr(self, *, data: pd.DataFrame, **kwargs) -> pd.DataFrame:
-
-        # work on copy
-        data_copy = data.copy(deep=True)
-
-        n_features = len(data_copy.columns) - 1
-
-        if self.n_features is not None:
-            n_features = self.n_features
-
-        selector = MRMRFeatSelection(
-            target_column=self.treatment_attr_name,
-            n_features=n_features
-        )
-
-        result = selector.execute(data=data_copy, **kwargs)
-
-        return result['data']
-
     @pickle_cache(ignore_caching=True)
     def _select_significant_greater_than_zero(self, *, data: pd.DataFrame, **kwargs) -> pd.DataFrame:
 
