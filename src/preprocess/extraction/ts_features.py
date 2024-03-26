@@ -29,6 +29,9 @@ class PrefixSpan(BaseModel):
     splitting_symbol: str = ' --> '
     itertool_threshold: Optional[int] = None
 
+    min_support_abs: Optional[int] = None
+    min_support_rel: Optional[float] = None
+
     def _get_combinations(self, sequence: List[str]):
 
         final_combinations = set()
@@ -153,6 +156,13 @@ class PrefixSpan(BaseModel):
         rules = self._get_rules(sequence_supports)
 
         result = pd.DataFrame.from_records([rule.dict() for rule in rules])
+
+        if self.min_support_abs is not None:
+            result = result[result['support'] >= self.min_support_abs]
+
+        if self.min_support_rel is not None:
+            tmp = result['support'] / len(data_copy[self.id_columns[0]].unique())
+            result = result[tmp >= self.min_support_rel]
 
         return result
 
@@ -284,11 +294,7 @@ class CausalRuleFeatureSelector(BaseModel, BaseFeatureEncoder):
     ts_event_column: str
     ts_datetime_column: str
 
-    corr_threshold: float = 0.5
-
     multitesting: Optional[dict] = None
-    key_in_result_dict: str = 'event'
-    keep_class: bool = False
     n_features: Optional[int] = None
 
     @validator("multitesting")
@@ -396,7 +402,6 @@ class CausalRuleFeatureSelector(BaseModel, BaseFeatureEncoder):
 
         if self.n_features is not None:
             n_features = self.n_features
-
 
         selector = MRMRFeatSelection(
             target_column=self.treatment_attr_name,
@@ -603,7 +608,7 @@ class CausalRuleFeatureSelector(BaseModel, BaseFeatureEncoder):
             assert num_columns == len(columns)
 
         # reformat result to test for significance
-        result_as_list = result.filter(like=RuleFields.CONFIDENCE.value).apply(lambda x: x.to_list(), axis=1)
+        result_as_list = result.filter(like=RuleFields.CONFIDENCE.value+'_').apply(lambda x: x.to_list(), axis=1)
 
         # init p value column
         p_value_column_name = 'p_value'
@@ -615,16 +620,6 @@ class CausalRuleFeatureSelector(BaseModel, BaseFeatureEncoder):
 
             t_test_result = ttest_1samp(el, 0, nan_policy='raise')
             result.iloc[idx, p_value_column_idx] = t_test_result.pvalue
-
-        for column in [RuleFields.SUPPORT.value, RuleFields.CONFIDENCE.value, RuleFields.RANKING.value]:
-
-            # calculate aggregated values
-            result_filtered = result.filter(like=column)
-
-            for measure in ['mean', 'std']:
-                series = getattr(result_filtered, measure)(axis=1)
-                series.name = f'{measure}_{column}'
-                result = result.merge(series, left_index=True, right_index=True)
 
         if self.multitesting is None:
 
@@ -796,11 +791,15 @@ class CausalRuleFeatureSelector(BaseModel, BaseFeatureEncoder):
         console.log(f"{len(rules)} rules")
         rules_logging_dict = {'0_bootstrapped': rules}
 
-        # select only statistically significant rules
-        console.log(f"{self.__class__.__name__}: Excluding statistically insignificant rules")
-        rules = self._select_significant_greater_than_zero(data=rules)
-        console.log(f"{len(rules)} rules")
-        rules_logging_dict['1_significant_greater'] = rules
+        for column in [RuleFields.SUPPORT.value, RuleFields.CONFIDENCE.value, RuleFields.RANKING.value]:
+
+            # calculate aggregated values
+            rules_filtered = rules.filter(like=column)
+
+            for measure in ['mean', 'std']:
+                series = getattr(rules_filtered, measure)(axis=1)
+                series.name = f'{measure}_{column}'
+                rules = rules.merge(series, left_index=True, right_index=True)
 
         # select unique rules
         console.log(f"{self.__class__.__name__}: Selecting unique rules")
@@ -808,16 +807,21 @@ class CausalRuleFeatureSelector(BaseModel, BaseFeatureEncoder):
         console.log(f"{len(rules)} rules")
         rules_logging_dict['1_unique_rules'] = rules
 
+        # select only statistically significant rules
+        console.log(f"{self.__class__.__name__}: Excluding statistically insignificant rules")
+        rules = self._select_significant_greater_than_zero(data=rules)
+        console.log(f"{len(rules)} rules")
+        rules_logging_dict['1_significant_greater'] = rules
+
         # applying rules
         console.log(f"{self.__class__.__name__}: Applying rules to time series")
         event_sequences_per_id = self._apply_rule_to_ts(rules=rules, event=data)
 
-        # apply mrmr
-        console.log(f"{self.__class__.__name__}: Applying mrmr")
+        # merge target
+        console.log(f"{self.__class__.__name__}: Merging target")
         data_class = data_copy[self.ts_id_columns +  [self.treatment_attr_name]].drop_duplicates()
         event_sequences_per_id = event_sequences_per_id.merge(data_class, right_on=self.ts_id_columns, left_on=self.ts_id_columns)
-        event_sequences_per_id = self._apply_mrmr(data=event_sequences_per_id, **kwargs)
-
+        
         Pickler.write(rules_logging_dict, 'rules_logging.pickle')           
         
         # drop id columns
@@ -825,6 +829,6 @@ class CausalRuleFeatureSelector(BaseModel, BaseFeatureEncoder):
         
         # save output
         kwargs['rules'] = rules
-        kwargs[self.key_in_result_dict] = event_sequences_per_id
+        kwargs['data'] = event_sequences_per_id
 
         return kwargs

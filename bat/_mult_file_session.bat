@@ -14,6 +14,8 @@ if "%1" == "churn" (
     set features=null, 1, 2, 3, 4, 5
 )
 
+set features=null, 5, 10, 15, 20, 30, 40
+
 for %%m in ("logistic_regression", "xgb", "nb") do (
 
     for %%s in (0, 1) do (
@@ -25,5 +27,3 @@ for %%m in ("logistic_regression", "xgb", "nb") do (
         )
     )
 )
-
-exit 0

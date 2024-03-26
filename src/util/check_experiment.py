@@ -1,8 +1,11 @@
 import mlflow
-from typing import Optional
+from typing import Optional, List
 from pathlib import Path
 
 from src.util.constants import Directory
+from notebooks.visualize.mlflow_utils import get_last_n_runs, runs_to_df
+
+metrics = ['accuracy_score', 'f1_score', 'precision_score', 'recall_score', 'roc_auc_score']
 
 
 def experiment_exists(experiment_name: str, random_seed: int) -> bool:
@@ -38,9 +41,21 @@ def experiment_exists(experiment_name: str, random_seed: int) -> bool:
 
     if str(random_seed) not in random_seeds:
         return False
+    
+    show_results(experiment.experiment_id)
 
     return True
-    
+
+
+def show_results(experiment_id: str, metric_col_names: List[str] = metrics) -> Optional[Path]:
+
+    runs = get_last_n_runs(
+        experiment_id=experiment_id, n=1, query=''
+    )
+
+    data = runs_to_df(runs)
+
+    print(data[metric_col_names])
 
 if __name__ == "__main__":
 

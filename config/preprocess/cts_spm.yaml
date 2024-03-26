@@ -4,6 +4,9 @@ params:
     class_name: src.preprocess.extraction.ts_features.CausalRuleFeatureSelector
     params:
       repetitions: 10
+      corr_threshold: 0.5
+      key_in_result_dict: 'data'
+      keep_class: True
       treatment_attr_name: '%target_column%'
       treatment_attr_value: '1'
       splitting_symbol: " --> "
@@ -25,8 +28,7 @@ params:
         method: 'bonferroni'
         alpha: 0.01
   selector:
-    class_name: src.preprocess.selection.mrmr.MRMRFeatSelection
+    class_name: src.preprocess.selection.random_forest.RFFeatSelection
     params:
       target_column: '%target_column%'
-      n_features: null
-      
+      n_features: null      

@@ -116,11 +116,16 @@ class SPM(BaseModel, BaseFeatureEncoder):
 
         data_copy = data.copy(deep=True)
 
+        data_copy.sort_values(by=self.time_column, inplace=True)
+
         prefix_span = PrefixSpan(
             id_columns=self.id_columns,
             event_column=self.event_column,
             splitting_symbol=self.splitting_symbol,
-            itertool_threshold=self.itertool_threshold
+            itertool_threshold=self.itertool_threshold,
+            norm_support=True,
+            min_support_rel=0.001,
+            min_support_abs=100
         )
 
         console.log('Extracting rules from data...')
@@ -141,6 +146,7 @@ class SPM(BaseModel, BaseFeatureEncoder):
         data_one_hot.drop(columns=self.id_columns + ['index'], inplace=True)
 
         return dict(data=data_one_hot)
+    
 
 if __name__ == '__main__':
 

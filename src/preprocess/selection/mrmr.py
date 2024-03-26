@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 from tqdm import tqdm
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel
 from typing import Optional, List, Callable
 
 from src.preprocess.base import BaseFeatureSelector

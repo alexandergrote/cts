@@ -10,7 +10,7 @@ params:
       target_column: '%target_column%'
       itertool_threshold: 3
   selector:
-    class_name: src.preprocess.selection.mutual_info.MutInfoFeatSelection
+    class_name: src.preprocess.selection.random_forest.RFFeatSelection
     params:
       target_column: '%target_column%'
       n_features: null

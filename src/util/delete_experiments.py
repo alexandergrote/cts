@@ -20,12 +20,14 @@ def delete_all_experiments():
         if exp_id == "0":
             continue
 
-        if not experiment.name.startswith("synthetic__feat_selection"):
+        bool_cases = any(experiment.name.startswith(exp) for exp in ['tmp', 'churn', 'synthetic', 'malware']) or 'spm' in experiment.name
+
+        if not bool_cases:
             continue
 
+        print(f"Deleting experiment ID: {experiment.name}")
         # Delete the experiment by ID
         mlflow.delete_experiment(exp_id)
-        print(f"Deleted experiment ID: {exp_id}")
 
 if __name__ == "__main__":
     delete_all_experiments()
