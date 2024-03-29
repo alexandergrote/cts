@@ -1,7 +1,7 @@
 defaults:
   - constants: synthetic
   - fetch_data: synthetic
-  - preprocess: synthetic
+  - preprocess: cts
   - train_test_split: stratified
   - model: xgb
   - evaluation: ml

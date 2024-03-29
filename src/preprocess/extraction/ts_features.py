@@ -4,7 +4,7 @@ import pickle
 import hashlib
 
 from tqdm import tqdm
-from scipy.stats import ttest_1samp
+from scipy.stats import ttest_1samp, ttest_rel, wilcoxon
 from typing import List, Optional, Iterable
 from pydantic import BaseModel, validator, model_validator
 from itertools import chain, combinations, product
@@ -365,6 +365,96 @@ class CausalRuleFeatureSelector(BaseModel, BaseFeatureEncoder):
 
         return rules[mask_support]
 
+    @staticmethod
+    def is_subsequence(seq1, seq2):
+
+        assert len(seq1) > len(seq2), "seq1 should be longer than seq2"
+
+        j = 0  # Pointer for seq2
+        # Iterate over seq1
+        for i in range(len(seq1)):
+            
+            if j == len(seq2):  # Check if all elements of seq2 are found
+                break
+
+            if seq1[i] == seq2[j]:  # If current element matches, move to next element in seq2
+                j += 1
+
+        return j == len(seq2)  # Check if all elements in seq2 were found
+
+    def _check_stat_significance_of_subsequences(self, *, data: pd.DataFrame, **kwargs) -> pd.DataFrame:
+
+        # work on copy
+        data_copy = data.copy(deep=True)
+
+        # get rule lengths
+        rule_length_column = 'rule_length'
+        data_copy[rule_length_column] = data_copy['index'].apply(lambda x: len(x.split(self.splitting_symbol)))
+
+        # get unique rule lengths
+        rule_lengths = data_copy[rule_length_column].unique()
+
+        # sort rule lengths in ascending order
+        rule_lengths.sort()
+
+        # loop through rule lengths
+        for rule_length in rule_lengths:
+
+            # get all rules with the current rule length
+            mask = data_copy[rule_length_column] == rule_length
+            rules_short = data_copy[mask]
+
+            # get all rules that 1 longer than the current rule length
+            mask = data_copy[rule_length_column] == rule_length + 1
+            rules_long = data_copy[mask]
+
+            if rules_long.empty:
+                continue
+
+            # rules to drop
+            rules_to_drop = []
+
+            # loop through all rules with the current rule length
+            for _, row_short in rules_short.iterrows():
+
+                # compare with all rules that are 1 longer
+                for _, row_long in rules_long.iterrows():
+
+                    # check if subsequence
+                    rule_short = list(filter(None, row_short['index'].split(self.splitting_symbol)))
+                    rule_long = list(filter(None, row_long['index'].split(self.splitting_symbol)))
+                    
+                    if not self.is_subsequence(rule_long, rule_short):
+                        continue
+
+                    # check difference in delta confidence
+                    expresssion = f"{RuleFields.CONFIDENCE.value}_"
+                    confidence_short = row_short.filter(like=expresssion).values
+                    confidence_long = row_long.filter(like=expresssion).values
+
+                    # get delta confidence of both rules
+                    _, p_value = ttest_rel(confidence_short, confidence_long)
+
+                    if all(confidence_short == confidence_long):
+
+                        rules_to_drop.append(row_long['index'])
+                        continue
+
+                    _, p_value = wilcoxon(confidence_short, confidence_long)
+                    
+                    # if there is no significant difference, it is safe to drop the rule
+                    # if there is a significant difference, we keep the rule
+                    # it may be that the longer rule 
+                    if p_value > self.p_value_threshold:
+                        rules_to_drop.append(row_long['index'])
+
+        # drop rules
+        mask = data_copy['index'].isin(rules_to_drop)
+        
+        data_copy = data_copy[~mask]
+
+        return data_copy
+
     def _get_unique_rules(self, *, data: pd.DataFrame, **kwargs) -> pd.DataFrame:
             
         # work on copy
@@ -430,8 +520,15 @@ class CausalRuleFeatureSelector(BaseModel, BaseFeatureEncoder):
 
         for idx, el in enumerate(result_as_list):
 
-            t_test_result = ttest_1samp(el, 0, nan_policy='raise')
-            result.iloc[idx, p_value_column_idx] = t_test_result.pvalue
+            #t_test_result = ttest_1samp(el, 0, nan_policy='raise')
+            #p_value = t_test_result.pvalue
+                
+            if all(np.array(el) == 0):
+                p_value = 1.0
+            else:
+                _, p_value = wilcoxon(el)
+
+            result.iloc[idx, p_value_column_idx] = p_value
 
         if self.multitesting is None:
 
@@ -601,6 +698,12 @@ class CausalRuleFeatureSelector(BaseModel, BaseFeatureEncoder):
         rules = self._select_significant_greater_than_zero(data=rules)
         console.log(f"{len(rules)} rules")
         rules_logging_dict['1_significant_greater'] = rules
+
+        # check for statistical significance of subsequences
+        console.log(f"{self.__class__.__name__}: Checking for statistical significance of subsequences")
+        rules = self._check_stat_significance_of_subsequences(data=rules)
+        console.log(f"{len(rules)} rules")
+        rules_logging_dict['2_significant_subsequences'] = rules
 
         # applying rules
         console.log(f"{self.__class__.__name__}: Applying rules to time series")
