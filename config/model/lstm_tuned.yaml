@@ -1,0 +1,26 @@
+class_name: src.model.hyperopt.HyperTuner
+params:
+  n_trials: 1
+  hyperparams: 
+    class_name: src.model.hyperopt.LSTMHyperParams
+    params:
+
+  model:
+    class_name: src.model.torch_models.LSTMBenchmark
+    params:
+      batch_size: 256
+      num_epochs: 1
+      learning_rate: 0.01
+      patience: 10
+      model:
+        class_name: src.model.util.torch_architectures.LSTM
+        params:
+          vocab_size: 64
+          embedding_dim: 64
+          hidden_size: 128
+          output_size: 1 
+  evaluator:
+    class_name: src.evaluation.sklearn_metrics.Evaluator
+    params:
+      metrics:
+        - 'sklearn.metrics.f1_score'

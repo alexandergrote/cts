@@ -18,6 +18,7 @@ class SklearnModel(BaseModel, BaseProcessModel):
 
     class Config:
         arbitrary_types_allowed = True
+        extra = 'forbid'
 
     @model_validator(mode='after')
     def _init_model(self):

@@ -1,4 +1,5 @@
 import pandas as pd
+import optuna
 from abc import ABC, abstractmethod
 
 
@@ -33,3 +34,10 @@ class BaseProcessModel(ABC):
         kwargs['x_test'] = x_test
 
         return kwargs
+
+
+class BaseHyperParams(ABC):
+
+    @abstractmethod
+    def get_params_for_study(trial: optuna.Trial) -> dict:
+        raise NotImplementedError()

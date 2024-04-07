@@ -32,6 +32,7 @@ class LSTMBenchmark(BaseModel, BaseProcessModel, TorchMixin):
 
     class Config:
         arbitrary_types_allowed=True
+        extra = 'forbid'
 
     @field_validator('model')
     def _set_model(cls, v):

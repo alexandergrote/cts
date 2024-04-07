@@ -39,7 +39,9 @@ class Evaluator(BaseModel, BaseEvaluator):
     def get_metric_names(self) -> List[str]:
 
         metric_list = self.metrics.copy()
-        metric_list += self.metrics_proba.copy()
+
+        if self.metrics_proba is not None:
+            metric_list += self.metrics_proba.copy()
 
         return [metric.__name__ for metric in metric_list]
 

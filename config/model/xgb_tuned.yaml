@@ -1,0 +1,19 @@
+class_name: src.model.hyperopt.HyperTuner
+params:
+  n_trials: 1
+  hyperparams: 
+    class_name: src.model.hyperopt.XGBHyperParams
+    params:
+  model:
+    class_name: src.model.sklearn_models.SklearnModel
+    params:
+      model: 'xgboost.XGBClassifier'
+      params:
+        n_estimators: 20
+        max_depth: 10
+        learning_rate: 0.1
+  evaluator:
+    class_name: src.evaluation.sklearn_metrics.Evaluator
+    params:
+      metrics:
+        - 'sklearn.metrics.f1_score'

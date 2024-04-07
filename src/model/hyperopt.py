@@ -2,56 +2,78 @@ import pandas as pd
 import numpy as np
 import optuna
 
-from typing import Any
-from pydantic import BaseModel, field_validator
+from typing import Union, Type
+from pydantic import BaseModel, field_validator, model_validator
 from pydantic.v1.utils import deep_update
 from sklearn.model_selection import train_test_split
 
 from src.util.dynamic_import import DynamicImport
-from src.model.base import BaseProcessModel
+from src.model.base import BaseProcessModel, BaseHyperParams
+from src.evaluation.base import BaseEvaluator
 
 
-class HyperTuner(BaseModel, BaseProcessModel):
+class LSTMHyperParams(BaseHyperParams):
 
-    n_trials: int
-    timeout: int
-
-    model: Any
-    evaluator: Any
-
-    @field_validator('evaluator')
-    def _set_model(cls, v):
-        return DynamicImport.import_class_from_dict(dictionary=v)
-    
     @staticmethod
-    def _get_params_for_study(trial: optuna.Trial):
+    def get_params_for_study(trial: optuna.Trial):
 
         params = {
             'params': {
-                'batch_size': trial.suggest_categorical('batch_size', [16, 32, 64, 128, 256, 512]),
+                'batch_size': trial.suggest_categorical('batch_size', [16, 32, 64, 128, 256]),
                 'learning_rate': trial.suggest_float('learning_rate', 0.0, 1.0),
-                'model': {'params': {'hidden_size': trial.suggest_int('hidden_size', 1, 256)}}
+                'model': {'params': {'hidden_size': trial.suggest_categorical('hidden_size', [16, 32, 64, 128, 256, 512])}}
         }}
 
         return params
+    
+class XGBHyperParams(BaseHyperParams):
+
+    @staticmethod
+    def get_params_for_study(trial: optuna.Trial):
+
+        params = {
+            'params': {
+                'params': {
+                    'n_estimators': trial.suggest_int('n_estimators', 1, 100),
+                    'max_depth': trial.suggest_int('max_depth', 3, 10),
+                    'learning_rate': trial.suggest_float('learning_rate', 0.0, 1.0),
+                }
+            }
+        }
+
+        return params
+
+class HyperTuner(BaseModel, BaseProcessModel):
+
+    n_trials: int 
+    timeout: int = 600
+
+    model: Union[dict, Type[BaseProcessModel]]
+    hyperparams: Union[dict, Type[BaseHyperParams]]
+    evaluator: Union[dict, Type[BaseEvaluator]]
+
+    @field_validator('evaluator', 'hyperparams')
+    def _set_model(cls, v):
+        return DynamicImport.import_class_from_dict(dictionary=v)
+    
 
     def _objective(self, trial: optuna.Trial, model: dict, x_train: pd.DataFrame, x_test: pd.DataFrame, y_train: pd.Series, y_test: pd.Series):
 
-        params = self.get_params_for_study(trial)
+        params = self.hyperparams.get_params_for_study(trial)
 
         # update model with new params
         model = deep_update(model, params)
 
         # create model
-        model = DynamicImport.import_class_from_dict(dictionary=model) 
+        model: BaseProcessModel = DynamicImport.import_class_from_dict(dictionary=model) 
 
         model.fit(
             x_train=x_train,
             y_train=y_train
         )
 
-        y_pred_proba = model.predict_proba(x_test)
-        y_pred = model.predict(x_test)
+        y_pred_proba = model._predict_proba(x_test)
+        y_pred = model._predict(x_test)
 
         result = self.evaluator.evaluate(
             y_pred=y_pred,
@@ -103,22 +125,26 @@ class HyperTuner(BaseModel, BaseProcessModel):
             targets=y_train
         )
 
-        params = self._get_params_for_study(study.best_trial)
+        params = self.hyperparams.get_params_for_study(study.best_trial)
 
         # update model with new params
-        model = deep_update(model, params)
+        model = deep_update(self.model, params)
 
         # create model
-        model = DynamicImport.import_class_from_dict(dictionary=model) 
+        self.model = DynamicImport.import_class_from_dict(dictionary=model)
 
+        self.model.fit(
+            x_train=x_train,
+            y_train=y_train
+        ) 
 
         return kwargs
 
     def _predict(self, x_test, **kwargs):
-        return self.model.predict(x_test)
+        return self.model._predict(x_test)
     
     def _predict_proba(self, x_test, **kwargs):
-        return self.model.predict_proba(x_test)
+        return self.model._predict_proba(x_test)
 
 
 if __name__ == '__main__':
