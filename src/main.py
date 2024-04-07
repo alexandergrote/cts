@@ -28,9 +28,11 @@ def main(cfg: DictConfig) -> None:
     experiment_name = cfg['export']['params']['experiment_name']
     random_seed = cfg['train_test_split']['params']['random_state']
 
-    if experiment_exists(experiment_name=experiment_name, random_seed=random_seed):
-        console.log("Experiment already exists")
-        return
+    if cfg['check_recorded_experiments']:
+
+        if experiment_exists(experiment_name=experiment_name, random_seed=random_seed):
+            console.log("Experiment already exists")
+            return
 
 
     for _, value in cfg['constants'].items():
@@ -82,7 +84,7 @@ def main(cfg: DictConfig) -> None:
     output = train_test_split.execute(**output)
 
     console.log("Model Training")
-    output = model.fit(**output)
+    model.fit(**output)
     console.log("Model Interference")
     output = model.predict(**output)
     console.log("Model Interference with Probabilities")

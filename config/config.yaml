@@ -6,3 +6,5 @@ defaults:
   - model: xgb
   - evaluation: ml
   - export: mlflow
+
+check_recorded_experiments: True
