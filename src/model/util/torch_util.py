@@ -4,8 +4,6 @@ import matplotlib.pyplot as plt
 from torch.utils.data import TensorDataset, DataLoader
 from typing import Union
 
-from src.util.constants import File
-
 import torch
 from sklearn.model_selection import StratifiedKFold
 
@@ -39,21 +37,32 @@ class StratifiedBatchSampler:
 
 
 class TorchMixin:
-    
-    def get_dataset(self, x: np.ndarray, y: np.ndarray) -> TensorDataset:
 
-        tensor_x, tensor_y = torch.Tensor(x), torch.Tensor(y)
+    def prepare_x(self, x: np.ndarray) -> torch.Tensor:
+            
+        x = torch.Tensor(x)
 
-        tensor_y = tensor_y.float()
-
-        # reshape tensor_y to 2D
-        tensor_y = tensor_y.view(-1, 1)
-
-        padded_sequences = torch.nn.utils.rnn.pad_sequence(tensor_x, batch_first=True, padding_value=0)
+        padded_sequences = torch.nn.utils.rnn.pad_sequence(x, batch_first=True, padding_value=0)
 
         filled_tensor = torch.where(torch.isnan(padded_sequences), torch.tensor(0.0), padded_sequences)
 
-        dataset = TensorDataset(filled_tensor, tensor_y)
+
+        return filled_tensor
+    
+    def prepare_y(self, y: np.ndarray) -> torch.Tensor:
+
+        y = torch.Tensor(y)
+        y = y.float()
+        y = y.view(-1, 1)
+
+        return y
+
+    def get_dataset(self, x: np.ndarray, y: np.ndarray) -> TensorDataset:
+
+        x = self.prepare_x(x)
+        y = self.prepare_y(y)
+
+        dataset = TensorDataset(x, y)
 
         return dataset
 
@@ -88,7 +97,7 @@ class TorchMixin:
 
         return y_relabelled
 
-    def plot_loss(self, train_results, valid_results):
+    def plot_loss(self, train_results, valid_results, filename: str):
         epochs = np.array(range(len(train_results))) + 1
         plt.figure()
         plt.plot(epochs, train_results, label="train loss")
@@ -97,4 +106,4 @@ class TorchMixin:
         plt.ylabel("Loss")
         plt.legend(loc="upper right")
         plt.xticks(epochs)
-        plt.savefig(str(File.METRIC_LEARNING_LOSS_PLOT))
+        plt.savefig(filename)

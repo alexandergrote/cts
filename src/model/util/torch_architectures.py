@@ -13,8 +13,7 @@ class LSTM(nn.Module):
         self.embedding = nn.Embedding(vocab_size, embedding_dim)
         self.lstm = nn.LSTM(embedding_dim, hidden_size, batch_first=True)
         self.fc = nn.Linear(hidden_size, output_size)
-        self.sigmoid = nn.Sigmoid()
-
+        
     def forward(self, x):
 
         x = x.long()
@@ -23,6 +22,5 @@ class LSTM(nn.Module):
         lstm_out, _ = self.lstm(embeds)
         final_state = lstm_out[:, -1, :]
         out = self.fc(final_state)
-        out = self.sigmoid(out)
-
+    
         return out

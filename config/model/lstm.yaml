@@ -1,7 +1,7 @@
 class_name: src.model.torch_models.LSTMBenchmark
 params:
-  batch_size: 32
-  num_epochs: 100
+  batch_size: 256
+  num_epochs: 2
   learning_rate: 0.01
   patience: 10
   model:

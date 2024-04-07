@@ -10,6 +10,7 @@ from src.model.base import BaseProcessModel
 from src.model.util.torch_early_stopping import EarlyStopping
 from src.model.util.torch_util import TorchMixin
 from src.util.dynamic_import import DynamicImport
+from src.util.constants import Directory
 
 
 class LSTMBenchmark(BaseModel, BaseProcessModel, TorchMixin):
@@ -23,7 +24,7 @@ class LSTMBenchmark(BaseModel, BaseProcessModel, TorchMixin):
     patience: int
 
     optimizer: Optional[torch.optim.Adam] = None
-    loss_fn: nn.BCELoss = nn.BCELoss()
+    loss_fn: nn.BCEWithLogitsLoss = nn.BCEWithLogitsLoss()
 
     device: torch.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -117,11 +118,15 @@ class LSTMBenchmark(BaseModel, BaseProcessModel, TorchMixin):
             self.model.parameters(), lr=self.learning_rate
         )
 
+        checkpoint_dir = Directory.OUTPUT_DIR / 'checkpoints'
+        checkpoint_dir.mkdir(parents=True, exist_ok=True)
+        checkpoint_file = checkpoint_dir / str(self.model.__class__.__name__ + '.pt')
+
         # prepare early stopping
         early_stopping = EarlyStopping(
             patience=self.patience,
             delta=0,
-            path=str(self.model.__class__.__name__ + '.pt'),
+            path=str(checkpoint_file),
             verbose=True,
         )
 
@@ -158,18 +163,44 @@ class LSTMBenchmark(BaseModel, BaseProcessModel, TorchMixin):
 
         # load the last checkpoint with the best model
         self.model.load_state_dict(
-            torch.load(str(self.model.__class__.__name__ + '.pt'))
+            torch.load(str(checkpoint_file))
         )
 
-        self.plot_loss(epoch_train_results, epoch_valid_results)
+        self.plot_loss(
+            epoch_train_results, 
+            epoch_valid_results,
+            filename=str(self.model.__class__.__name__ + '__loss.png')
+        )
 
     
     def predict(self, x_test: pd.DataFrame, **kwargs):
-        raise NotImplementedError()
+
+        sigmoid_values = self.predict_proba(x_test)
+        y_pred = np.argmax(sigmoid_values, axis=1)
+        y_pred = y_pred.reshape(-1)
+        
+        return y_pred
     
     def predict_proba(self, x_test: pd.DataFrame, **kwargs):
-        raise NotImplementedError()
+        
+        x = torch.Tensor(x_test.values).to("cpu")
+        x = self.prepare_x(x)
 
+        self.model = self.model.to("cpu")
+
+        with torch.no_grad():
+
+            self.model.eval()
+
+            outputs = self.model(x)
+            sigmoid_values = torch.sigmoid(outputs)
+
+            # standardize output to match sklearn's predict_proba
+            sigmoid_values = sigmoid_values.cpu().detach().numpy()
+            sigmoid_values = np.hstack([1 - sigmoid_values, sigmoid_values])
+
+            return sigmoid_values
+            
 
 
 if __name__ == '__main__':
@@ -215,10 +246,35 @@ if __name__ == '__main__':
     sequences = data.groupby('id_column')['event_column'].apply(list).to_list()
     targets = data.groupby('id_column')['target'].apply(lambda x: np.unique(x)[0]).to_list()
     
-    model.fit(
-        x_train=pd.DataFrame(sequences),
-        y_train=pd.Series(targets)
+    # split train test
+    from sklearn.model_selection import train_test_split
+
+    x_train, x_test, y_train, y_test = train_test_split(
+        sequences, targets, test_size=0.2, random_state=42
     )
+    
+    model.fit(
+        x_train=pd.DataFrame(x_train),
+        y_train=pd.Series(y_train)
+    )
+
+    y_pred_proba = model.predict_proba(pd.DataFrame(x_test))
+    y_pred = model.predict(pd.DataFrame(x_test))
+
+    # get evaluation config
+    with open(Directory.CONFIG / 'evaluation\ml.yaml', 'r') as file:
+        cfg = yaml.safe_load(file)
+
+    evaluator = DynamicImport.import_class_from_dict(cfg)
+
+    result = evaluator.evaluate(
+        y_pred=y_pred,
+        y_pred_proba=y_pred_proba, 
+        y_test=y_test
+    )
+    
+    print(result['metrics'])
+
 
     
 
