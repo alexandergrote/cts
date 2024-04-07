@@ -1,4 +1,3 @@
-import optuna
 import pandas as pd
 import numpy as np
 import torch
@@ -38,6 +37,21 @@ class LSTMBenchmark(BaseModel, BaseProcessModel, TorchMixin):
     @field_validator('model', 'evaluator')
     def _set_model(cls, v):
         return DynamicImport.import_class_from_dict(dictionary=v)
+    
+    def get_annotated_hyperparameters(self) -> dict:
+
+        list_of_attributes = [
+            'batch_size', 'num_epochs', 'learning_rate'
+        ]
+
+        hyperparameters = {
+            attribute: self.__annotations__[attribute] for attribute in list_of_attributes
+        }
+
+        # add hidden dimensions as hyperparameter
+        hyperparameters['model'] = {'params': {'hidden_size': int}}
+            
+        return hyperparameters
     
     def _calculate_loss(
         self, model, data, labels

@@ -19,8 +19,6 @@ class StratifiedBatchSampler:
         assert len(y.shape) == 1, 'label array must be 1D'
         n_batches = max(2, int(len(y) / batch_size))
 
-        print('-'*100, '\n', np.unique(y), '\n', '-'*100)
-
         self.skf = StratifiedKFold(n_splits=n_batches, shuffle=shuffle, random_state=42)
         self.X = torch.randn(len(y),1).numpy()
         self.y = y

@@ -7,7 +7,7 @@ torch.manual_seed(0)
 
 class LSTM(nn.Module):
 
-    def __init__(self, vocab_size, embedding_dim, hidden_size, output_size):
+    def __init__(self, vocab_size: int, embedding_dim: int, hidden_size: int, output_size: int):
 
         super(LSTM, self).__init__()
         self.embedding = nn.Embedding(vocab_size, embedding_dim)
