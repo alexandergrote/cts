@@ -11,13 +11,3 @@ params:
       embedding_dim: 64
       hidden_size: 128
       output_size: 1 
-  evaluator:
-    class_name: src.evaluation.sklearn_metrics.Evaluator
-    params:
-      metrics:
-        - 'sklearn.metrics.accuracy_score'
-        - 'sklearn.metrics.precision_score'
-        - 'sklearn.metrics.recall_score'
-        - 'sklearn.metrics.f1_score'
-      metrics_proba:
-        - 'sklearn.metrics.roc_auc_score'

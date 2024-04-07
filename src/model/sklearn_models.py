@@ -66,28 +66,19 @@ class SklearnModel(BaseModel, BaseProcessModel):
         return kwargs
 
     # predict(self, data: pd.DataFrame):
-    def predict(self, x_test, **kwargs):
+    def _predict(self, x_test, **kwargs):
+        return self.model.predict(x_test)
 
-        pred = self.model.predict(x_test)
-
-        kwargs['y_pred'] = pred
-        kwargs['x_test'] = x_test
-
-        return kwargs
 
     # predict(self, data: pd.DataFrame):
-    def predict_proba(self, x_test, **kwargs):
-        pred_proba = self.model.predict_proba(x_test)
-        kwargs['y_pred_proba'] = pred_proba
-        kwargs['x_test'] = x_test
-
-        return kwargs
+    def _predict_proba(self, x_test, **kwargs):
+        return self.model.predict_proba(x_test)
 
 
 if __name__ == '__main__':
 
     # read tft config
-    with open(Directory.CONFIG / "model/sklearn_rf.yaml", 'r') as file:
+    with open(Directory.CONFIG / "model/nb.yaml", 'r') as file:
         config = yaml.safe_load(file)
 
     # data preprocessing

@@ -15,7 +15,6 @@ from src.util.constants import Directory
 class LSTMBenchmark(BaseModel, BaseProcessModel, TorchMixin):
 
     model: Any
-    evaluator: Any
 
     batch_size: int
     num_epochs: int
@@ -34,7 +33,7 @@ class LSTMBenchmark(BaseModel, BaseProcessModel, TorchMixin):
     class Config:
         arbitrary_types_allowed=True
 
-    @field_validator('model', 'evaluator')
+    @field_validator('model')
     def _set_model(cls, v):
         return DynamicImport.import_class_from_dict(dictionary=v)
     
@@ -186,16 +185,15 @@ class LSTMBenchmark(BaseModel, BaseProcessModel, TorchMixin):
             filename=str(self.model.__class__.__name__ + '__loss.png')
         )
 
-    
-    def predict(self, x_test: pd.DataFrame, **kwargs):
+    def _predict(self, x_test: pd.DataFrame, **kwargs):
 
-        sigmoid_values = self.predict_proba(x_test)
+        sigmoid_values = self._predict_proba(x_test)
         y_pred = np.argmax(sigmoid_values, axis=1)
         y_pred = y_pred.reshape(-1)
         
         return y_pred
     
-    def predict_proba(self, x_test: pd.DataFrame, **kwargs):
+    def _predict_proba(self, x_test: pd.DataFrame, **kwargs):
         
         x = torch.Tensor(x_test.values).to("cpu")
         x = self.prepare_x(x)
@@ -272,8 +270,8 @@ if __name__ == '__main__':
         y_train=pd.Series(y_train)
     )
 
-    y_pred_proba = model.predict_proba(pd.DataFrame(x_test))
-    y_pred = model.predict(pd.DataFrame(x_test))
+    y_pred_proba = model.predict_proba(pd.DataFrame(x_test))['y_pred_proba']
+    y_pred = model.predict(pd.DataFrame(x_test))['y_pred']
 
     # get evaluation config
     with open(Directory.CONFIG / 'evaluation\ml.yaml', 'r') as file:

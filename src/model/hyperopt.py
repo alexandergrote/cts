@@ -5,17 +5,18 @@ import optuna
 from typing import Any
 from pydantic import BaseModel, field_validator
 from pydantic.v1.utils import deep_update
+from sklearn.model_selection import train_test_split
 
 from src.util.dynamic_import import DynamicImport
-from src.model.torch_models import LSTMBenchmark
+from src.model.base import BaseProcessModel
 
 
-class HyperTuner(BaseModel):
+class HyperTuner(BaseModel, BaseProcessModel):
 
     n_trials: int
     timeout: int
 
-    model: dict
+    model: Any
     evaluator: Any
 
     @field_validator('evaluator')
@@ -23,7 +24,7 @@ class HyperTuner(BaseModel):
         return DynamicImport.import_class_from_dict(dictionary=v)
     
     @staticmethod
-    def get_params_for_study(trial: optuna.Trial):
+    def _get_params_for_study(trial: optuna.Trial):
 
         params = {
             'params': {
@@ -60,7 +61,18 @@ class HyperTuner(BaseModel):
 
         return result['metrics']['f1_score']
 
-    def run(self, x_train: pd.DataFrame, x_test: pd.DataFrame, y_train: pd.Series, y_test: pd.Series):
+    def _run_hyperparameter_search(self, sequences: pd.DataFrame, targets: pd.Series) -> optuna.study.Study:
+
+        # split train test
+        x_train, x_test, y_train, y_test = train_test_split(
+            sequences, targets, test_size=0.2, random_state=42
+        )
+
+        x_train = pd.DataFrame(x_train)
+        y_train = pd.Series(y_train)
+        x_test = pd.DataFrame(x_test)
+        y_test = pd.Series(y_test)
+        
 
         study = optuna.create_study(
             direction="maximize",
@@ -81,7 +93,32 @@ class HyperTuner(BaseModel):
             timeout=self.timeout
         )
 
-        return study.best_params
+        
+        return study
+    
+    def fit(self, x_train: pd.DataFrame, y_train: pd.Series, **kwargs):
+
+        study = self._run_hyperparameter_search(
+            sequences=x_train,
+            targets=y_train
+        )
+
+        params = self._get_params_for_study(study.best_trial)
+
+        # update model with new params
+        model = deep_update(model, params)
+
+        # create model
+        model = DynamicImport.import_class_from_dict(dictionary=model) 
+
+
+        return kwargs
+
+    def _predict(self, x_test, **kwargs):
+        return self.model.predict(x_test)
+    
+    def _predict_proba(self, x_test, **kwargs):
+        return self.model.predict_proba(x_test)
 
 
 if __name__ == '__main__':
@@ -113,6 +150,14 @@ if __name__ == '__main__':
     data_loader = DataLoader(**config)
     data = data_loader.execute()['data']
 
+    mapping = {event: i+1 for i, event in enumerate(data['event_column'].unique())}
+    data['event_column'] = data['event_column'].map(mapping)
+
+    # get sequences from data
+    data.sort_values(by='timestamp', inplace=True)
+    sequences = data.groupby('id_column')['event_column'].apply(list).to_list()
+    targets = data.groupby('id_column')['target'].apply(lambda x: np.unique(x)[0]).to_list()
+
     # get model config
     with open(Directory.CONFIG / 'model\lstm.yaml', 'r') as file:
         model_config = yaml.safe_load(file)
@@ -121,36 +166,17 @@ if __name__ == '__main__':
     with open(Directory.CONFIG / 'evaluation\ml.yaml', 'r') as file:
         eval_config = yaml.safe_load(file)
 
-    mapping = {event: i+1 for i, event in enumerate(data['event_column'].unique())}
-    data['event_column'] = data['event_column'].map(mapping)
-
-    # get sequences from data
-    data.sort_values(by='timestamp', inplace=True)
-    sequences = data.groupby('id_column')['event_column'].apply(list).to_list()
-    targets = data.groupby('id_column')['target'].apply(lambda x: np.unique(x)[0]).to_list()
-    
-    # split train test
-    from sklearn.model_selection import train_test_split
-
-    x_train, x_test, y_train, y_test = train_test_split(
-        sequences, targets, test_size=0.2, random_state=42
-    )
-
-    x_train = pd.DataFrame(x_train)
-    y_train = pd.Series(y_train)
-    x_test = pd.DataFrame(x_test)
-    y_test = pd.Series(y_test)
-
     tuner = HyperTuner(
-        n_trials=10,
+        n_trials=1,
         timeout=600,
         model=model_config,
         evaluator=eval_config
     )
 
-    tuner.run(
-        x_train=x_train,
-        x_test=x_test,
-        y_train=y_train,
-        y_test=y_test
+    tuner.fit(
+        sequences=sequences,
+        targets=targets
     )
+
+    tuner.predict(sequences)
+    tuner.predict_proba(sequences)
