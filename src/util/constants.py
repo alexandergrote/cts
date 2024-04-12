@@ -40,6 +40,9 @@ class RuleFields(BaseEnum):
     SUPPORT = 'support'
     RANKING = 'ranking'
 
+class EnvMode(BaseEnum):
+    DEV = 'dev'
+    PROD = 'prod'
 
 def replace_placeholder_in_dict(dictionary, placeholder, replacement):
     """

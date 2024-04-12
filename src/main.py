@@ -5,9 +5,10 @@ from omegaconf import DictConfig, OmegaConf
 
 # load package specific code
 from src.util.dynamic_import import DynamicImport
-from src.util.constants import Directory, File, replace_placeholder_in_dict
+from src.util.constants import Directory, File, replace_placeholder_in_dict, EnvMode
 from src.util.custom_logging import console
 from src.util.check_experiment import experiment_exists
+from src.util.environment import PydanticEnvironment
 
 # Ignore all runtime warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)
@@ -24,11 +25,15 @@ def main(cfg: DictConfig) -> None:
 
     cfg = OmegaConf.to_container(cfg)
 
+    # environment variables
+    PydanticEnvironment.set_environment_variables(cfg['env'])
+    env = PydanticEnvironment.create_from_environment()
+
     # check if experiment already exists
     experiment_name = cfg['export']['params']['experiment_name']
     random_seed = cfg['train_test_split']['params']['random_state']
 
-    if cfg['check_recorded_experiments']:
+    if env.mode == EnvMode.PROD:
 
         if experiment_exists(experiment_name=experiment_name, random_seed=random_seed):
             console.log("Experiment already exists")
