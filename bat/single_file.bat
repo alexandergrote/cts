@@ -14,6 +14,7 @@ if "%6"=="spm" (
 ) 
 
 set feat_select=
+set feat_extractor=
 
 if "%6"=="feat_select" (
 
@@ -23,18 +24,17 @@ if "%6"=="feat_select" (
 
     if "%2"=="rf" (
         set feat_select=%feat_select_base%random_forest.RFFeatSelection
+        set feat_extractor="rf"
     )
 
     if "%2"=="mutinfo" (
         set feat_select=%feat_select_base%mutual_info.MutInfoFeatSelection
-    )
-
-    if "%2"=="boruta" (
-        set feat_select=%feat_select_base%boruta.BorutaFeatSelection
+        set feat_extractor="mutinfo"
     )
 
     if "%2"=="cts" (
         set feat_select=%feat_select_base%mrmr.MRMRFeatSelection
+        set feat_extractor="cts"
     )
 
 )
@@ -47,4 +47,4 @@ preprocess=%feat_algo% preprocess.params.selector.params.n_features=%5 %feat_sel
 train_test_split=stratified train_test_split.params.random_state=%4 ^
 model=%3 ^
 evaluation=ml.yaml ^
-export=mlflow.yaml export.params.experiment_name=%identifier%%1"__feat_selection__"%feat_algo%"__model__"%3"__features__"%5
+export=mlflow.yaml export.params.experiment_name=%identifier%%1"__feat_selection__"%feat_algo%"__"%feat_extractor%"__model__"%3"__features__"%5

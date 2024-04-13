@@ -6,11 +6,29 @@ params:
   time_column: '%time_column%'
   class_column: '%target_column%'
   configuration:
-    'a-c':
-      selection: 0.25
+    'a-b':
+      selection: 0.1
       class: 1
-    'd-f':
-      selection: 0.25
+    'b-c':
+      selection: 0.1
+      class: 1
+    'c-d':
+      selection: 0.1
+      class: 1
+    'd-e':
+      selection: 0.1
+      class: 1
+    'f-g':
+      selection: 0.1
+      class: 0
+    'g-h':
+      selection: 0.1
+      class: 0
+    'h-i':
+      selection: 0.1
+      class: 0
+    'i-j':
+      selection: 0.1
       class: 0
   separator: '-'
   sequence_elements:
@@ -24,3 +42,8 @@ params:
     - h
     - i
     - j
+    - k
+    - l
+    - m
+    - n
+    - o

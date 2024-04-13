@@ -4,7 +4,7 @@ import pickle
 import hashlib
 
 from tqdm import tqdm
-from scipy.stats import ttest_1samp, ttest_rel, wilcoxon
+from scipy.stats import ttest_1samp, ttest_rel, wilcoxon, mannwhitneyu
 from typing import List, Optional, Iterable
 from pydantic import BaseModel, validator, model_validator
 from itertools import chain, combinations, product
@@ -288,6 +288,8 @@ class CausalRuleFeatureSelector(BaseModel, BaseFeatureEncoder):
     bootstrap_sampling_fraction: float = 0.8
     p_value_threshold: float = 0.01
     support_threshold: float = 0.001
+    abs_support_threshold: int = 100
+    conf_threshold: float = 0.05
 
     # ts dataset specific variables
     ts_id_columns: List[str]
@@ -361,7 +363,7 @@ class CausalRuleFeatureSelector(BaseModel, BaseFeatureEncoder):
                 raise ValueError(f"Attribute values does not match expectations")
 
             rules[RuleFields.RANKING.value] *= rules[attribute.value].abs()
-            mask_support = rules[RuleFields.SUPPORT.value] * num_sequences >= 100
+            mask_support = rules[RuleFields.SUPPORT.value] * num_sequences >= self.abs_support_threshold
 
         return rules[mask_support]
 
@@ -433,12 +435,12 @@ class CausalRuleFeatureSelector(BaseModel, BaseFeatureEncoder):
                     confidence_long = row_long.filter(like=expresssion).values
 
                     # get delta confidence of both rules
-                    _, p_value = ttest_rel(confidence_short, confidence_long)
+                    """_, p_value = ttest_rel(confidence_short, confidence_long)
 
                     if all(confidence_short == confidence_long):
 
                         rules_to_drop.append(row_long['index'])
-                        continue
+                        continue"""
 
                     _, p_value = wilcoxon(confidence_short, confidence_long)
                     
@@ -520,13 +522,17 @@ class CausalRuleFeatureSelector(BaseModel, BaseFeatureEncoder):
 
         for idx, el in enumerate(result_as_list):
 
-            #t_test_result = ttest_1samp(el, 0, nan_policy='raise')
-            #p_value = t_test_result.pvalue
                 
             if all(np.array(el) == 0):
                 p_value = 1.0
             else:
-                _, p_value = wilcoxon(el)
+                y = np.zeros_like(el) + self.conf_threshold
+                x = np.abs(el)
+                
+                test = mannwhitneyu(x, y, alternative='greater')
+                p_value = test.pvalue
+
+            
 
             result.iloc[idx, p_value_column_idx] = p_value
 
@@ -698,12 +704,6 @@ class CausalRuleFeatureSelector(BaseModel, BaseFeatureEncoder):
         rules = self._select_significant_greater_than_zero(data=rules)
         console.log(f"{len(rules)} rules")
         rules_logging_dict['1_significant_greater'] = rules
-
-        # check for statistical significance of subsequences
-        console.log(f"{self.__class__.__name__}: Checking for statistical significance of subsequences")
-        rules = self._check_stat_significance_of_subsequences(data=rules)
-        console.log(f"{len(rules)} rules")
-        rules_logging_dict['2_significant_subsequences'] = rules
 
         # applying rules
         console.log(f"{self.__class__.__name__}: Applying rules to time series")
