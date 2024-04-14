@@ -26,8 +26,6 @@ class LSTMBenchmark(BaseModel, BaseProcessModel, TorchMixin):
 
     device: torch.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    classes: np.ndarray = np.empty(shape=(0,))
-
     event_mapping: Optional[dict] = None
 
     class Config:
@@ -121,9 +119,6 @@ class LSTMBenchmark(BaseModel, BaseProcessModel, TorchMixin):
             return np.mean(np.array(train_loss)), np.mean(np.array(valid_loss))
 
     def fit(self, x_train: pd.DataFrame, y_train: pd.Series, **kwargs):
-        
-        # record classes
-        self.classes = torch.Tensor(np.unique(y_train)).to(self.device)
 
         # init model
         self.model = self.model.to(self.device)
