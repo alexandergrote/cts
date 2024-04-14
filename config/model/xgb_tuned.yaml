@@ -1,6 +1,6 @@
 class_name: src.model.hyperopt.HyperTuner
 params:
-  n_trials: 1
+  n_trials: 50
   hyperparams: 
     class_name: src.model.hyperopt.XGBHyperParams
     params:
