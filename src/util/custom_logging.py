@@ -48,6 +48,9 @@ def log_time(key: str, filename: Path = Path('time.yaml')):
 
             time_taken = end_time - start_time
 
+            if logging_dict is None:
+                return result
+
             # log time taken
             if key in logging_dict:
                 logging_dict[key].append(time_taken)
