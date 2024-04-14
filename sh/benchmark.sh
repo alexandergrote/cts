@@ -26,8 +26,7 @@ do
         train_test_split=stratified train_test_split.params.random_state=$n \
         model=lstm_tuned__$case model.params.model.params.vocab_size=$vocab_size \
         evaluation=ml.yaml \
-        env=dev \
-        export=mlflow.yaml
+        export=mlflow.yaml export.params.experiment_name="benchmark__"$case"__"lstm
 
     done
 
