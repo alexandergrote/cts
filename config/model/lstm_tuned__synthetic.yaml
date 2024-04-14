@@ -1,0 +1,13 @@
+class_name: src.model.torch_models.LSTMBenchmark
+params:
+  batch_size: 256
+  num_epochs: 2
+  learning_rate: 0.01
+  patience: 10
+  model:
+    class_name: src.model.util.torch_architectures.LSTM
+    params:
+      vocab_size: 264
+      embedding_dim: 64
+      hidden_size: 128
+      output_size: 1 

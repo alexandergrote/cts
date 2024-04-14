@@ -1,6 +1,6 @@
 class_name: src.model.hyperopt.HyperTuner
 params:
-  n_trials: 1
+  n_trials: 50
   hyperparams: 
     class_name: src.model.hyperopt.LSTMHyperParams
     params:
@@ -9,7 +9,7 @@ params:
     class_name: src.model.torch_models.LSTMBenchmark
     params:
       batch_size: 256
-      num_epochs: 1
+      num_epochs: 100
       learning_rate: 0.01
       patience: 10
       model:
