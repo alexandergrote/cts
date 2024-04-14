@@ -24,17 +24,23 @@ if "%6"=="feat_select" (
 
     if "%2"=="rf" (
         set feat_select=%feat_select_base%random_forest.RFFeatSelection
-        set feat_extractor="rf"
+        set feat_extractor=%2
     )
 
     if "%2"=="mutinfo" (
         set feat_select=%feat_select_base%mutual_info.MutInfoFeatSelection
-        set feat_extractor="mutinfo"
+        set feat_extractor=%2
     )
 
     if "%2"=="cts" (
         set feat_select=%feat_select_base%mrmr.MRMRFeatSelection
-        set feat_extractor="cts"
+        set feat_extractor=%2
+    )
+
+    if "%2"=="self" (
+        set feat_select=%feat_select_base%ts_features.TimeSeriesFeatureSelection
+        set feat_algo=self
+        set feat_extractor=%2
     )
 
 )
