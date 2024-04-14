@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import optuna
+import yaml
 
 from typing import Union, Type
 from pydantic import BaseModel, field_validator, model_validator
@@ -127,6 +128,9 @@ class HyperTuner(BaseModel, BaseProcessModel):
 
         params = self.hyperparams.get_params_for_study(study.best_trial)
 
+        with open('best_params.yaml', 'w') as file:
+            yaml.dump(params, file)
+
         # update model with new params
         model = deep_update(self.model, params)
 
@@ -149,7 +153,6 @@ class HyperTuner(BaseModel, BaseProcessModel):
 
 if __name__ == '__main__':
 
-    import yaml
     from src.fetch_data.synthetic import DataLoader
     from src.util.constants import Directory, replace_placeholder_in_dict
 
@@ -192,17 +195,23 @@ if __name__ == '__main__':
     with open(Directory.CONFIG / 'evaluation\ml.yaml', 'r') as file:
         eval_config = yaml.safe_load(file)
 
+    hyperparams = {'class_name': 'src.model.hyperopt.LSTMHyperParams', 'params': None}
+
     tuner = HyperTuner(
         n_trials=1,
         timeout=600,
         model=model_config,
-        evaluator=eval_config
+        evaluator=eval_config,
+        hyperparams=hyperparams
     )
+
+    x_train = pd.DataFrame(sequences)
+    y_train = pd.Series(targets)
 
     tuner.fit(
-        sequences=sequences,
-        targets=targets
+        x_train=x_train,
+        y_train=y_train
     )
 
-    tuner.predict(sequences)
-    tuner.predict_proba(sequences)
+    tuner.predict(x_train)
+    tuner.predict_proba(x_train)
