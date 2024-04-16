@@ -4,6 +4,10 @@ for %%f in ("synthetic", "malware", "churn") do (
 
     for %%s in ("baseline", "cts") do (
 
+        echo -----------------------------------------
+
+        echo %%~f %%~s
+
         python src\main.py ^
         constants=%%~f ^
         fetch_data=%%~f ^
@@ -14,6 +18,8 @@ for %%f in ("synthetic", "malware", "churn") do (
         export=mlflow.yaml export.params.experiment_name="hyper_opt__"%%~f"__"%%~s
 
     )
+
+        echo -----------------------------------------
 
 )
 
