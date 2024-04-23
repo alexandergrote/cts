@@ -4,7 +4,7 @@ import pickle
 import hashlib
 
 from tqdm import tqdm
-from scipy.stats import ttest_1samp, ttest_rel, wilcoxon, mannwhitneyu
+from scipy.stats import wilcoxon, mannwhitneyu
 from typing import List, Optional, Iterable
 from pydantic import BaseModel, validator, model_validator
 from itertools import chain, combinations, product
@@ -14,8 +14,6 @@ from pathlib import Path
 
 from src.preprocess.base import BaseFeatureEncoder
 from src.preprocess.util.rules import Rule
-from src.preprocess.util.correlation import theils_u
-from src.preprocess.selection.mrmr import MRMRFeatSelection
 from src.util.constants import RuleFields, Directory
 from src.util.custom_logging import console, Pickler, log_time
 from src.util.dynamic_import import DynamicImport
@@ -667,12 +665,22 @@ class CausalRuleFeatureSelector(BaseModel, BaseFeatureEncoder):
         event_sequences_df.drop(column_name, axis=1, inplace=True)
         event_sequences_df.reset_index(inplace=True)
 
+        data_class = event_copy[self.ts_id_columns +  [self.treatment_attr_name]].drop_duplicates()
+        event_sequences_per_id = event_sequences_df.merge(
+            data_class, 
+            right_on=self.ts_id_columns, 
+            left_on=self.ts_id_columns
+        )          
+        
+        # drop id columns
+        event_sequences_per_id.drop(columns= self.ts_id_columns +['index'], inplace=True, errors='ignore')
+
         # write to cache
-        cache_handler.write(event_sequences_df)
+        cache_handler.write(event_sequences_per_id)
 
-        return event_sequences_df
+        return event_sequences_per_id
 
-    def _encode(self, *args, data: pd.DataFrame, **kwargs):
+    def _encode_train(self, *args, data: pd.DataFrame, **kwargs):
 
         # work on copy
         data_copy = data.copy(deep=True)
@@ -702,25 +710,50 @@ class CausalRuleFeatureSelector(BaseModel, BaseFeatureEncoder):
         # select only statistically significant rules
         console.log(f"{self.__class__.__name__}: Excluding statistically insignificant rules")
         rules = self._select_significant_greater_than_zero(data=rules)
+        
         console.log(f"{len(rules)} rules")
         rules_logging_dict['1_significant_greater'] = rules
 
+        Pickler.write(rules_logging_dict, 'rules_logging.pickle')
+
         # applying rules
         console.log(f"{self.__class__.__name__}: Applying rules to time series")
-        event_sequences_per_id = self._apply_rule_to_ts(rules=rules, event=data)
+        event_sequences_per_id = self._apply_rule_to_ts(rules=rules, event=data_copy)
 
-        # merge target
-        console.log(f"{self.__class__.__name__}: Merging target")
-        data_class = data_copy[self.ts_id_columns +  [self.treatment_attr_name]].drop_duplicates()
-        event_sequences_per_id = event_sequences_per_id.merge(data_class, right_on=self.ts_id_columns, left_on=self.ts_id_columns)
-        
-        Pickler.write(rules_logging_dict, 'rules_logging.pickle')           
-        
-        # drop id columns
-        event_sequences_per_id.drop(columns= self.ts_id_columns +['index'], inplace=True, errors='ignore')
+        """Paper Analysis Start"""
+
+        from IPython import embed; embed()
+
+        columns = [col for col in event_sequences_per_id.columns if '-->' in col]
+
+        result = {}
+
+        for column in columns:
+            result[column] = event_sequences_per_id[event_sequences_per_id[column]][self.treatment_attr_name].mean() - event_sequences_per_id[self.treatment_attr_name].mean()
+
+        result = pd.Series(result)
+        result.name = 'deviation_from_mean_target'
+
+        result = rules.merge(result, left_on='index', right_index=True)
+
+        Pickler.write(result, "rules_conf_target.pickle")
+
+        """Paper Analysis End"""
         
         # save output
         kwargs['rules'] = rules
         kwargs['data'] = event_sequences_per_id
 
         return kwargs
+
+    def _encode_test(self, *args, data: pd.DataFrame, **kwargs):
+
+        assert 'rules' in kwargs, "Rules must be provided to the feature selector"
+
+        # work on copy
+        data_copy = data.copy(deep=True)
+
+        # apply rules
+        event_sequences_per_id = self._apply_rule_to_ts(rules=kwargs['rules'], event=data_copy)
+
+        return {'data': event_sequences_per_id}

@@ -1,6 +1,6 @@
 import pandas as pd
 from pydantic import BaseModel, field_validator
-from typing import Optional
+from typing import Optional, List
 from pathlib import Path
 from sklearn.ensemble import RandomForestClassifier
 
@@ -33,9 +33,12 @@ class RFFeatSelection(BaseModel, BaseFeatureSelector):
     target_column: str
     n_features: Optional[int] = None
 
-    def _select_features(self, data: pd.DataFrame, **kwargs) -> pd.DataFrame:
+    def _select_features_train(self, data: pd.DataFrame, **kwargs) -> pd.DataFrame:
 
         if self.n_features is None:
+
+            self._columns = data.columns.to_list()
+
             return data
 
         # find all relevant features - 5 features should be selected
@@ -49,8 +52,9 @@ class RFFeatSelection(BaseModel, BaseFeatureSelector):
 
         selected_features = feature_importance.head(self.n_features).index.tolist()
 
-        return data[selected_features + [self.target_column]]
+        self._columns = selected_features + [self.target_column]
 
+        return data[self._columns]
     
     
 if __name__ == '__main__':
@@ -70,4 +74,4 @@ if __name__ == '__main__':
         n_features=200
     ).execute(data=data)
 
-    print(result['data'])
+    print(result)

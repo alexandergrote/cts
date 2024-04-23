@@ -39,7 +39,6 @@ def main(cfg: DictConfig) -> None:
             console.log("Experiment already exists")
             return
 
-
     for _, value in cfg['constants'].items():
 
         placeholder = value['placeholder']
@@ -81,18 +80,16 @@ def main(cfg: DictConfig) -> None:
     console.log("Fetching data")
     output = data_loader.execute()
 
+    console.log("Splitting data")
+    output = train_test_split.execute(**output)
+
     console.log("Starting Preprocessing")
     output = preprocessor.execute(**output, case_name=experiment_name)
     console.log("Finished Preprocessing")
 
-    console.log("Splitting data")
-    output = train_test_split.execute(**output)
-
-    console.log("Model Training")
+    console.log("Model Training & Inference")
     model.fit(**output)
-    console.log("Model Interference")
     output = model.predict(**output)
-    console.log("Model Interference with Probabilities")
     output = model.predict_proba(**output)
 
     console.log("Evaluating")

@@ -23,9 +23,9 @@ params:
           rule_max_length: 999
           rule_min_length: 1
           separator: " --> "
-          itertool_threshold: 3
+          itertool_threshold: 5
       multitesting:
-        method: 'bonferroni'
+        method: 'fdr_by'
         alpha: 0.01
   selector:
     class_name: src.preprocess.selection.random_forest.RFFeatSelection

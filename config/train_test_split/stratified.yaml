@@ -1,5 +1,6 @@
 class_name: src.train_test_split.stratified.StratifiedSplit
 params:
   random_state: 42
+  id_column: '%id_column%'
   target_name: '%target_column%'
   test_size: 0.8

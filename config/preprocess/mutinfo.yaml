@@ -1,5 +1,6 @@
 class_name: src.preprocess.preprocessor.FeatureMaker
 params:
+  target_column: '%target_column%'
   extractor:
     class_name: src.preprocess.extraction.onehot.OneHotEncoder
     params:

@@ -1,48 +1,71 @@
 import pandas as pd
 from abc import ABC, abstractmethod
 from pathlib import Path
+from typing import List, Optional
 
 from src.util.caching import PickleCacheHandler, hash_dataframe
     
 class BaseFeatureEncoder(ABC):
 
     @abstractmethod
-    def _encode(self, *args, **kwargs) -> dict:
+    def _encode_train(self, *args, **kwargs) -> dict:
         raise NotImplementedError()
     
-    def execute(self, *, data: pd.DataFrame, **kwargs) -> dict:
+    @abstractmethod
+    def _encode_test(self, *args, **kwargs) -> dict:
+        raise NotImplementedError()
+    
+    def execute(self, *, data_train: pd.DataFrame, data_test: pd.DataFrame, **kwargs) -> dict:
 
-        assert 'case_name' in kwargs
-
-        data_hash = hash_dataframe(data=data)
-
-        case_name = kwargs['case_name'].split('__')[0]
+        data_hash_train = hash_dataframe(data=data_train)
+        data_hash_test = hash_dataframe(data=data_test)
+        data_hash = data_hash_train + data_hash_test
 
         cache_handler = PickleCacheHandler(
-            filepath=Path(self.__class__.__name__) / f"{case_name}__{data_hash}"
+            filepath=Path(self.__class__.__name__) / f"{data_hash}"
         )
 
         result = cache_handler.read()
 
         if result is None:
-            result = self._encode(data=data, **kwargs)
-            cache_handler.write(obj=result)
 
-        kwargs['data'] = result['data']
-        kwargs['rules'] = result.get('rules', None)
+            result_train: dict = self._encode_train(data=data_train, **kwargs)
+            data_train_processed = result_train['data']
+            kwargs['rules'] = result_train.get('rules', {})
+            
+            result_test: dict = self._encode_test(data=data_test, **kwargs)
+            data_test_processed = result_test['data']
+            cache_handler.write(obj=(data_train_processed, data_test_processed))
+        else:
+            data_train_processed, data_test_processed = result
+
+
+        kwargs['data_train'] = data_train_processed
+        kwargs['data_test'] = data_test_processed
 
         return kwargs
         
 
 class BaseFeatureSelector(ABC):
 
+    _columns: Optional[List[str]] = None
+
     @abstractmethod
-    def _select_features(self, *args, **kwargs) -> pd.DataFrame:
+    def _select_features_train(self, data: pd.DataFrame, **kwargs) -> dict:
         raise NotImplementedError()
     
-    def execute(self, *, data: pd.DataFrame, **kwargs) -> dict:
+    def _select_features_test(self, data: pd.DataFrame, **kwargs) -> pd.DataFrame:
 
-        data_hash = hash_dataframe(data=data)
+        if self._columns is None:
+            raise ValueError("Needs to be fitted on training data first prior to encoding test data")
+        
+        return data[self._columns]
+    
+    def execute(self, *, data_train: pd.DataFrame, data_test: pd.DataFrame, **kwargs) -> dict:
+
+        data_hash_train = hash_dataframe(data=data_train)
+        data_hash_test = hash_dataframe(data=data_test)
+        data_hash = data_hash_train + data_hash_test
 
         if not hasattr(self, 'n_features'):
             raise ValueError("Attribute 'n_features' must be set.")
@@ -65,9 +88,13 @@ class BaseFeatureSelector(ABC):
         result = cache_handler.read()
 
         if result is None:
-            result = self._select_features(data=data, **kwargs)
-            cache_handler.write(obj=result)
+            data_train_processed = self._select_features_train(data=data_train, **kwargs)
+            data_test_processed = self._select_features_test(data=data_test, **kwargs)
+            cache_handler.write(obj=(data_train_processed, data_test_processed))
+        else:
+            data_train_processed, data_test_processed = result
 
-        kwargs['data'] = result
+        kwargs['data_train'] = data_train_processed
+        kwargs['data_test'] = data_test_processed
 
         return kwargs
