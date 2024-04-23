@@ -274,7 +274,7 @@ class RuleClassifier(BaseModel):
         return result
 
 
-class CausalRuleFeatureSelector(BaseModel, BaseFeatureEncoder):
+class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
 
     treatment_attr_name: str
     treatment_attr_value: str

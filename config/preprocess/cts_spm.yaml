@@ -1,7 +1,7 @@
 class_name: src.preprocess.preprocessor.FeatureMaker
 params:
   extractor:
-    class_name: src.preprocess.extraction.ts_features.CausalRuleFeatureSelector
+    class_name: src.preprocess.extraction.ts_features.SPMFeatureSelector
     params:
       repetitions: 10
       corr_threshold: 0.5
