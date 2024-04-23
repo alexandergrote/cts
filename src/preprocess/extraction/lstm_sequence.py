@@ -12,13 +12,15 @@ class LSTMSequence(BaseModel, BaseFeatureEncoder):
     time_column: str
     target_column: str  
 
-    def _encode(self, *, data: pd.DataFrame, **kwargs) -> dict:
+    mapping: dict = {}
+
+    def _encode_train(self, *, data: pd.DataFrame, **kwargs) -> dict:
 
         data_copy = data.copy()
 
         # one hot encode data
-        mapping = {event: i+1 for i, event in enumerate(data_copy[self.feature_column].unique())}
-        data_copy[self.feature_column] = data_copy[self.feature_column].map(mapping)
+        self.mapping = {event: i+1 for i, event in enumerate(data_copy[self.feature_column].unique())}
+        data_copy[self.feature_column] = data_copy[self.feature_column].map(self.mapping)
 
         data_copy.sort_values(by=self.time_column, inplace=True)
 
@@ -32,3 +34,24 @@ class LSTMSequence(BaseModel, BaseFeatureEncoder):
         kwargs['data'] = result
         
         return kwargs
+    
+    def _encode_test(self, *, data: pd.DataFrame, **kwargs) -> dict:
+
+        data_copy = data.copy()
+
+        data_copy[self.feature_column] = data_copy[self.feature_column].map(self.mapping)
+
+        # necessary because some values might be missing and therefore be encoding as NaN, which is a float
+        data_copy[self.feature_column] = data_copy[self.feature_column].fillna(0).astype(int)  
+        
+        data_copy.sort_values(by=self.time_column, inplace=True)
+
+        sequences = data_copy.groupby(self.id_column)[self.feature_column].apply(list).to_list()
+        targets = data_copy.groupby(self.id_column)[self.target_column].apply(lambda x: np.unique(x)[0]).to_list()
+
+        # summarize in one dataframe
+        result = pd.DataFrame(sequences)
+        result[self.target_column] = targets
+
+        return {'data': result}
+        

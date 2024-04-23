@@ -42,7 +42,9 @@ class TorchMixin:
 
         padded_sequences = torch.nn.utils.rnn.pad_sequence(x, batch_first=True, padding_value=0)
 
-        filled_tensor = torch.where(torch.isnan(padded_sequences), torch.tensor(0.0), padded_sequences)
+        filled_tensor = torch.where(torch.isnan(padded_sequences), torch.tensor(0), padded_sequences)
+
+        filled_tensor = filled_tensor.int()
 
 
         return filled_tensor

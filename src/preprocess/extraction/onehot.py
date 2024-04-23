@@ -1,5 +1,6 @@
 import pandas as pd
 from pydantic import BaseModel
+from typing import Optional, List
 
 from src.preprocess.base import BaseFeatureEncoder
 
@@ -8,9 +9,11 @@ class OneHotEncoder(BaseModel, BaseFeatureEncoder):
 
     id_column: str
     feature_column: str
-    target_column: str  
+    target_column: str
 
-    def _encode(self, *, data: pd.DataFrame, **kwargs) -> dict:
+    _columns: Optional[List[str]] = None
+
+    def _encode(self, *, data: pd.DataFrame, **kwargs) -> pd.DataFrame:
 
         data_copy = data.copy()
 
@@ -26,7 +29,32 @@ class OneHotEncoder(BaseModel, BaseFeatureEncoder):
         df_pivot = df_pivot.merge(df_maleware, left_on=self.id_column, right_on=self.id_column, how='inner')
 
         assert df_pivot.shape[0] == data_copy[self.id_column].nunique()
-
-        kwargs['data'] = df_pivot.drop(columns=[self.id_column], errors='ignore')
         
-        return kwargs
+        return df_pivot.drop(columns=[self.id_column], errors='ignore')
+    
+    def _encode_train(self, *, data: pd.DataFrame, **kwargs) -> dict:
+
+        data_train_copy = data.copy(deep=True)
+
+        data_train_copy = self._encode(data=data_train_copy)
+
+        self._columns = data_train_copy.columns.to_list()
+
+        return {'data': data_train_copy}
+
+    def _encode_test(self, *, data: pd.DataFrame, **kwargs) -> dict:
+
+        if self._columns is None:
+            raise ValueError("Needs to be fitted on training data first prior to encoding test data")
+        
+        data_test_copy = data.copy(deep=True)
+
+        data_test_copy = self._encode(data=data_test_copy)
+
+        # check for potential values that have not been observed in training data
+        columns2drop = [col for col in data_test_copy.columns.to_list() if col not in self._columns]
+        data_test_copy.drop(columns=columns2drop)
+
+        return {'data': data_test_copy}
+
+

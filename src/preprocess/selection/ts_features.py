@@ -11,7 +11,7 @@ class TimeSeriesFeatureSelection(BaseModel, BaseFeatureSelector):
     n_features: Optional[int] = None
     splitting_symbol: str
 
-    def _select_features(self, data: pd.DataFrame, **kwargs) -> pd.DataFrame:
+    def _select_features_train(self, data: pd.DataFrame, **kwargs) -> pd.DataFrame:
 
         assert 'rules' in kwargs, "Rules must be provided to the feature selector"
         
@@ -23,6 +23,7 @@ class TimeSeriesFeatureSelection(BaseModel, BaseFeatureSelector):
         data_copy = data.copy(deep=True)
 
         if self.n_features is None:
+            self._columns = data.columns.to_list()
             return data
         
         all_rules = data_copy.filter(like=self.splitting_symbol).columns.to_list()
@@ -30,6 +31,7 @@ class TimeSeriesFeatureSelection(BaseModel, BaseFeatureSelector):
         rules.sort_values(by='mean_ranking', ascending=False, inplace=True)
 
         important_sequences = rules['index'].head(self.n_features).to_list()
-        data_copy = data_copy[important_sequences + [self.target_column]]
+        
+        self._columns = important_sequences + [self.target_column]
 
-        return data_copy
+        return data_copy[self._columns]

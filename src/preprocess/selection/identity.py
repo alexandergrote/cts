@@ -9,6 +9,7 @@ class FeatureIdentity(BaseModel, BaseFeatureSelector):
 
     n_features: Optional[int] = None
 
-    def _select_features(self, *, data: pd.DataFrame, **kwargs) -> pd.DataFrame:
-        return data
+    def _select_features_train(self, *, data: pd.DataFrame, **kwargs) -> pd.DataFrame:
         
+        self._columns = data.columns.to_list()
+        return data

@@ -98,9 +98,10 @@ class MRMRFeatSelection(BaseModel, BaseFeatureSelector):
         return selected_features
          
 
-    def _select_features(self, data: pd.DataFrame, **kwargs) -> pd.DataFrame:
+    def _select_features_train(self, data: pd.DataFrame, **kwargs) -> pd.DataFrame:
 
         if self.n_features is None:
+            self._columns = data.columns.to_list()
             return data
         
         # find all relevant features - 5 features should be selected
@@ -109,4 +110,6 @@ class MRMRFeatSelection(BaseModel, BaseFeatureSelector):
 
         selected_features = self._mrmr(X, y, self.n_features)
 
-        return data[selected_features + [self.target_column]]
+        self._columns = selected_features + [self.target_column]
+
+        return data[self._columns]
