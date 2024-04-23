@@ -23,7 +23,7 @@ params:
           rule_max_length: 999
           rule_min_length: 1
           separator: " --> "
-          itertool_threshold: 5
+          itertool_threshold: 3
       multitesting:
         method: 'fdr_by'
         alpha: 0.01

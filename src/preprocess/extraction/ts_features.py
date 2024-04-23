@@ -285,7 +285,6 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
     repetitions: int = 5
     bootstrap_sampling_fraction: float = 0.8
     p_value_threshold: float = 0.01
-    support_threshold: float = 0.001
     abs_support_threshold: int = 100
     conf_threshold: float = 0.05
 
@@ -361,9 +360,8 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
                 raise ValueError(f"Attribute values does not match expectations")
 
             rules[RuleFields.RANKING.value] *= rules[attribute.value].abs()
-            mask_support = rules[RuleFields.SUPPORT.value] * num_sequences >= self.abs_support_threshold
 
-        return rules[mask_support]
+        return rules
 
     @staticmethod
     def is_subsequence(seq1, seq2):
@@ -574,6 +572,8 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
 
         result = None
 
+        support_abs_col = 'support_abs'
+
         for i in tqdm(range(self.repetitions)):
 
             # select sample
@@ -591,6 +591,9 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
             df = conf_prediction.set_index(index_column)[analysis_columns]
             df.columns = [f"{col}_{i}" for col in analysis_columns]
 
+            num_seq = data_sub[self.ts_id_columns[0]].nunique()
+            df[f'{support_abs_col}_{i}'] = df[f'{RuleFields.SUPPORT.value}_{i}'] * num_seq
+
             # merge with existing results
             # avoid for loop in doing so
             if result is None:
@@ -599,10 +602,13 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
 
             result = result.merge(df, left_index=True, right_index=True)
 
-        support_columns = result.filter(like=RuleFields.SUPPORT.value).columns
-        result = result[result[support_columns].mean(axis=1) > self.support_threshold]
+        console.log(f"{len(result)} rules before support threshold")
+
+        support_columns = result.filter(like=support_abs_col).columns
+        result = result[result[support_columns].mean(axis=1) > self.abs_support_threshold]
 
         result.reset_index(inplace=True)
+        result.drop(columns=support_columns, inplace=True)
 
         return result
 
@@ -688,7 +694,7 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
         # bootstrap rules
         console.log(f"{self.__class__.__name__}: Bootstrapped Rule Mining")
         rules = self._bootstrap(data=data_copy, **kwargs)
-        console.log(f"{len(rules)} rules")
+        console.log(f"{len(rules)} rules after support threshold")
         rules_logging_dict = {'0_bootstrapped': rules}
 
         for column in [RuleFields.SUPPORT.value, RuleFields.CONFIDENCE.value, RuleFields.RANKING.value]:
@@ -721,8 +727,6 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
         event_sequences_per_id = self._apply_rule_to_ts(rules=rules, event=data_copy)
 
         """Paper Analysis Start"""
-
-        from IPython import embed; embed()
 
         columns = [col for col in event_sequences_per_id.columns if '-->' in col]
 
