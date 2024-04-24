@@ -2,7 +2,7 @@
 
 for %%f in ("synthetic", "malware", "churn") do (
 
-    for %%s in ("baseline", "cts") do (
+    for %%s in ("baseline", "self_spm") do (
 
         echo -----------------------------------------
 
