@@ -2,7 +2,7 @@
 
 for %%f in ("synthetic", "malware", "churn") do (
 
-    for %%s in ("baseline", "cts") do (
+    for %%s in ("baseline", "spm") do (
 
         for %%n in (0, 1, 2, 3, 4, 5) do (
 
