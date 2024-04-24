@@ -2,14 +2,30 @@ class_name: src.preprocess.preprocessor.FeatureMaker
 params:
   target_column: '%target_column%'
   extractor:
-    class_name: src.preprocess.extraction.spm.SPM
+    class_name: src.preprocess.extraction.ts_features.SPMFeatureSelector
     params:
-      id_columns: 
+      repetitions: 10
+      p_value_threshold: 0.05
+      treatment_attr_name: '%target_column%'
+      treatment_attr_value: '1'
+      splitting_symbol: " --> "
+      ts_id_columns:
         - '%id_column%'
-      event_column: '%event_column%'
-      time_column: '%time_column%'
-      target_column: '%target_column%'
-      itertool_threshold: 3
+      ts_event_column: '%event_column%'
+      ts_datetime_column: '%time_column%'
+      prefixspan_config:
+        class_name: 'src.preprocess.extraction.ts_features.PrefixSpan'
+        params:
+          id_columns: [ '%id_column%']
+          event_column: '%event_column%'
+          timestamp_column: '%time_column%'
+          rule_max_length: 999
+          rule_min_length: 1
+          separator: " --> "
+          itertool_threshold: 3
+      multitesting:
+        method: 'fdr_by' # 'bonferroni'
+        alpha: 0.01
   selector:
     class_name: src.preprocess.selection.mutual_info.MutInfoFeatSelection
     params:

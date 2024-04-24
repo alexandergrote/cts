@@ -143,16 +143,40 @@ class DataLoader(BaseModel, BaseDataLoader):
 
 if __name__ == '__main__':
 
-    # configuration that often an element is selected in percent and how likely, also in percent, it is assigned to a binary class
-    configuration = {
-        'one-four': {'selection': 0.25, 'class': 1},
-        'two-five': {'selection': 0.25, 'class': 0},
-    }
+    from src.util.config_import import YamlConfigLoader
 
-    events = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten']
+    config = YamlConfigLoader.read_yaml(key='fetch_data')
 
-    n_samples = 1000
+    data_loader = DataLoader(**config['params'])
+    data = data_loader.execute()['data']
 
+    event_column = '%event_column%'
+    id_column = '%id_column%'
+    time_column = '%time_column%'
+    target_column = '%target_column%'
 
-    data_loader = DataLoader(configuration=configuration, n_samples=n_samples, sequence_elements=events)
-    data_loader.execute()
+    # unique events
+    print('unique events')
+    print(data[event_column].nunique())
+
+    # get unique event counts
+    print('event counts')
+    print(data[event_column].value_counts(normalize=False).mean())
+
+    # get average sequence length
+    print('sequence length')
+    print(data.groupby(id_column).size().mean())
+
+    # get min sequence length
+    print('min sequence length')
+    print(data.groupby(id_column).size().min())
+
+    # get max sequence length
+    print('max sequence length')
+    print(data.groupby(id_column).size().max())
+
+    # get average class distribution
+    print('class distribution')
+    print(data['%target_column%'].mean())
+
+    

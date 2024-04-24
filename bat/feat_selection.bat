@@ -5,7 +5,7 @@ for %%f in ("synthetic", "malware", "churn") do (
     python src\main.py ^
     constants=%%~f ^
     fetch_data=%%~f ^
-    preprocess=cts ^
+    preprocess=self_spm ^
     train_test_split=stratified ^
     model=xgb ^
     evaluation=ml.yaml ^

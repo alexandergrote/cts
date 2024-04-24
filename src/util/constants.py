@@ -1,13 +1,14 @@
 from pathlib import Path
 from enum import Enum
 
+CONFIG_FOLDER_NAME = "config"
 
 class Directory:
 
     ROOT = Path(__file__).parent.parent.parent
     SRC = ROOT / 'src'
     DATA = ROOT / 'data'
-    CONFIG = ROOT / "config"
+    CONFIG = ROOT / CONFIG_FOLDER_NAME
     OUTPUT_DIR = ROOT / "outputs"
     CACHING_DIR = ROOT / "caching"
     MLFLOW_TRACKING_URI = ROOT / "mlruns"
@@ -43,6 +44,14 @@ class RuleFields(BaseEnum):
 class EnvMode(BaseEnum):
     DEV = 'dev'
     PROD = 'prod'
+
+
+HYDRA_CONFIG = {
+    'config_path': str(Directory.CONFIG),
+    'config_name': File.CONFIG.stem,
+    'version_base': "1.1"
+}
+
 
 def replace_placeholder_in_dict(dictionary, placeholder, replacement):
     """

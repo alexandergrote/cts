@@ -1,12 +1,11 @@
 class_name: src.preprocess.preprocessor.FeatureMaker
 params:
+  target_column: '%target_column%'
   extractor:
     class_name: src.preprocess.extraction.ts_features.SPMFeatureSelector
     params:
       repetitions: 10
-      corr_threshold: 0.5
-      key_in_result_dict: 'data'
-      keep_class: True
+      p_value_threshold: 0.05
       treatment_attr_name: '%target_column%'
       treatment_attr_value: '1'
       splitting_symbol: " --> "
@@ -25,10 +24,12 @@ params:
           separator: " --> "
           itertool_threshold: 3
       multitesting:
-        method: 'fdr_by'
+        method: 'fdr_by' # 'bonferroni'
         alpha: 0.01
   selector:
-    class_name: src.preprocess.selection.random_forest.RFFeatSelection
+    class_name: src.preprocess.selection.ts_features.TimeSeriesFeatureSelection
     params:
       target_column: '%target_column%'
-      n_features: null      
+      splitting_symbol: " --> "
+      n_features: null
+      

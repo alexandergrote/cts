@@ -32,7 +32,7 @@ class ChurnDataloader(BaseModel, BaseDataLoader):
 
         return filepath
 
-    @pickle_cache(ignore_caching=True)
+    @pickle_cache(ignore_caching=False, cachedir=Directory.CACHING_DIR / 'churn')
     def execute(self) -> dict:
 
         data = pd.read_csv(self.path)

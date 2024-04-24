@@ -5,7 +5,7 @@ from omegaconf import DictConfig, OmegaConf
 
 # load package specific code
 from src.util.dynamic_import import DynamicImport
-from src.util.constants import Directory, File, replace_placeholder_in_dict, EnvMode
+from src.util.constants import replace_placeholder_in_dict, EnvMode, HYDRA_CONFIG
 from src.util.custom_logging import console
 from src.util.check_experiment import experiment_exists
 from src.util.environment import PydanticEnvironment
@@ -15,9 +15,7 @@ warnings.filterwarnings("ignore", category=RuntimeWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
 
 @hydra.main(
-    config_path=str(Directory.CONFIG),
-    config_name=File.CONFIG.stem,
-    version_base="1.1",
+    **HYDRA_CONFIG,
 )
 def main(cfg: DictConfig) -> None:
 
