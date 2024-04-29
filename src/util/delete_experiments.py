@@ -20,7 +20,8 @@ def delete_all_experiments():
         if exp_id == "0":
             continue
 
-        bool_cases = any(experiment.name.startswith(exp) for exp in ['tmp', 'churn', 'synthetic', 'malware', 'spm', 'cts'])
+        #bool_cases = any(experiment.name.startswith(exp) for exp in ['tmp', 'churn', 'synthetic', 'malware', 'spm', 'cts'])
+        bool_cases = any((exp in experiment.name) * ('spm' in experiment.name) for exp in ['mrmr'])
 
         if not bool_cases:
             continue

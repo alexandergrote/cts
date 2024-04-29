@@ -29,7 +29,7 @@ params:
         method: 'fdr_by'
         alpha: 0.01
   selector:
-    class_name: src.preprocess.selection.random_forest.RFFeatSelection
+    class_name: src.preprocess.selection.mrmr.MRMRFeatSelection
     params:
       target_column: '%target_column%'
       n_features: null      

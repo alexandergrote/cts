@@ -2,9 +2,9 @@
 
 for %%f in ("synthetic", "malware", "churn") do (
 
-    for %%s in ("baseline", "spm") do (
+    for %%s in ("baseline", "self_spm") do (
 
-        for %%n in (0, 1, 2, 3, 4, 5) do (
+        for %%n in (0, 1, 2, 3, 4) do (
 
             python src\main.py ^
             constants=%%~f ^
