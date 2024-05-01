@@ -733,7 +733,7 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
         result = {}
 
         for column in columns:
-            result[column] = event_sequences_per_id[event_sequences_per_id[column]][self.treatment_attr_name].mean() - event_sequences_per_id[self.treatment_attr_name].mean()
+            result[column] = event_sequences_per_id[event_sequences_per_id[column]][self.treatment_attr_name].mean() #- event_sequences_per_id[self.treatment_attr_name].mean()
 
         result = pd.Series(result)
         result.name = 'deviation_from_mean_target'
