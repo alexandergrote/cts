@@ -6,7 +6,7 @@ from datetime import datetime
 from pydantic import BaseModel
 from typing import List, Optional
 
-from src.preprocess.extraction.ts_features import PrefixSpan, RuleClassifier
+from src.preprocess.extraction.v1.ts_features import PrefixSpan, RuleClassifier
 from src.preprocess.base import BaseFeatureEncoder
 from src.util.caching import PickleCacheHandler, hash_dataframe
 from src.util.custom_logging import console

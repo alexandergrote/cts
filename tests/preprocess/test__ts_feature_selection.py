@@ -1,6 +1,7 @@
 import unittest
 from src.preprocess.extraction.ts_features import PrefixSpan
 
+
 class TestPrefixSpan(unittest.TestCase):
 
     def setUp(self):
