@@ -1,6 +1,6 @@
 from collections import defaultdict
 
-def prefixspan(prefix, projected_db, min_support):
+def prefixspan(prefix, projected_db, min_support, classes):
     """
     Recursive function that generates sequential patterns using the PrefixSpan algorithm.
     
@@ -9,19 +9,36 @@ def prefixspan(prefix, projected_db, min_support):
     :param min_support: Minimum support threshold for patterns.
     :return: A list of frequent sequential patterns.
     """
+
+    assert len(projected_db) == len(classes)
+
     patterns = []
     freq_items = defaultdict(int)
+    freq_items_pos = defaultdict(int)
+    freq_items_neg = defaultdict(int)
 
     # can't i just count the class values here as well?
     # maybe pass a mask of the class values as an argument
 
     # Count support for each item in the projected database
-    for sequence in projected_db:
+    for sequence, class_value in zip(projected_db, classes):
+
         used = set()
+
         for item in sequence:
-            if item not in used:
-                freq_items[item] += 1
-                used.add(item)
+
+            if item in used:
+                continue
+
+            freq_items[item] += 1
+
+            if class_value == 0:
+                freq_items_neg[item] += 1
+
+            if class_value == 1:
+                freq_items_pos[item] += 1
+
+            used.add(item)
 
     print("x"*10)
     print(freq_items)
@@ -30,26 +47,39 @@ def prefixspan(prefix, projected_db, min_support):
 
     # Check each frequent item and recursively grow the pattern
     for item, count in freq_items.items():
+
         if count >= min_support:
+
             new_prefix = prefix + [item]
-            patterns.append((new_prefix, count))
+            patterns.append((new_prefix, count, freq_items_neg.get(item, 0), freq_items_pos.get(item, 0)))
 
             # Project the database for the new prefix
             new_projected_db = []
-            for sequence in projected_db:
+            new_classes = []
+
+            for sequence, class_value in zip(projected_db, classes):
+
                 try:
                     index = sequence.index(item)
                     new_projected_db.append(sequence[index+1:])
+                    new_classes.append(class_value)
                 except ValueError:
                     continue
             
             print("-"*10)
             print(new_projected_db)
 
+            # if the new projected db does not have enough entries
+            # that could satisfy the min support threshold
+            # continue with next iteration
+            if len(new_projected_db) < min_support:
+                continue
+
             # Recursive call
-            patterns.extend(prefixspan(new_prefix, new_projected_db, min_support))
+            patterns.extend(prefixspan(new_prefix, new_projected_db, min_support, new_classes))
 
     return patterns
+
 
 def main():
 
@@ -62,12 +92,16 @@ def main():
         ['A', 'B', 'D', 'E']
     ]
 
+    classes = [
+        0, 0, 1, 1, 1
+    ]
+
     min_support = 2  # Minimum support threshold
-    patterns = prefixspan([], database, min_support)
+    patterns = prefixspan([], database, min_support, classes)
 
     # Display the patterns
-    for pattern, support in patterns:
-        print(f"Pattern: {pattern}, Support: {support}")
+    for pattern, support, support_neg, support_pos in patterns:
+        print(f"Pattern: {pattern}, Support: {support}, Support Neg: {support_neg}, Support Pos: {support_pos}")
 
 if __name__ == "__main__":
     main()
