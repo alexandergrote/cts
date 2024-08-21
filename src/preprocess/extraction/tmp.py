@@ -1,7 +1,7 @@
 from collections import defaultdict
+from memory_profiler import profile
 
-
-def prefixspan(prefix, projected_db, min_support, classes):
+def prefixspan(prefix, projected_db, min_support, max_length, classes):
     """
     Recursive function that generates sequential patterns using the PrefixSpan algorithm.
     
@@ -77,12 +77,12 @@ def prefixspan(prefix, projected_db, min_support, classes):
                 continue
 
             # Recursive call
-            patterns.extend(prefixspan(new_prefix, new_projected_db, min_support, new_classes))
+            patterns.extend(prefixspan(new_prefix, new_projected_db, min_support, max_length, new_classes))
 
     return patterns
 
 
-def prefixspan_iterative(database, min_support, classes):
+def prefixspan_iterative(database, min_support, max_length, classes):
 
     assert len(database) == len(classes)
 
@@ -120,31 +120,33 @@ def prefixspan_iterative(database, min_support, classes):
 
         for item, count in freq_items.items():
 
-            if count >= min_support:
+            if count < min_support:
+                continue
 
-                new_prefix = prefix + [item]
-                patterns.append((new_prefix, count, freq_items_neg.get(item, 0), freq_items_pos.get(item, 0)))
+            if len(prefix) + 1 > max_length:
+                continue
 
-                new_projected_db = []
-                new_classes = []
+            new_prefix = prefix + [item]
+            
+            patterns.append((new_prefix, count, freq_items_neg.get(item, 0), freq_items_pos.get(item, 0)))
 
-                for sequence, class_value in zip(projected_db, projected_classes):
+            new_projected_db = []
+            new_classes = []
 
-                    try:
+            for sequence, class_value in zip(projected_db, projected_classes):
 
-                        index = sequence.index(item)
-                        new_projected_db.append(sequence[index + 1:])
-                        new_classes.append(class_value)
+                try:
 
-                    except ValueError:
-                        continue
+                    index = sequence.index(item)
+                    new_projected_db.append(sequence[index + 1:])
+                    new_classes.append(class_value)
 
-                stack.append((new_prefix, new_projected_db, new_classes))
+                except ValueError:
+                    continue
+
+            stack.append((new_prefix, new_projected_db, new_classes))
 
     return patterns
-
-
-dummy_list = [('a', 2, 1, 1), ('b', 2, 1,3)]
 
 
 def yield_iterative_prefixspan(database, min_support, classes):
@@ -152,21 +154,61 @@ def yield_iterative_prefixspan(database, min_support, classes):
     stack = [([], database, classes)]
     patterns = []
 
-    def my_helper():
+    def stack_generator(stack):
+        while stack:
 
-        if len(dummy_list) > 0:
-            yield dummy_list.pop()
+            prefix, projected_db, projected_classes = stack.pop()
 
-    while stack:
+            freq_items = defaultdict(int)
+            freq_items_pos = defaultdict(int)
+            freq_items_neg = defaultdict(int)
 
-        args = stack.pop()
+            assert len(projected_db) == len(projected_classes)
 
-        patterns.append(
-            my_helper()
-        )
+            for sequence, class_value in zip(projected_db, projected_classes):
 
-        print(stack)
-        print(patterns)
+                used = set()
+                
+                for item in sequence:
+                    if item in used:
+                        continue
+
+                    freq_items[item] += 1
+
+                    if class_value == 0:
+                        freq_items_neg[item] += 1
+
+                    if class_value == 1:
+                        freq_items_pos[item] += 1
+
+                    used.add(item)
+
+            for item, count in freq_items.items():
+
+                if count >= min_support:
+
+                    new_prefix = prefix + [item]
+                    yield (new_prefix, count, freq_items_neg.get(item, 0), freq_items_pos.get(item, 0))
+
+                    new_projected_db = []
+                    new_classes = []
+
+                    for sequence, class_value in zip(projected_db, projected_classes):
+
+                        try:
+
+                            index = sequence.index(item)
+                            new_projected_db.append(sequence[index + 1:])
+                            new_classes.append(class_value)
+
+                        except ValueError:
+                            continue
+
+                    stack.append((new_prefix, new_projected_db, new_classes))
+
+    for value in stack_generator(stack):
+        patterns.append(value)
+
 
     return patterns
 
@@ -178,7 +220,7 @@ def main():
         ['A', 'B', 'C', 'D'],
         ['A', 'B', 'C', 'D'],
         ['A', 'C', 'B', 'E'],
-        ['A', 'B', 'C', 'B'],
+        ['A', 'B', 'C', 'E'],
         ['B', 'C', 'E'],
         ['A', 'B', 'D', 'E']
     ]
@@ -188,16 +230,13 @@ def main():
     ]
 
     min_support = 2  # Minimum support threshold
-    patterns = prefixspan([], database, min_support, classes)
-    patterns = prefixspan_iterative(database=database, min_support=min_support, classes=classes)
-    patterns = yield_iterative_prefixspan(database=database, min_support=min_support, classes=classes)
-
-    print(patterns)
+    patterns = prefixspan([], database, min_support, 3, classes)
+    patterns = prefixspan_iterative(database=database, min_support=min_support, max_length=3, classes=classes)
+    #patterns = yield_iterative_prefixspan(database=database, min_support=min_support, classes=classes)
 
     # Display the patterns
     #for pattern, support, support_neg, support_pos in patterns:
-    for gen in patterns:
-        pattern, support, support_neg, support_pos = gen
+    for pattern, support, support_neg, support_pos in patterns:
         print(f"Pattern: {pattern}, Support: {support}, Support Neg: {support_neg}, Support Pos: {support_pos}")
 
 
