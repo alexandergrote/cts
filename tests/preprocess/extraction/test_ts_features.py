@@ -1,79 +1,44 @@
 import pandas as pd
+import unittest
 
-from unittest import TestCase
+from datetime import datetime
 
-from src.preprocess.extraction.ts_features import PrefixSpanDataset, Sequence, PrefixSpan
+from src.preprocess.extraction.ts_features import PrefixSpanDataset, AnnotatedSequence
 
 
-class TestPrefixSpanDataset(TestCase):
+class TestPrefixSpanDataset(unittest.TestCase):
 
     def setUp(self) -> None:
 
-        self.id_columns = ['id1', 'id2']
-        self.event_column = 'event'
+        self.id_column = 'id_column'
+        self.time_column = 'time_column'
+        self.event_column = 'event_column'
+        self.class_column = 'class_column'
 
         self.raw_data = pd.DataFrame({
-            'id1': ['a', 'a', 'a', 'b', 'b'],
-            'id2': ['aa', 'aa', 'a', 'bb', 'bb'],
-            'event': [1,2,3,5,4]
+            self.id_column: ['a', 'a', 'a', 'b', 'b'],
+            self.time_column: [datetime(2020, 1, 1, 12, i) for i in range(5)],
+            self.event_column: [1,2,3,5,4],
+            self.class_column: [1, 0, 1, 0, 1]
         })
 
     def test_get_sequences(self):
 
         dataset = PrefixSpanDataset(
-            id_columns=self.id_columns,
+            id_column=self.id_column,
             event_column=self.event_column,
+            time_column=self.time_column,
+            class_column=self.class_column,
             raw_data=self.raw_data
         )
 
         sequences = dataset.get_sequences()
 
         self.assertIsInstance(sequences, list)
-        self.assertTrue(all([isinstance(el, Sequence) for el in sequences]))
-        self.assertEqual([el.sequence_values for el in sequences], [['1','2'], ['5','4']])
-        self.assertEqual([el.id_values for el in sequences], [['a', 'aa'], ['b', 'bb']])
+        self.assertTrue(all([isinstance(el, AnnotatedSequence) for el in sequences]))
+        self.assertEqual([el.sequence_values for el in sequences], [['1','2', '3'], ['5','4']])
+        self.assertEqual([el.id_value for el in sequences], ['a', 'b'])
 
 
-class TestPrefixSpan(TestCase):
-
-    def setUp(self) -> None:
-        
-        self.sequences = [
-            Sequence(id_values=['a', 'aa'], sequence_values=['1', '2']),
-            Sequence(id_values=['b', 'bb'], sequence_values=['1', '3', '2'])
-        ]
-
-        self.prefix_span = PrefixSpan()
-
-    def test_get_combinations(self):
-
-        combinations = self.prefix_span.get_combinations(self.sequences[1].sequence_values)
-
-        combinations_expected = [('1', '3', '2'), ('1', '3'), ('1', '2'), ('3', '2'), ('1',), ('2',), ('3',)]
-
-        # check if all expected combinations are contained
-        for comb_expected in combinations_expected:
-            self.assertIn(comb_expected, combinations)
-
-        # check if there are additional combinations
-        self.assertEqual(len(combinations), len(combinations_expected))
-
-    
-    def test_get_support(self):
-
-        support = self.prefix_span.get_support(self.sequences)
-
-        expected_support = {
-            '1 --> 2': 2, 
-            '2': 2, 
-            '1': 2, 
-            '3 --> 2': 1, 
-            '1 --> 3 --> 2': 1, 
-            '1 --> 3': 1, 
-            '3': 1
-        }
-
-        self.assertEqual(support, expected_support)
-        self.assertTrue('2 --> 1' not in support)
-
-
+if __name__ == '__main__':
+    unittest.main()

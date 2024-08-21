@@ -1,44 +1,66 @@
 from .v1.ts_features import *
 
 import pandas as pd
-from pydantic import  BaseModel
+import pandera as pa
+from datetime import datetime
+from pydantic import  BaseModel, model_validator
 from pydantic.config import ConfigDict
 from typing import List, Iterable, Tuple, Dict
 from itertools import chain, combinations, product
+from pandera.typing import DataFrame, Series
 
 from src.preprocess.util.rules import Rule
 
 
-class Sequence(BaseModel):
-    id_values: List[str]
+class AnnotatedSequence(BaseModel):
+    id_value: str
     sequence_values: List[str]
+    class_value: int
+
+
+class PrefixSpanDatasetSchema(pa.DataFrameModel):
+    event_column: Series[str] = pa.Field(coerce=True)
+    time_column: Series[datetime]
+    class_column: Series[int]
+    id_column: Series[str]
 
 
 class PrefixSpanDataset(BaseModel):
 
-    id_columns: List[str]
-    event_column: str
-    raw_data: pd.DataFrame
+    raw_data: DataFrame[PrefixSpanDatasetSchema]
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    def get_sequences(self) -> List[Sequence]:
+    def get_sequences(self) -> List[AnnotatedSequence]:
 
-        data_copy = self.raw_data.copy(deep=True)
+        data_copy = self.raw_data.copy(deep=True) 
 
         # ensure that the events are strings
-        data_copy[self.event_column] = data_copy[self.event_column].astype(str)
+        data_copy[PrefixSpanDatasetSchema.event_column] = data_copy[PrefixSpanDatasetSchema.event_column].astype(str)
 
         # since we are interested in calculating confidence of rules
         # we need at least a sequence with length 2
         # as a first step, we can remove all sequences with length 1
-        sequence_nunique = data_copy.groupby(self.id_columns)[self.event_column].nunique() != 1
+        sequence_nunique = data_copy.groupby([PrefixSpanDatasetSchema.id_column])[PrefixSpanDatasetSchema.event_column].nunique() != 1
         sequence_nunique.name = 'to_keep'
-        data_copy = data_copy.merge(sequence_nunique, left_on=self.id_columns, right_index=True)
+        data_copy = data_copy.merge(sequence_nunique, left_on=[PrefixSpanDatasetSchema.id_column], right_index=True)
         data_copy = data_copy[data_copy['to_keep'] == True]
-        sequences = data_copy.groupby(self.id_columns)[self.event_column].apply(list)
 
-        return [Sequence(id_values=list(index), sequence_values=value) for index, value in sequences.items()]
+        data_copy_grouped = data_copy.groupby([PrefixSpanDatasetSchema.id_column])
+
+        sequences = data_copy_grouped[PrefixSpanDatasetSchema.event_column].apply(list)
+        classes = data_copy_grouped[PrefixSpanDatasetSchema.class_column].apply(list)
+
+        result = []
+
+        for (index, value), class_value in zip(sequences.items(), classes):
+            result.append(AnnotatedSequence(
+                id_value=index[0][0], 
+                sequence_values=value, 
+                class_value=class_value[0]
+                ))
+
+        return result
     
 
 class PrefixSpanNew(BaseModel):
@@ -66,7 +88,7 @@ class PrefixSpanNew(BaseModel):
 
         return list(final_combinations)
 
-    def get_support(self, sequences: List[Sequence]) -> Dict[str, int]:
+    def get_support(self, sequences: List[AnnotatedSequence]) -> Dict[str, int]:
 
         # additionally, we need to keep track of the support of each sequence
         # so we can calculate confidence of rules
@@ -109,7 +131,7 @@ class PrefixSpanNew(BaseModel):
 
         return sequence_supports
 
-    def get_rules(self, sequence_supports: dict) -> List[]:
+    def get_rules(self, sequence_supports: dict):
         
         # to calculate the confidence of rules, we need to iterate over the sequence_supports dictionary
         rule_confidences = {}
@@ -151,7 +173,7 @@ class PrefixSpanNew(BaseModel):
 
         return rules
 
-    def execute(self, dataset: PrefixSpanDataset) -> List[Sequence]:
+    def execute(self, dataset: PrefixSpanDataset) -> List[AnnotatedSequence]:
 
         sequences = dataset.get_sequences()
 
