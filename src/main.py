@@ -83,8 +83,7 @@ def main(cfg: DictConfig) -> None:
 
     console.log("Starting Preprocessing")
     output = preprocessor.execute(**output, case_name=experiment_name)
-    console.log("Finished Preprocessing")
-
+    
     console.log("Model Training & Inference")
     model.fit(**output)
     output = model.predict(**output)

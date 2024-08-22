@@ -17,6 +17,20 @@ class AnnotatedSequence(BaseModel):
     class_value: int
 
 
+class DatasetProcessedSchema(pa.DataFrameModel):
+
+    antecedent: Series[List[str]]
+    consequent: Series[List[str]]
+
+    support: Series[int]
+    support_pos: Series[int]
+    support_neg: Series[int]
+
+    confidence: Series[float]
+    confidence_pos: Series[float]
+    confidence_neg: Series[float]
+
+
 class FrequentPatternWithConfidence(BaseModel):
 
     antecedent: List[str]
@@ -105,16 +119,16 @@ class StackObject(BaseModel):
         return cls(prefix=prefix, database=database, classes=classes)
 
 
-class PrefixSpanDatasetSchema(pa.DataFrameModel):
+class DatasetSchema(pa.DataFrameModel):
     event_column: Series[str] = pa.Field(coerce=True)
     time_column: Series[datetime]
     class_column: Series[int]
     id_column: Series[str]
 
 
-class PrefixSpanDataset(BaseModel):
+class Dataset(BaseModel):
 
-    raw_data: DataFrame[PrefixSpanDatasetSchema]
+    raw_data: DataFrame[DatasetSchema]
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -123,20 +137,20 @@ class PrefixSpanDataset(BaseModel):
         data_copy = self.raw_data.copy(deep=True) 
 
         # ensure that the events are strings
-        data_copy[PrefixSpanDatasetSchema.event_column] = data_copy[PrefixSpanDatasetSchema.event_column].astype(str)
+        data_copy[DatasetSchema.event_column] = data_copy[DatasetSchema.event_column].astype(str)
 
         # since we are interested in calculating confidence of rules
         # we need at least a sequence with length 2
         # as a first step, we can remove all sequences with length 1
-        sequence_nunique = data_copy.groupby([PrefixSpanDatasetSchema.id_column])[PrefixSpanDatasetSchema.event_column].nunique() != 1
+        sequence_nunique = data_copy.groupby([DatasetSchema.id_column])[DatasetSchema.event_column].nunique() != 1
         sequence_nunique.name = 'to_keep'
-        data_copy = data_copy.merge(sequence_nunique, left_on=[PrefixSpanDatasetSchema.id_column], right_index=True)
+        data_copy = data_copy.merge(sequence_nunique, left_on=[DatasetSchema.id_column], right_index=True)
         data_copy = data_copy[data_copy['to_keep'] == True]
 
-        data_copy_grouped = data_copy.groupby([PrefixSpanDatasetSchema.id_column])
+        data_copy_grouped = data_copy.groupby([DatasetSchema.id_column])
 
-        sequences = data_copy_grouped[PrefixSpanDatasetSchema.event_column].apply(list)
-        classes = data_copy_grouped[PrefixSpanDatasetSchema.class_column].apply(list)
+        sequences = data_copy_grouped[DatasetSchema.event_column].apply(list)
+        classes = data_copy_grouped[DatasetSchema.class_column].apply(list)
 
         result = []
 
@@ -309,7 +323,7 @@ class PrefixSpanNew(BaseModel):
 
     def execute(self, dataset: pd.DataFrame) -> pd.DataFrame:
 
-        prefix_df = PrefixSpanDataset(
+        prefix_df = Dataset(
             raw_data=dataset
         )
 
@@ -326,3 +340,72 @@ class PrefixSpanNew(BaseModel):
         ])
 
         return data
+
+
+class SPMFeatureSelectorNew(BaseModel, BaseFeatureEncoder):
+
+    prefixspan_config: dict
+
+    bootstrap_repetitions: int = 5
+    bootstrap_sampling_fraction: float = 0.8
+
+    def _bootstrap_id_selection(self, data: pd.DataFrame, random_state: int) -> pd.DataFrame:
+
+        data_unique = data[[DatasetSchema.id_column, DatasetSchema.class_column]].drop_duplicates()
+        
+        assert data_unique[DatasetSchema.id_column].duplicated().sum() == 0, "id-target-mapping should be unique"
+        
+        sss = StratifiedShuffleSplit(n_splits=1, test_size=1-self.bootstrap_sampling_fraction, random_state=random_state)
+        generator = sss.split(data_unique[DatasetSchema.id_column].values.reshape(-1,), data_unique[DatasetSchema.class_column].values)
+
+        for train_index, _ in generator:
+            mask = data[DatasetSchema.id_column].isin(data_unique.iloc[train_index][DatasetSchema.id_column])
+
+        return data[mask]
+
+    def _bootstrap(self, *, data: pd.DataFrame, **kwargs) -> pd.DataFrame:
+
+        prefix: PrefixSpanNew = DynamicImport.import_class_from_dict(
+            dictionary=self.prefixspan_config
+        )
+
+        predictions = []
+
+        for i in tqdm(range(self.bootstrap_repetitions)):
+
+            # select sample
+            data_sub = data.groupby(DatasetSchema.class_column, group_keys=False).apply(
+                lambda x: self._bootstrap_id_selection(data=x, random_state=i)
+            )
+
+            # get output on sample
+            prediction = prefix.execute(dataset=data_sub, **kwargs)
+    
+            predictions.append(prediction)
+
+        predictions_df = pd.concat(predictions).reset_index(drop=True)
+        
+        predictions_df[DatasetSchema.id_column] = \
+            predictions_df[DatasetProcessedSchema.antecedent].astype('str') + \
+                  predictions_df[DatasetProcessedSchema.consequent].astype('str')
+
+        # todo: change for delta confidence
+        predictions_grouped = predictions_df.groupby([DatasetSchema.id_column])['confidence'].agg(['mean', 'std'])
+
+        predictions_grouped.reset_index(inplace=True)
+
+        return predictions_df
+
+    def _encode_train(self, *args, data: pd.DataFrame, **kwargs):
+
+        # work on copy
+        data_copy = data.copy(deep=True)
+
+        # bootstrap rules
+        console.log(f"{self.__class__.__name__}: Bootstrapped Rule Mining")
+        
+        return super()._encode_train(*args, **kwargs)
+    
+    def _encode_test(self, *args, data: pd.DataFrame, **kwargs):
+        return super()._encode_test(*args, **kwargs)
+

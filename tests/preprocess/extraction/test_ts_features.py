@@ -3,9 +3,9 @@ import unittest
 
 from datetime import datetime
 
-from src.preprocess.extraction.ts_features import PrefixSpanDataset, \
+from src.preprocess.extraction.ts_features import Dataset, \
     AnnotatedSequence, PrefixSpanNew, FrequentPatternWithConfidence, \
-    FrequentPattern
+    FrequentPattern, SPMFeatureSelectorNew
 
 
 class TestPrefixSpanDataset(unittest.TestCase):
@@ -26,7 +26,7 @@ class TestPrefixSpanDataset(unittest.TestCase):
 
     def test_get_sequences(self):
 
-        dataset = PrefixSpanDataset(
+        dataset = Dataset(
             id_column=self.id_column,
             event_column=self.event_column,
             time_column=self.time_column,
@@ -78,7 +78,7 @@ class TestPrefixSpanNew(unittest.TestCase):
                 
         self.raw_data = pd.DataFrame.from_records(records)
 
-        self.prefix_df = PrefixSpanDataset(
+        self.prefix_df = Dataset(
             raw_data=self.raw_data
         )
 
@@ -144,6 +144,61 @@ class TestPrefixSpanNew(unittest.TestCase):
                 self.assertIsInstance(record, dict)
                 self.assertIsInstance(FrequentPatternWithConfidence(**record), FrequentPatternWithConfidence)
         
+class TestSPMFeatureSelection(unittest.TestCase):
+
+    def setUp(self) -> None:
+        
+        # Example dataset: a list of sequences
+        self.database = [
+            ['A', 'B', 'C', 'D'],
+            ['A', 'B', 'C', 'D'],
+            ['A', 'C', 'B', 'E'],
+            ['A', 'B', 'C', 'E'],
+            ['B', 'C', 'E'],
+            ['A', 'B', 'D', 'E']
+        ]
+
+        self.classes = [
+            0, 1, 0, 1, 1, 1
+        ]
+
+        self.timestamps = [datetime(2020, 1, 1, 12, i) for i in range(len(self.database))]
+
+        self.id_values = ['a', 'b', 'c', 'd', 'e', 'f']
+
+        # create dataframe entry for each element in database
+        records = []
+
+        for i, el in enumerate(self.database):
+            for event in el:
+
+                records.append({
+                    'id_column': self.id_values[i],
+                    'time_column': self.timestamps[i],
+                    'event_column': event,
+                    'class_column': self.classes[i]
+                    })
+                
+        self.raw_data = pd.DataFrame.from_records(records)
+
+        self.prefix_df = Dataset(
+            raw_data=self.raw_data
+        )
+
+        self.prefixspan_config = {
+            'class_name': 'src.preprocess.extraction.ts_features.PrefixSpanNew',
+            'params': {}
+        }
+
+    def test__bootstrap(self):
+
+        feat_alg = SPMFeatureSelectorNew(
+            prefixspan_config=self.prefixspan_config
+        )
+
+        result = feat_alg._bootstrap(data=self.raw_data)
+    
+        print(result)
 
 if __name__ == '__main__':
     unittest.main()
