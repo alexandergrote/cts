@@ -11,7 +11,7 @@ class Rule(BaseModel):
     """
 
     antecedent: Any
-    precedent: str
+    consequent: str
 
     # metrics
     support: Optional[float] = None

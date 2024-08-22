@@ -3,7 +3,9 @@ import unittest
 
 from datetime import datetime
 
-from src.preprocess.extraction.ts_features import PrefixSpanDataset, AnnotatedSequence, PrefixSpanNew
+from src.preprocess.extraction.ts_features import PrefixSpanDataset, \
+    AnnotatedSequence, PrefixSpanNew, FrequentPatternWithConfidence, \
+    FrequentPattern
 
 
 class TestPrefixSpanDataset(unittest.TestCase):
@@ -76,16 +78,15 @@ class TestPrefixSpanNew(unittest.TestCase):
                 
         self.raw_data = pd.DataFrame.from_records(records)
 
+        self.prefix_df = PrefixSpanDataset(
+            raw_data=self.raw_data
+        )
 
     def test_get_item_counts(self):
 
         prefixspan = PrefixSpanNew()
 
-        prefix_df = PrefixSpanDataset(
-            raw_data=self.raw_data
-        )
-
-        sequences = prefix_df.get_sequences()
+        sequences = self.prefix_df.get_sequences()
 
         database = [sequence.sequence_values for sequence in sequences]
         classes = [sequence.class_value for sequence in sequences]
@@ -96,14 +97,53 @@ class TestPrefixSpanNew(unittest.TestCase):
             with self.subTest(msg=f'item: {el}'):
                 self.assertIsInstance(el, dict)
 
+    def test_get_frequent_patterns(self):
+
+        prefixspan = PrefixSpanNew(
+            min_support_abs=2,
+        )
+
+        freq_patterns = prefixspan.get_frequent_patterns(
+            self.prefix_df.get_sequences()
+        )
+
+        self.assertIsInstance(freq_patterns, list)
+        self.assertTrue(all([isinstance(el, FrequentPattern) for el in freq_patterns]))
+
+        freq_pattern_first = FrequentPattern(
+            sequence_values=['A'],
+            support=5,
+            support_pos=3, 
+            support_neg=2
+        )
+
+        freq_pattern_last = FrequentPattern(
+            sequence_values=['A', 'B', 'C', 'D'], 
+            support=2, 
+            support_pos=1, 
+            support_neg=1
+        )
+
+        self.assertTrue(freq_pattern_first == freq_patterns[0])
+        self.assertTrue(freq_pattern_last == freq_patterns[-1])
+        self.assertTrue(len(freq_patterns) == 22)
+
+
     def test_execute(self):
 
         prefixspan = PrefixSpanNew()
 
         result = prefixspan.execute(self.raw_data)
 
-        print(result)
+        self.assertIsInstance(result, pd.DataFrame)
+        
+        records = result.to_dict(orient="records")
 
+        for record in records:
+            with self.subTest(msg=f'record: {record}'):
+                self.assertIsInstance(record, dict)
+                self.assertIsInstance(FrequentPatternWithConfidence(**record), FrequentPatternWithConfidence)
+        
 
 if __name__ == '__main__':
     unittest.main()

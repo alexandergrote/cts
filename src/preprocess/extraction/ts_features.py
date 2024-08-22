@@ -10,26 +10,57 @@ from pydantic.config import ConfigDict
 from typing import List, Tuple, Dict
 from pandera.typing import DataFrame, Series
 
-from src.preprocess.util.rules import Rule
-
 
 class AnnotatedSequence(BaseModel):
     id_value: str
     sequence_values: List[str]
     class_value: int
 
+
+class FrequentPatternWithConfidence(BaseModel):
+
+    antecedent: List[str]
+    consequent: List[str]
+
+    support: int
+    support_pos: int
+    support_neg: int
+
+    confidence: float
+    confidence_pos: float
+    confidence_neg: float
+
+    @property
+    def delta_confidence(self) -> float:
+        return self.confidence_pos - self.confidence_neg
+    
+    @property
+    def inverse_entropy(self) -> float:
+
+        entropy = EntropyCalculator.calculate_entropy(
+            probability= self.support_pos / self.support
+        )
+
+        return 1 - entropy
+
+
 class FrequentPattern(BaseModel):
+
     sequence_values: List[str]
 
     support: int
     support_pos: int
     support_neg: int
 
-    # will only be calculated for sequences with length > 2
-    confidence: Optional[float] = None  
-    confidence_pos: Optional[float] = None
-    confidence_neg: Optional[float] = None
-    delta_confidence: Optional[float] = None
+    @property
+    def inverse_entropy(self) -> float:
+
+        entropy = EntropyCalculator.calculate_entropy(
+            probability= self.support_pos / self.support
+        )
+
+        return 1 - entropy
+
 
 class ConfidenceCalculator:
 
@@ -37,9 +68,24 @@ class ConfidenceCalculator:
     def calculate_confidence(support_antecedent: int, support_antecedent_and_consequent: int) -> float:
         
         assert support_antecedent >= support_antecedent_and_consequent, f"support antecedent {support_antecedent} should be greater or equal to support antecedent and consequent {support_antecedent_and_consequent}"
-        assert support_antecedent > 0, f"support antecedent {support_antecedent} should be greater than 0"
+        assert support_antecedent >= 0, f"support antecedent {support_antecedent} should be greater than 0"
+
+        if support_antecedent == 0:
+            return 0
 
         return support_antecedent_and_consequent / support_antecedent
+
+
+class EntropyCalculator:
+
+    @staticmethod
+    def calculate_entropy(probability: float) -> float:
+
+        if probability == 0 or probability == 1:
+            return 0
+
+        return -probability * np.log2(probability) - (1-probability) * np.log2(1-probability)
+
 
 class StackObject(BaseModel):
     database: List[List[str]]
@@ -58,11 +104,13 @@ class StackObject(BaseModel):
         
         return cls(prefix=prefix, database=database, classes=classes)
 
+
 class PrefixSpanDatasetSchema(pa.DataFrameModel):
     event_column: Series[str] = pa.Field(coerce=True)
     time_column: Series[datetime]
     class_column: Series[int]
     id_column: Series[str]
+
 
 class PrefixSpanDataset(BaseModel):
 
@@ -100,10 +148,9 @@ class PrefixSpanDataset(BaseModel):
                 ))
 
         return result
-    
-class PrefixSpanNew(BaseModel):
 
-    rule_symbol: str = " --> "
+
+class PrefixSpanNew(BaseModel):
     
     max_sequence_length: conint(ge=0) = sys.maxsize
     min_support_abs: conint(ge=0) = 0
@@ -160,11 +207,6 @@ class PrefixSpanNew(BaseModel):
 
             stack_object = stack.pop()
 
-            lookup_exist: bool = False
-            if len(frequent_pattern_lookup) > 0:
-                lookup_exist = True
-                counts_old, counts_old_neg, counts_old_pos = frequent_pattern_lookup.pop()
-
             counts, counts_neg, counts_pos = self.get_item_counts(
                 stack_object.database,
                 stack_object.classes
@@ -180,37 +222,11 @@ class PrefixSpanNew(BaseModel):
 
                 new_prefix = stack_object.prefix + [item]
 
-                confidence, confidence_pos, confidence_neg = None, None, None
-                confidence_difference = None
-
-                if lookup_exist:
-
-                    confidence = ConfidenceCalculator.calculate_confidence(
-                        support_antecedent=counts_old[item],
-                        support_antecedent_and_consequent=counts[item]
-                    )
-
-                    confidence_pos = ConfidenceCalculator.calculate_confidence(
-                        support_antecedent=counts_old_pos[item],
-                        support_antecedent_and_consequent=counts_pos[item]
-                    )
-
-                    confidence_neg = ConfidenceCalculator.calculate_confidence(
-                        support_antecedent=counts_old_neg[item],
-                        support_antecedent_and_consequent=counts_neg[item]
-                    )
-
-                    confidence_difference = confidence_pos - confidence_neg
-
                 frequent_pattern = FrequentPattern(
                     sequence_values=new_prefix,
                     support=count,
                     support_pos=counts_pos.get(item, 0),
                     support_neg=counts_neg.get(item, 0),
-                    confidence=confidence,
-                    confidence_pos=confidence_pos,
-                    confidence_neg=confidence_neg,
-                    delta_confidence=confidence_difference
                 )
 
                 patterns.append(frequent_pattern)
@@ -240,7 +256,58 @@ class PrefixSpanNew(BaseModel):
 
         return patterns
 
-    def execute(self, dataset: pd.DataFrame) -> List[AnnotatedSequence]:
+    def get_frequent_patterns_with_confidence(self, frequent_patterns: List[FrequentPattern]) -> List[FrequentPattern]:
+
+        lookup = {str(pattern.sequence_values): pattern for pattern in frequent_patterns}
+        
+        rules = []
+
+        for sequence in frequent_patterns:
+
+            if len(sequence.sequence_values) == 1:
+                continue
+
+            for i in range(len(sequence.sequence_values)):
+
+                antecedent = sequence.sequence_values[:i + 1]
+                consequent = sequence.sequence_values[i + 1:]
+
+                if len(consequent) == 0:
+                    continue
+
+                antecedent_pattern = lookup[str(antecedent)]
+
+                confidence = ConfidenceCalculator.calculate_confidence(
+                    support_antecedent=antecedent_pattern.support,
+                    support_antecedent_and_consequent=sequence.support
+                )
+
+                confidence_pos = ConfidenceCalculator.calculate_confidence(
+                    support_antecedent=antecedent_pattern.support_pos,
+                    support_antecedent_and_consequent=sequence.support_pos
+                )
+
+                confidence_neg = ConfidenceCalculator.calculate_confidence(
+                    support_antecedent=antecedent_pattern.support_neg,
+                    support_antecedent_and_consequent=sequence.support_neg
+                )
+
+                rules.append(
+                    FrequentPatternWithConfidence(
+                        antecedent=antecedent,
+                        consequent=consequent,
+                        support=sequence.support,
+                        support_pos=sequence.support_pos,
+                        support_neg=sequence.support_neg,
+                        confidence=confidence,
+                        confidence_pos=confidence_pos,
+                        confidence_neg=confidence_neg,
+                    )
+                )
+
+        return rules
+
+    def execute(self, dataset: pd.DataFrame) -> pd.DataFrame:
 
         prefix_df = PrefixSpanDataset(
             raw_data=dataset
@@ -250,10 +317,12 @@ class PrefixSpanNew(BaseModel):
 
         frequent_patterns = self.get_frequent_patterns(sequences)
 
-        print(frequent_patterns)
+        frequent_patterns_with_confidence = self.get_frequent_patterns_with_confidence(
+            frequent_patterns
+        )
 
-        return frequent_patterns
+        data = pd.DataFrame([
+            el.model_dump() for el in frequent_patterns_with_confidence
+        ])
 
-
-
-
+        return data
