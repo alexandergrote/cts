@@ -1,5 +1,4 @@
 from collections import defaultdict
-from memory_profiler import profile
 
 def prefixspan(prefix, projected_db, min_support, max_length, classes):
     """
