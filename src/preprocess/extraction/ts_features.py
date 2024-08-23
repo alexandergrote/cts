@@ -7,7 +7,7 @@ from collections import defaultdict
 from datetime import datetime
 from pydantic import  BaseModel, field_validator, conint, confloat
 from pydantic.config import ConfigDict
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Literal
 from pandera.typing import DataFrame, Series
 
 
@@ -29,6 +29,9 @@ class DatasetProcessedSchema(pa.DataFrameModel):
     confidence: Series[float]
     confidence_pos: Series[float]
     confidence_neg: Series[float]
+
+    delta_confidence: Series[float]
+    inverse_entropy: Series[float]
 
 
 class FrequentPatternWithConfidence(BaseModel):
@@ -164,6 +167,26 @@ class Dataset(BaseModel):
         return result
 
 
+class DatasetProcessed(BaseModel):
+
+    data: DataFrame[DatasetProcessedSchema]
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    @classmethod
+    def create_from_frequent_pattern(cls, freq_pattern: List[FrequentPatternWithConfidence]) -> "DatasetProcessed":
+
+        # enrich with delta confidence and inverse entropy
+        data = pd.DataFrame([{
+            **el.model_dump(),
+            **{
+                DatasetProcessedSchema.delta_confidence: el.delta_confidence,
+                DatasetProcessedSchema.inverse_entropy: el.inverse_entropy
+            }
+        } for el in freq_pattern])
+
+        return DatasetProcessed(data=data)
+
 class PrefixSpanNew(BaseModel):
     
     max_sequence_length: conint(ge=0) = sys.maxsize
@@ -270,7 +293,7 @@ class PrefixSpanNew(BaseModel):
 
         return patterns
 
-    def get_frequent_patterns_with_confidence(self, frequent_patterns: List[FrequentPattern]) -> List[FrequentPattern]:
+    def get_frequent_patterns_with_confidence(self, frequent_patterns: List[FrequentPattern]) -> List[FrequentPatternWithConfidence]:
 
         lookup = {str(pattern.sequence_values): pattern for pattern in frequent_patterns}
         
@@ -321,7 +344,7 @@ class PrefixSpanNew(BaseModel):
 
         return rules
 
-    def execute(self, dataset: pd.DataFrame) -> pd.DataFrame:
+    def execute(self, dataset: pd.DataFrame) -> List[FrequentPatternWithConfidence]:
 
         prefix_df = Dataset(
             raw_data=dataset
@@ -335,16 +358,14 @@ class PrefixSpanNew(BaseModel):
             frequent_patterns
         )
 
-        data = pd.DataFrame([
-            el.model_dump() for el in frequent_patterns_with_confidence
-        ])
-
-        return data
+        return frequent_patterns_with_confidence
 
 
 class SPMFeatureSelectorNew(BaseModel, BaseFeatureEncoder):
 
     prefixspan_config: dict
+
+    criterion: Literal[DatasetProcessedSchema.delta_confidence, DatasetProcessedSchema.inverse_entropy] = DatasetProcessedSchema.delta_confidence
 
     bootstrap_repetitions: int = 5
     bootstrap_sampling_fraction: float = 0.8
@@ -363,7 +384,8 @@ class SPMFeatureSelectorNew(BaseModel, BaseFeatureEncoder):
 
         return data[mask]
 
-    def _bootstrap(self, *, data: pd.DataFrame, **kwargs) -> pd.DataFrame:
+    @pa.check_types
+    def _bootstrap(self, *, data: DataFrame[DatasetSchema], **kwargs) -> List[FrequentPatternWithConfidence]:
 
         prefix: PrefixSpanNew = DynamicImport.import_class_from_dict(
             dictionary=self.prefixspan_config
@@ -379,22 +401,11 @@ class SPMFeatureSelectorNew(BaseModel, BaseFeatureEncoder):
             )
 
             # get output on sample
-            prediction = prefix.execute(dataset=data_sub, **kwargs)
+            prediction = prefix.execute(dataset=data_sub)
     
-            predictions.append(prediction)
+            predictions.extend(prediction)
 
-        predictions_df = pd.concat(predictions).reset_index(drop=True)
-        
-        predictions_df[DatasetSchema.id_column] = \
-            predictions_df[DatasetProcessedSchema.antecedent].astype('str') + \
-                  predictions_df[DatasetProcessedSchema.consequent].astype('str')
-
-        # todo: change for delta confidence
-        predictions_grouped = predictions_df.groupby([DatasetSchema.id_column])['confidence'].agg(['mean', 'std'])
-
-        predictions_grouped.reset_index(inplace=True)
-
-        return predictions_df
+        return predictions
 
     def _encode_train(self, *args, data: pd.DataFrame, **kwargs):
 
@@ -403,8 +414,34 @@ class SPMFeatureSelectorNew(BaseModel, BaseFeatureEncoder):
 
         # bootstrap rules
         console.log(f"{self.__class__.__name__}: Bootstrapped Rule Mining")
-        
-        return super()._encode_train(*args, **kwargs)
+
+        patterns = self._bootstrap(data=data_copy)
+
+        patterns_df = DatasetProcessed.create_from_frequent_pattern(
+            freq_pattern=patterns
+        ).data
+
+        patterns_df[DatasetSchema.id_column] = \
+            patterns_df[DatasetProcessedSchema.antecedent].astype('str') + \
+            patterns_df[DatasetProcessedSchema.consequent].astype('str')
+
+        predictions_grouped = patterns_df.groupby([DatasetSchema.id_column]) \
+            [self.criterion].agg(['mean', 'std'])
+
+        predictions_grouped.reset_index(inplace=True)
+
+        # get unique rules
+        console.log(f"{self.__class__.__name__}: Obtaining unique rules")
+
+        from IPython import embed; embed()
+
+        predictions_grouped[DatasetSchema.id_column] = \
+            predictions_grouped[DatasetSchema.id_column].apply(
+                lambda x: x.replace('][', ', ').replace('[', '').replace(']', ''))
+
+
+
+        return predictions_grouped
     
     def _encode_test(self, *args, data: pd.DataFrame, **kwargs):
         return super()._encode_test(*args, **kwargs)

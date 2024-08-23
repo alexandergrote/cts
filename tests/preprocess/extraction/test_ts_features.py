@@ -133,16 +133,12 @@ class TestPrefixSpanNew(unittest.TestCase):
 
         prefixspan = PrefixSpanNew()
 
-        result = prefixspan.execute(self.raw_data)
+        patterns = prefixspan.execute(self.raw_data)
 
-        self.assertIsInstance(result, pd.DataFrame)
-        
-        records = result.to_dict(orient="records")
+        for pattern in patterns:
+            with self.subTest(msg=f'patterns: {pattern}'):
+                self.assertIsInstance(pattern, FrequentPatternWithConfidence)
 
-        for record in records:
-            with self.subTest(msg=f'record: {record}'):
-                self.assertIsInstance(record, dict)
-                self.assertIsInstance(FrequentPatternWithConfidence(**record), FrequentPatternWithConfidence)
         
 class TestSPMFeatureSelection(unittest.TestCase):
 
@@ -196,9 +192,23 @@ class TestSPMFeatureSelection(unittest.TestCase):
             prefixspan_config=self.prefixspan_config
         )
 
-        result = feat_alg._bootstrap(data=self.raw_data)
+        patterns = feat_alg._bootstrap(data=self.raw_data)
     
+        for pattern in patterns:
+            self.assertIsInstance(pattern, FrequentPatternWithConfidence)
+
+    def test_encode_train(self):
+
+        feat_alg = SPMFeatureSelectorNew(
+            prefixspan_config=self.prefixspan_config
+        )
+
+        result = feat_alg._encode_train(
+            data=self.raw_data
+        )
+
         print(result)
+
 
 if __name__ == '__main__':
     unittest.main()
