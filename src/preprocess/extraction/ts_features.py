@@ -365,7 +365,10 @@ class SPMFeatureSelectorNew(BaseModel, BaseFeatureEncoder):
 
     prefixspan_config: dict
 
-    criterion: Literal[DatasetProcessedSchema.delta_confidence, DatasetProcessedSchema.inverse_entropy] = DatasetProcessedSchema.delta_confidence
+    criterion: Literal[
+        DatasetProcessedSchema.delta_confidence, 
+        DatasetProcessedSchema.inverse_entropy
+    ] = DatasetProcessedSchema.delta_confidence
 
     bootstrap_repetitions: int = 5
     bootstrap_sampling_fraction: float = 0.8
@@ -407,15 +410,11 @@ class SPMFeatureSelectorNew(BaseModel, BaseFeatureEncoder):
 
         return predictions
 
-    def _encode_train(self, *args, data: pd.DataFrame, **kwargs):
+    def _get_unique_patterns(self, patterns: List[FrequentPatternWithConfidence]) -> List[FrequentPatternWithConfidence]:
 
-        # work on copy
-        data_copy = data.copy(deep=True)
-
-        # bootstrap rules
-        console.log(f"{self.__class__.__name__}: Bootstrapped Rule Mining")
-
-        patterns = self._bootstrap(data=data_copy)
+        # this consists of two processes:
+        # 1) joining bootstrap results
+        # 2) joining rules that are essentially the same based on the event order, but differ in their antecedent and consequent
 
         patterns_df = DatasetProcessed.create_from_frequent_pattern(
             freq_pattern=patterns
@@ -426,22 +425,36 @@ class SPMFeatureSelectorNew(BaseModel, BaseFeatureEncoder):
             patterns_df[DatasetProcessedSchema.consequent].astype('str')
 
         predictions_grouped = patterns_df.groupby([DatasetSchema.id_column]) \
-            [self.criterion].agg(['mean', 'std'])
+            [[DatasetProcessedSchema.delta_confidence, DatasetProcessedSchema.inverse_entropy]] \
+                .agg(list)
 
         predictions_grouped.reset_index(inplace=True)
-
-        # get unique rules
-        console.log(f"{self.__class__.__name__}: Obtaining unique rules")
-
-        from IPython import embed; embed()
 
         predictions_grouped[DatasetSchema.id_column] = \
             predictions_grouped[DatasetSchema.id_column].apply(
                 lambda x: x.replace('][', ', ').replace('[', '').replace(']', ''))
 
+        unique_predictions = predictions_grouped.groupby(DatasetSchema.id_column).agg('sum')
+        unique_predictions.reset_index(inplace=True)
 
+        return unique_predictions
 
-        return predictions_grouped
+    def _encode_train(self, *args, data: pd.DataFrame, **kwargs):
+
+        # work on copy
+        data_copy = data.copy(deep=True)
+
+        # bootstrap rules
+        console.log(f"{self.__class__.__name__}: Bootstrapped Rule Mining")
+
+        patterns = self._bootstrap(data=data_copy)
+
+        # get unique rules
+        console.log(f"{self.__class__.__name__}: Obtaining unique rules")
+
+        unique_patterns = self._get_unique_patterns(patterns=patterns)
+
+        return unique_patterns
     
     def _encode_test(self, *args, data: pd.DataFrame, **kwargs):
         return super()._encode_test(*args, **kwargs)
