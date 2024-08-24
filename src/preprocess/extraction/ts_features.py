@@ -17,21 +17,22 @@ class AnnotatedSequence(BaseModel):
     class_value: int
 
 
-class DatasetProcessedSchema(pa.DataFrameModel):
+class FrequentPattern(BaseModel):
 
-    antecedent: Series[List[str]]
-    consequent: Series[List[str]]
+    sequence_values: List[str]
 
-    support: Series[int]
-    support_pos: Series[int]
-    support_neg: Series[int]
+    support: int
+    support_pos: int
+    support_neg: int
 
-    confidence: Series[float]
-    confidence_pos: Series[float]
-    confidence_neg: Series[float]
+    @property
+    def inverse_entropy(self) -> float:
 
-    delta_confidence: Series[float]
-    inverse_entropy: Series[float]
+        entropy = EntropyCalculator.calculate_entropy(
+            probability= self.support_pos / self.support
+        )
+
+        return 1 - entropy
 
 
 class FrequentPatternWithConfidence(BaseModel):
@@ -51,24 +52,6 @@ class FrequentPatternWithConfidence(BaseModel):
     def delta_confidence(self) -> float:
         return self.confidence_pos - self.confidence_neg
     
-    @property
-    def inverse_entropy(self) -> float:
-
-        entropy = EntropyCalculator.calculate_entropy(
-            probability= self.support_pos / self.support
-        )
-
-        return 1 - entropy
-
-
-class FrequentPattern(BaseModel):
-
-    sequence_values: List[str]
-
-    support: int
-    support_pos: int
-    support_neg: int
-
     @property
     def inverse_entropy(self) -> float:
 
@@ -167,9 +150,26 @@ class Dataset(BaseModel):
         return result
 
 
-class DatasetProcessed(BaseModel):
+class DatasetRulesSchema(pa.DataFrameModel):
 
-    data: DataFrame[DatasetProcessedSchema]
+    antecedent: Series[List[str]]
+    consequent: Series[List[str]]
+
+    support: Series[int]
+    support_pos: Series[int]
+    support_neg: Series[int]
+
+    confidence: Series[float]
+    confidence_pos: Series[float]
+    confidence_neg: Series[float]
+
+    delta_confidence: Series[float]
+    inverse_entropy: Series[float]
+
+
+class DatasetRules(BaseModel):
+
+    data: DataFrame[DatasetRulesSchema]
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -180,12 +180,46 @@ class DatasetProcessed(BaseModel):
         data = pd.DataFrame([{
             **el.model_dump(),
             **{
-                DatasetProcessedSchema.delta_confidence: el.delta_confidence,
-                DatasetProcessedSchema.inverse_entropy: el.inverse_entropy
+                DatasetRulesSchema.delta_confidence: el.delta_confidence,
+                DatasetRulesSchema.inverse_entropy: el.inverse_entropy
             }
         } for el in freq_pattern])
 
-        return DatasetProcessed(data=data)
+        return DatasetRules(data=data)
+
+
+class DatasetUniqueRulesSchema(pa.DataFrameModel):
+    id_column: Series[str]
+    delta_confidence: Series[List[float]]
+    inverse_entropy: Series[List[float]]
+
+
+class DatasetUniqueRules(BaseModel):
+    data: DataFrame[DatasetUniqueRulesSchema]
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+
+class RuleEncoder(BaseModel):
+
+    @staticmethod
+    def is_subsequence(subseq, seq):
+        it = iter(seq)
+        return all(item in it for item in subseq)
+    
+    def encode(rules: List[List[str]], sequences2classify: List[List[str]]) -> List[bool]:
+
+        result = []
+
+        for rule in rules:
+
+            for sequence in sequences2classify:
+
+                result = False
+                if RuleEncoder.is_subsequence(rule, sequence):
+                    result.append(True)
+                
+
 
 class PrefixSpanNew(BaseModel):
     
@@ -366,12 +400,26 @@ class SPMFeatureSelectorNew(BaseModel, BaseFeatureEncoder):
     prefixspan_config: dict
 
     criterion: Literal[
-        DatasetProcessedSchema.delta_confidence, 
-        DatasetProcessedSchema.inverse_entropy
-    ] = DatasetProcessedSchema.delta_confidence
+        DatasetUniqueRulesSchema.delta_confidence, 
+        DatasetUniqueRulesSchema.inverse_entropy
+    ] = DatasetUniqueRulesSchema.delta_confidence
 
     bootstrap_repetitions: int = 5
     bootstrap_sampling_fraction: float = 0.8
+
+    multitesting: Optional[dict] = None
+    p_value_threshold: float = 0.01
+
+    @field_validator("multitesting", mode="before")
+    def _set_multitesting(cls, v):
+
+        if v is None:
+            return v
+
+        if len(v.keys()) == 0:
+            return None
+
+        return v
 
     def _bootstrap_id_selection(self, data: pd.DataFrame, random_state: int) -> pd.DataFrame:
 
@@ -410,22 +458,22 @@ class SPMFeatureSelectorNew(BaseModel, BaseFeatureEncoder):
 
         return predictions
 
-    def _get_unique_patterns(self, patterns: List[FrequentPatternWithConfidence]) -> List[FrequentPatternWithConfidence]:
+    def _get_unique_patterns(self, patterns: List[FrequentPatternWithConfidence]) -> DatasetRules:
 
         # this consists of two processes:
         # 1) joining bootstrap results
         # 2) joining rules that are essentially the same based on the event order, but differ in their antecedent and consequent
 
-        patterns_df = DatasetProcessed.create_from_frequent_pattern(
+        patterns_df = DatasetRules.create_from_frequent_pattern(
             freq_pattern=patterns
         ).data
 
         patterns_df[DatasetSchema.id_column] = \
-            patterns_df[DatasetProcessedSchema.antecedent].astype('str') + \
-            patterns_df[DatasetProcessedSchema.consequent].astype('str')
+            patterns_df[DatasetRulesSchema.antecedent].astype('str') + \
+            patterns_df[DatasetRulesSchema.consequent].astype('str')
 
         predictions_grouped = patterns_df.groupby([DatasetSchema.id_column]) \
-            [[DatasetProcessedSchema.delta_confidence, DatasetProcessedSchema.inverse_entropy]] \
+            [[DatasetRulesSchema.delta_confidence, DatasetRulesSchema.inverse_entropy]] \
                 .agg(list)
 
         predictions_grouped.reset_index(inplace=True)
@@ -437,7 +485,59 @@ class SPMFeatureSelectorNew(BaseModel, BaseFeatureEncoder):
         unique_predictions = predictions_grouped.groupby(DatasetSchema.id_column).agg('sum')
         unique_predictions.reset_index(inplace=True)
 
-        return unique_predictions
+        data = DatasetUniqueRules(
+            data=unique_predictions
+        )
+
+        return data
+
+    def _select_significant_greater_than_zero(self, *, data: DatasetUniqueRules, **kwargs) -> DatasetUniqueRules:
+
+        """
+        Conduct statistical tests to select informative rules
+
+        Args:
+            data: DatasetRules containing all rules
+            **kwargs:
+
+        Returns:
+
+        """
+
+        # work on copy
+        data_copy = data.data.copy(deep=True)
+        
+        # keep track of p values
+        p_values = []
+
+        for _, row in data_copy.iterrows():
+
+            # get observations
+            obs = np.abs(np.array(row[self.criterion]))
+            values = np.zeros_like(obs)  
+                
+            test = mannwhitneyu(obs, values, alternative='greater')
+            p_values.append(test.pvalue)
+
+        p_values_array = np.array(p_values)
+
+        if self.multitesting is None:
+
+            # exclude rules based on p value
+            mask = p_values_array < self.p_value_threshold
+
+        else:
+
+            _, pvals_corrected, _, _ = multipletests(p_values_array, **self.multitesting)
+
+            mask = np.array(pvals_corrected) < self.p_value_threshold
+
+        result = DatasetUniqueRules(
+            data=data_copy[mask]
+        )
+
+        return result
+
 
     def _encode_train(self, *args, data: pd.DataFrame, **kwargs):
 
@@ -446,15 +546,22 @@ class SPMFeatureSelectorNew(BaseModel, BaseFeatureEncoder):
 
         # bootstrap rules
         console.log(f"{self.__class__.__name__}: Bootstrapped Rule Mining")
-
         patterns = self._bootstrap(data=data_copy)
 
         # get unique rules
         console.log(f"{self.__class__.__name__}: Obtaining unique rules")
-
         unique_patterns = self._get_unique_patterns(patterns=patterns)
 
-        return unique_patterns
+        # select informative rules
+        console.log(f"{self.__class__.__name__}: Selecting rules")
+        selected_patterns = self._select_significant_greater_than_zero(data=unique_patterns)
+
+        # encode rules as a binary feature
+        console.log(f"{self.__class__.__name__}: Encoding rules")
+
+        from IPython import embed; embed()
+
+        return selected_patterns
     
     def _encode_test(self, *args, data: pd.DataFrame, **kwargs):
         return super()._encode_test(*args, **kwargs)
