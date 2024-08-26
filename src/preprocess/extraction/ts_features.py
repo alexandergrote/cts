@@ -207,18 +207,28 @@ class RuleEncoder(BaseModel):
         it = iter(seq)
         return all(item in it for item in subseq)
     
-    def encode(rules: List[List[str]], sequences2classify: List[List[str]]) -> List[bool]:
+    def encode(rules: List[List[str]], sequences2classify: List[List[str]], string_separator: str = '_') -> pd.DataFrame:
 
-        result = []
+        # result data
+        data = []
+        indices = []
 
-        for rule in rules:
+        for sequence in sequences2classify:
 
-            for sequence in sequences2classify:
+            row_data = {}
+            indices.append(string_separator.join(sequence))
 
-                result = False
-                if RuleEncoder.is_subsequence(rule, sequence):
-                    result.append(True)
-                
+            for rule in rules:
+
+                row_data[f'{string_separator.join(rule)}'] = RuleEncoder.is_subsequence(subseq=rule, seq=sequence)
+
+            
+            data.append(row_data)
+
+        df = pd.DataFrame.from_records(data)
+        df.index = indices
+
+        return df 
 
 
 class PrefixSpanNew(BaseModel):
@@ -559,10 +569,29 @@ class SPMFeatureSelectorNew(BaseModel, BaseFeatureEncoder):
         # encode rules as a binary feature
         console.log(f"{self.__class__.__name__}: Encoding rules")
 
-        from IPython import embed; embed()
+        sequences = Dataset(
+            raw_data=data
+        ).get_sequences()
 
-        return selected_patterns
+        sequences_values = [el.sequence_values for el in sequences]
+
+        selected_patterns.data['id_column'] = selected_patterns.data['id_column'].apply(lambda x: x.replace("'", '').split(', '))
+
+        encoded_dataframe = RuleEncoder.encode(
+            rules=selected_patterns.data['id_column'].to_list(), 
+            sequences2classify=sequences_values
+        )
+
+        return encoded_dataframe
     
     def _encode_test(self, *args, data: pd.DataFrame, **kwargs):
-        return super()._encode_test(*args, **kwargs)
 
+        assert 'rules' in kwargs, "Rules must be provided to the feature selector"
+
+        # work on copy
+        data_copy = data.copy(deep=True)
+
+        # apply rules
+        event_sequences_per_id = self._apply_rule_to_ts(rules=kwargs['rules'], event=data_copy)
+
+        return {'data': event_sequences_per_id}
