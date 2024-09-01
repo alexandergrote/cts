@@ -207,7 +207,61 @@ class TestSPMFeatureSelection(unittest.TestCase):
             data=self.raw_data
         )
 
-        print(result)
+        # assert type
+        self.assertIsInstance(result, dict)
+
+        # assert keys
+        assert 'data' in result.keys()
+        result_df = result['data']
+        self.assertIsInstance(result_df, pd.DataFrame)
+
+        # check if dataframe only contains binary results
+        self.assertTrue(all([el in [0, 1] for el in result_df.values.flatten()]))
+
+        # check output for individual rules
+        rules = {
+            'A_B_C': [1, 1, 0, 1, 0, 0],
+            'D_E': [0, 0, 0, 0, 0, 1],
+            'C_B': [0, 0, 1, 0, 0, 0],
+        }
+
+        for rule, expected in rules.items():
+            with self.subTest(msg=f'rule: {rule}'):
+                self.assertTrue(all([el == expected[i] for i, el in enumerate(result_df[rule].values)]))
+
+    def test_encode_test(self):
+
+        feat_alg = SPMFeatureSelectorNew(
+            prefixspan_config=self.prefixspan_config
+        )
+
+        kwargs = feat_alg._encode_train(
+            data=self.raw_data
+        )
+
+        kwargs["data"] = self.raw_data
+
+        result = feat_alg._encode_test(**kwargs)
+
+        # assert type
+        self.assertIsInstance(result, dict)
+
+        result_df = result['data']
+        self.assertIsInstance(result_df, pd.DataFrame)
+
+        # check if dataframe only contains binary results
+        self.assertTrue(all([el in [0, 1] for el in result_df.values.flatten()]))
+
+        # check output for individual rules
+        rules = {
+            'A_B_C': [1, 1, 0, 1, 0, 0],
+            'D_E': [0, 0, 0, 0, 0, 1],
+            'C_B': [0, 0, 1, 0, 0, 0],
+        }
+
+        for rule, expected in rules.items():
+            with self.subTest(msg=f'rule: {rule}'):
+                self.assertTrue(all([el == expected[i] for i, el in enumerate(result_df[rule].values)]))
 
 
 if __name__ == '__main__':

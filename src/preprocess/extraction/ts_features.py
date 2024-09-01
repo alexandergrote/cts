@@ -548,7 +548,6 @@ class SPMFeatureSelectorNew(BaseModel, BaseFeatureEncoder):
 
         return result
 
-
     def _encode_train(self, *args, data: pd.DataFrame, **kwargs):
 
         # work on copy
@@ -575,23 +574,45 @@ class SPMFeatureSelectorNew(BaseModel, BaseFeatureEncoder):
 
         sequences_values = [el.sequence_values for el in sequences]
 
-        selected_patterns.data['id_column'] = selected_patterns.data['id_column'].apply(lambda x: x.replace("'", '').split(', '))
+        selected_patterns.data[DatasetUniqueRulesSchema.id_column] = \
+            selected_patterns.data[DatasetUniqueRulesSchema.id_column]\
+                .apply(lambda x: x.replace("'", '').split(', '))
 
         encoded_dataframe = RuleEncoder.encode(
             rules=selected_patterns.data['id_column'].to_list(), 
             sequences2classify=sequences_values
         )
 
-        return encoded_dataframe
+        # save output
+        kwargs['rules'] = selected_patterns
+        kwargs['data'] = encoded_dataframe
+
+        return kwargs
     
     def _encode_test(self, *args, data: pd.DataFrame, **kwargs):
 
+        # encode rules as a binary feature on test data
+
+        # assert requirments
         assert 'rules' in kwargs, "Rules must be provided to the feature selector"
+        rules = kwargs['rules']
+        assert isinstance(rules, DatasetUniqueRules), "Rules must be of type DatasetRules"
 
-        # work on copy
-        data_copy = data.copy(deep=True)
+        # assert type of data
+        assert isinstance(data, pd.DataFrame), "Data must be of type pd.DataFrame"
+        
+        data_copy = Dataset(
+            raw_data=data.copy(deep=True)
+        )
 
-        # apply rules
-        event_sequences_per_id = self._apply_rule_to_ts(rules=kwargs['rules'], event=data_copy)
+        sequences = data_copy.get_sequences()
 
-        return {'data': event_sequences_per_id}
+        sequences_values = [el.sequence_values for el in sequences]
+
+        encoded_dataframe = RuleEncoder.encode(
+            rules=rules.data[DatasetUniqueRulesSchema.id_column].to_list(), 
+            sequences2classify=sequences_values
+        )
+
+        
+        return {'data': encoded_dataframe}
