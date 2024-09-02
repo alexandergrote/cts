@@ -39,6 +39,25 @@ class TestDataset(unittest.TestCase):
         self.assertEqual([el.sequence_values for el in sequences], [['1','2', '3'], ['5','4']])
         self.assertEqual([el.id_value for el in sequences], ['a', 'b'])
         
+    def test_get_sequences_without_classes(self):
+
+        data_copy = self.raw_data.copy(deep=True)
+        data_copy.drop(columns=self.class_column, inplace=True)
+
+        dataset = Dataset(
+            id_column=self.id_column,
+            event_column=self.event_column,
+            time_column=self.time_column,
+            raw_data=self.raw_data
+        )
+
+        sequences = dataset.get_sequences()
+
+        self.assertIsInstance(sequences, list)
+        self.assertTrue(all([isinstance(el, AnnotatedSequence) for el in sequences]))
+        self.assertEqual([el.sequence_values for el in sequences], [['1', '2', '3'], ['5', '4']])
+        self.assertEqual([el.id_value for el in sequences], ['a', 'b'])
+
 
 class TestPrefixSpan(unittest.TestCase):
 
@@ -77,6 +96,21 @@ class TestPrefixSpan(unittest.TestCase):
         for el in [item, item_neg, item_pos]:
             with self.subTest(msg=f'item: {el}'):
                 self.assertIsInstance(el, dict)
+
+    def test_get_item_counts_without_classes(self):
+
+        prefixspan = PrefixSpan()
+
+        sequences = self.prefix_df.get_sequences()
+
+        database = [sequence.sequence_values for sequence in sequences]
+
+        item, item_neg, item_pos = prefixspan.get_item_counts(database)
+
+        for el in [item, item_neg, item_pos]:
+            with self.subTest(msg=f'item: {el}'):
+                self.assertIsInstance(el, dict)
+
 
     def test_get_frequent_patterns(self):
 

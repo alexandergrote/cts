@@ -21,7 +21,7 @@ from src.preprocess.base import BaseFeatureEncoder
 class AnnotatedSequence(BaseModel):
     id_value: str
     sequence_values: List[str]
-    class_value: int
+    class_value: Optional[int] = None
 
 
 class FrequentPattern(BaseModel):
@@ -29,11 +29,14 @@ class FrequentPattern(BaseModel):
     sequence_values: List[str]
 
     support: int
-    support_pos: int
-    support_neg: int
+    support_pos: Optional[int] = None
+    support_neg: Optional[int] = None
 
     @property
     def inverse_entropy(self) -> float:
+
+        if self.support_pos is None:
+            raise ValueError("Inverse entropy calculation not possible")
 
         entropy = EntropyCalculator.calculate_entropy(
             probability= self.support_pos / self.support
@@ -48,19 +51,26 @@ class FrequentPatternWithConfidence(BaseModel):
     consequent: List[str]
 
     support: int
-    support_pos: int
-    support_neg: int
+    support_pos: Optional[int] = None
+    support_neg: Optional[int] = None
 
     confidence: float
-    confidence_pos: float
-    confidence_neg: float
+    confidence_pos: Optional[float] = None
+    confidence_neg: Optional[float] = None
 
     @property
     def delta_confidence(self) -> float:
+
+        if (self.confidence_pos is None) or (self.confidence_neg is None):
+            raise ValueError("Delta confidence calculation not possible.")
+
         return self.confidence_pos - self.confidence_neg
     
     @property
     def inverse_entropy(self) -> float:
+
+        if self.support_pos is None:
+            raise ValueError("Delta confidence calculation not possible.")
 
         entropy = EntropyCalculator.calculate_entropy(
             probability= self.support_pos / self.support
@@ -115,7 +125,7 @@ class StackObject(BaseModel):
 class DatasetSchema(pa.DataFrameModel):
     event_column: Series[str] = pa.Field(coerce=True)
     time_column: Series[int]
-    class_column: Series[int]
+    class_column: Optional[Series[int]]
     id_column: Series[str] = pa.Field(coerce=True)
 
 
@@ -143,24 +153,37 @@ class Dataset(BaseModel):
         data_copy_grouped = data_copy.groupby([DatasetSchema.id_column])
 
         sequences = data_copy_grouped[DatasetSchema.event_column].apply(list)
-        classes = data_copy_grouped[DatasetSchema.class_column].apply(list)
 
         result = []
 
-        for (index, value), class_value in zip(sequences.items(), classes):
-            result.append(AnnotatedSequence(
-                id_value=index[0][0], 
-                sequence_values=value, 
-                class_value=class_value[0]
-                ))
+        if DatasetSchema.class_column not in data_copy.columns:
+
+            for index, value in sequences.items():
+
+                result.append(AnnotatedSequence(
+                    id_value=index[0][0],
+                    sequence_values=value
+                    ))
+
+        else:
+
+            classes = data_copy_grouped[DatasetSchema.class_column].apply(list)
+
+            for (index, value), class_value in zip(sequences.items(), classes):
+                result.append(AnnotatedSequence(
+                    id_value=index[0][0],
+                    sequence_values=value,
+                    class_value=class_value[0]
+                    ))
 
         return result
 
     @classmethod
-    def from_observations(cls, sequences: List[List[str]], classes: List[int]):
+    def from_observations(cls, sequences: List[List[str]], classes: Optional[List[int]] = None):
 
         # assert length
-        assert len(sequences) == len(classes), f"sequences and classes should have the same length"
+        if classes is not None:
+            assert len(sequences) == len(classes), f"sequences and classes should have the same length"
 
         # create dataframe entry for each element in database
         records = []
@@ -172,7 +195,7 @@ class Dataset(BaseModel):
                     'id_column': str(id),
                     'time_column': e_idx,
                     'event_column': event,
-                    'class_column': classes[id]
+                    'class_column': classes[id] if classes is not None else None
                     })
                 
         raw_data = pd.DataFrame.from_records(records)
@@ -269,7 +292,6 @@ class PrefixSpan(BaseModel):
     
     max_sequence_length: conint(ge=0) = sys.maxsize
     min_support_abs: conint(ge=0) = 0
-    min_support_rel: confloat(ge=0.0) = 0.0
 
     model_config = ConfigDict(extra="forbid")
 
@@ -279,36 +301,54 @@ class PrefixSpan(BaseModel):
             return 0
         return v
 
-    def get_item_counts(self, database: List[List[str]], classes: List[int]) -> Tuple[Dict[str, int], Dict[str, int], Dict[str, int]]:
-
-        assert len(database) == len(classes)
+    def get_item_counts(self, database: List[List[str]], classes: Optional[List[int]]=None) -> Tuple[Dict[str, int], Dict[str, int], Dict[str, int]]:
 
         freq_items = defaultdict(int)
         freq_items_pos = defaultdict(int)
         freq_items_neg = defaultdict(int)
 
-        # Count support for each item in the projected database
-        for sequence, class_value in zip(database, classes):
+        if classes is None:
 
-            used = set()
+            # Count support for each item in the projected database
+            for sequence in database:
 
-            for item in sequence:
+                used = set()
 
-                if item in used:
-                    continue
+                for item in sequence:
 
-                freq_items[item] += 1
+                    if item in used:
+                        continue
 
-                if class_value == 0:
-                    freq_items_neg[item] += 1
+                    freq_items[item] += 1
 
-                elif class_value == 1:
-                    freq_items_pos[item] += 1
-                
-                else:
-                    raise ValueError(f"Class value {class_value} is not supported")
+                    used.add(item)
 
-                used.add(item)
+        else:
+
+            assert len(database) == len(classes)
+
+            # Count support for each item in the projected database
+            for sequence, class_value in zip(database, classes):
+
+                used = set()
+
+                for item in sequence:
+
+                    if item in used:
+                        continue
+
+                    freq_items[item] += 1
+
+                    if class_value == 0:
+                        freq_items_neg[item] += 1
+
+                    elif class_value == 1:
+                        freq_items_pos[item] += 1
+
+                    else:
+                        raise ValueError(f"Class value {class_value} is not supported")
+
+                    used.add(item)
 
         return freq_items, freq_items_neg, freq_items_pos
 
@@ -477,8 +517,13 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
         sss = StratifiedShuffleSplit(n_splits=1, test_size=1-self.bootstrap_sampling_fraction, random_state=random_state)
         generator = sss.split(data_unique[DatasetSchema.id_column].values.reshape(-1,), data_unique[DatasetSchema.class_column].values)
 
+        mask = None
+
         for train_index, _ in generator:
             mask = data[DatasetSchema.id_column].isin(data_unique.iloc[train_index][DatasetSchema.id_column])
+
+        if mask is None:
+            raise ValueError("Mask should not be None")
 
         return data[mask]
 
@@ -505,7 +550,7 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
 
         return predictions
 
-    def _get_unique_patterns(self, patterns: List[FrequentPatternWithConfidence]) -> DatasetRules:
+    def _get_unique_patterns(self, patterns: List[FrequentPatternWithConfidence]) -> DatasetUniqueRules:
 
         # this consists of two processes:
         # 1) joining bootstrap results
