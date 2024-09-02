@@ -1,14 +1,21 @@
-from .v1.ts_features import *
-
 import pandas as pd
+import numpy as np
 import pandera as pa
 import sys
+
 from collections import defaultdict
-from datetime import datetime
 from pydantic import  BaseModel, field_validator, conint, confloat
 from pydantic.config import ConfigDict
-from typing import List, Tuple, Dict, Literal
+from typing import List, Tuple, Dict, Literal, Optional
 from pandera.typing import DataFrame, Series
+from tqdm import tqdm
+from sklearn.model_selection import StratifiedShuffleSplit
+from scipy.stats import mannwhitneyu
+from statsmodels.stats.multitest import multipletests
+
+from src.util.dynamic_import import DynamicImport
+from src.util.custom_logging import console
+from src.preprocess.base import BaseFeatureEncoder
 
 
 class AnnotatedSequence(BaseModel):
@@ -107,9 +114,9 @@ class StackObject(BaseModel):
 
 class DatasetSchema(pa.DataFrameModel):
     event_column: Series[str] = pa.Field(coerce=True)
-    time_column: Series[datetime]
+    time_column: Series[int]
     class_column: Series[int]
-    id_column: Series[str]
+    id_column: Series[str] = pa.Field(coerce=True)
 
 
 class Dataset(BaseModel):
@@ -149,6 +156,33 @@ class Dataset(BaseModel):
 
         return result
 
+    @classmethod
+    def from_observations(cls, sequences: List[List[str]], classes: List[int]):
+
+        # assert length
+        assert len(sequences) == len(classes), f"sequences and classes should have the same length"
+
+        # create dataframe entry for each element in database
+        records = []
+
+        for id, sequence in enumerate(sequences):
+            for e_idx, event in enumerate(sequence):
+
+                records.append({
+                    'id_column': str(id),
+                    'time_column': e_idx,
+                    'event_column': event,
+                    'class_column': classes[id]
+                    })
+                
+        raw_data = pd.DataFrame.from_records(records)
+
+        prefix_df = Dataset(
+            raw_data=raw_data
+        )
+
+        return prefix_df
+
 
 class DatasetRulesSchema(pa.DataFrameModel):
 
@@ -174,7 +208,7 @@ class DatasetRules(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     @classmethod
-    def create_from_frequent_pattern(cls, freq_pattern: List[FrequentPatternWithConfidence]) -> "DatasetProcessed":
+    def create_from_frequent_pattern(cls, freq_pattern: List[FrequentPatternWithConfidence]) -> "DatasetRules":
 
         # enrich with delta confidence and inverse entropy
         data = pd.DataFrame([{
@@ -231,11 +265,13 @@ class RuleEncoder(BaseModel):
         return df 
 
 
-class PrefixSpanNew(BaseModel):
+class PrefixSpan(BaseModel):
     
     max_sequence_length: conint(ge=0) = sys.maxsize
     min_support_abs: conint(ge=0) = 0
     min_support_rel: confloat(ge=0.0) = 0.0
+
+    model_config = ConfigDict(extra="forbid")
 
     @field_validator('min_support_abs', mode='before')
     def _convert_none_to_number(cls, v: Optional[int]):
@@ -398,6 +434,7 @@ class PrefixSpanNew(BaseModel):
 
         frequent_patterns = self.get_frequent_patterns(sequences)
 
+        # todo: this step can be optimised if we ignore the possibility of different antecedent and consequent
         frequent_patterns_with_confidence = self.get_frequent_patterns_with_confidence(
             frequent_patterns
         )
@@ -405,7 +442,7 @@ class PrefixSpanNew(BaseModel):
         return frequent_patterns_with_confidence
 
 
-class SPMFeatureSelectorNew(BaseModel, BaseFeatureEncoder):
+class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
 
     prefixspan_config: dict
 
@@ -448,7 +485,7 @@ class SPMFeatureSelectorNew(BaseModel, BaseFeatureEncoder):
     @pa.check_types
     def _bootstrap(self, *, data: DataFrame[DatasetSchema], **kwargs) -> List[FrequentPatternWithConfidence]:
 
-        prefix: PrefixSpanNew = DynamicImport.import_class_from_dict(
+        prefix: PrefixSpan = DynamicImport.import_class_from_dict(
             dictionary=self.prefixspan_config
         )
 

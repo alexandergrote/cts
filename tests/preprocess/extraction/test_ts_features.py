@@ -1,14 +1,12 @@
 import pandas as pd
 import unittest
 
-from datetime import datetime
-
 from src.preprocess.extraction.ts_features import Dataset, \
-    AnnotatedSequence, PrefixSpanNew, FrequentPatternWithConfidence, \
-    FrequentPattern, SPMFeatureSelectorNew
+    AnnotatedSequence, PrefixSpan, FrequentPatternWithConfidence, \
+    FrequentPattern, SPMFeatureSelector
 
 
-class TestPrefixSpanDataset(unittest.TestCase):
+class TestDataset(unittest.TestCase):
 
     def setUp(self) -> None:
 
@@ -19,7 +17,7 @@ class TestPrefixSpanDataset(unittest.TestCase):
 
         self.raw_data = pd.DataFrame({
             self.id_column: ['a', 'a', 'a', 'b', 'b'],
-            self.time_column: [datetime(2020, 1, 1, 12, i) for i in range(5)],
+            self.time_column: [i for i in range(5)],
             self.event_column: [1,2,3,5,4],
             self.class_column: [1, 0, 1, 0, 1]
         })
@@ -40,8 +38,9 @@ class TestPrefixSpanDataset(unittest.TestCase):
         self.assertTrue(all([isinstance(el, AnnotatedSequence) for el in sequences]))
         self.assertEqual([el.sequence_values for el in sequences], [['1','2', '3'], ['5','4']])
         self.assertEqual([el.id_value for el in sequences], ['a', 'b'])
+        
 
-class TestPrefixSpanNew(unittest.TestCase):
+class TestPrefixSpan(unittest.TestCase):
 
     def setUp(self) -> None:
         
@@ -59,32 +58,14 @@ class TestPrefixSpanNew(unittest.TestCase):
             0, 1, 0, 1, 1, 1
         ]
 
-        self.timestamps = [datetime(2020, 1, 1, 12, i) for i in range(len(self.database))]
-
-        self.id_values = ['a', 'b', 'c', 'd', 'e', 'f']
-
-        # create dataframe entry for each element in database
-        records = []
-
-        for i, el in enumerate(self.database):
-            for event in el:
-
-                records.append({
-                    'id_column': self.id_values[i],
-                    'time_column': self.timestamps[i],
-                    'event_column': event,
-                    'class_column': self.classes[i]
-                    })
-                
-        self.raw_data = pd.DataFrame.from_records(records)
-
-        self.prefix_df = Dataset(
-            raw_data=self.raw_data
+        self.prefix_df = Dataset.from_observations(
+            sequences=self.database,
+            classes=self.classes,
         )
 
     def test_get_item_counts(self):
 
-        prefixspan = PrefixSpanNew()
+        prefixspan = PrefixSpan()
 
         sequences = self.prefix_df.get_sequences()
 
@@ -99,7 +80,7 @@ class TestPrefixSpanNew(unittest.TestCase):
 
     def test_get_frequent_patterns(self):
 
-        prefixspan = PrefixSpanNew(
+        prefixspan = PrefixSpan(
             min_support_abs=2,
         )
 
@@ -128,12 +109,53 @@ class TestPrefixSpanNew(unittest.TestCase):
         self.assertTrue(freq_pattern_last == freq_patterns[-1])
         self.assertTrue(len(freq_patterns) == 22)
 
+    def test_min_support(self):
+
+        prefixspan = PrefixSpan(
+            min_support_abs=3
+        )
+
+        patterns = prefixspan.get_frequent_patterns(
+            self.prefix_df.get_sequences()
+        )
+
+        patterns_df = pd.DataFrame([el.model_dump() for el in patterns])
+
+        sequence_values = patterns_df['sequence_values'].to_list()
+
+        self.assertTrue(len(sequence_values) == 16)
+
+        self.assertIn(['A'], sequence_values)
+        self.assertIn(['A', 'B'], sequence_values)
+        self.assertIn(['B', 'E'], sequence_values)
+        self.assertIn(['A', 'B', 'C'], sequence_values)
+        self.assertNotIn(['D', 'E'], sequence_values)
+        self.assertNotIn(['B', 'C', 'E'], sequence_values)
+        
+
+    def test_max_pattern_length(self):
+
+        prefixspan = PrefixSpan(
+            max_sequence_length=1
+        )
+
+        patterns = prefixspan.get_frequent_patterns(
+            self.prefix_df.get_sequences()
+        )
+
+        patterns_df = pd.DataFrame([el.model_dump() for el in patterns])
+        sequence_values = patterns_df['sequence_values'].to_list()
+
+        self.assertTrue(len(patterns) == 5)
+        self.assertIn(['A'], sequence_values)
+        self.assertNotIn(['B', 'E'], sequence_values)
+        
 
     def test_execute(self):
 
-        prefixspan = PrefixSpanNew()
+        prefixspan = PrefixSpan()
 
-        patterns = prefixspan.execute(self.raw_data)
+        patterns = prefixspan.execute(self.prefix_df.raw_data)
 
         for pattern in patterns:
             with self.subTest(msg=f'patterns: {pattern}'):
@@ -158,53 +180,35 @@ class TestSPMFeatureSelection(unittest.TestCase):
             0, 1, 0, 1, 1, 1
         ]
 
-        self.timestamps = [datetime(2020, 1, 1, 12, i) for i in range(len(self.database))]
-
-        self.id_values = ['a', 'b', 'c', 'd', 'e', 'f']
-
-        # create dataframe entry for each element in database
-        records = []
-
-        for i, el in enumerate(self.database):
-            for event in el:
-
-                records.append({
-                    'id_column': self.id_values[i],
-                    'time_column': self.timestamps[i],
-                    'event_column': event,
-                    'class_column': self.classes[i]
-                    })
-                
-        self.raw_data = pd.DataFrame.from_records(records)
-
-        self.prefix_df = Dataset(
-            raw_data=self.raw_data
+        self.prefix_df = Dataset.from_observations(
+            sequences=self.database,
+            classes=self.classes,
         )
 
         self.prefixspan_config = {
-            'class_name': 'src.preprocess.extraction.ts_features.PrefixSpanNew',
+            'class_name': 'src.preprocess.extraction.ts_features.PrefixSpan',
             'params': {}
         }
 
     def test__bootstrap(self):
 
-        feat_alg = SPMFeatureSelectorNew(
+        feat_alg = SPMFeatureSelector(
             prefixspan_config=self.prefixspan_config
         )
 
-        patterns = feat_alg._bootstrap(data=self.raw_data)
+        patterns = feat_alg._bootstrap(data=self.prefix_df.raw_data)
     
         for pattern in patterns:
             self.assertIsInstance(pattern, FrequentPatternWithConfidence)
 
     def test_encode_train(self):
 
-        feat_alg = SPMFeatureSelectorNew(
+        feat_alg = SPMFeatureSelector(
             prefixspan_config=self.prefixspan_config
         )
 
         result = feat_alg._encode_train(
-            data=self.raw_data
+            data=self.prefix_df.raw_data
         )
 
         # assert type
@@ -231,15 +235,15 @@ class TestSPMFeatureSelection(unittest.TestCase):
 
     def test_encode_test(self):
 
-        feat_alg = SPMFeatureSelectorNew(
+        feat_alg = SPMFeatureSelector(
             prefixspan_config=self.prefixspan_config
         )
 
         kwargs = feat_alg._encode_train(
-            data=self.raw_data
+            data=self.prefix_df.raw_data
         )
 
-        kwargs["data"] = self.raw_data
+        kwargs["data"] = self.prefix_df.raw_data
 
         result = feat_alg._encode_test(**kwargs)
 
