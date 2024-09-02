@@ -4,9 +4,9 @@ import pandera as pa
 import sys
 
 from collections import defaultdict
-from pydantic import  BaseModel, field_validator, conint, confloat
+from pydantic import  BaseModel, field_validator, conint
 from pydantic.config import ConfigDict
-from typing import List, Tuple, Dict, Literal, Optional
+from typing import List, Tuple, Dict, Literal, Optional, Union
 from pandera.typing import DataFrame, Series
 from tqdm import tqdm
 from sklearn.model_selection import StratifiedShuffleSplit
@@ -106,8 +106,8 @@ class EntropyCalculator:
 
 class StackObject(BaseModel):
     database: List[List[str]]
-    classes: List[int]
     prefix: List[str]
+    classes: Union[List[int], List[None]]
 
     @classmethod
     def from_annotated_sequences(cls, annotated_sequences: List[AnnotatedSequence], prefix: List[str]):
@@ -191,12 +191,16 @@ class Dataset(BaseModel):
         for id, sequence in enumerate(sequences):
             for e_idx, event in enumerate(sequence):
 
-                records.append({
+                record = {
                     'id_column': str(id),
                     'time_column': e_idx,
                     'event_column': event,
-                    'class_column': classes[id] if classes is not None else None
-                    })
+                }
+
+                if classes is not None:
+                    record['class_column'] = classes[id]
+
+                records.append(record)
                 
         raw_data = pd.DataFrame.from_records(records)
 
@@ -301,54 +305,33 @@ class PrefixSpan(BaseModel):
             return 0
         return v
 
-    def get_item_counts(self, database: List[List[str]], classes: Optional[List[int]]=None) -> Tuple[Dict[str, int], Dict[str, int], Dict[str, int]]:
+    def get_item_counts(self, database: List[List[str]], classes: Union[List[int], List[None]]) -> Tuple[Dict[str, int], Dict[str, int], Dict[str, int]]:
 
         freq_items = defaultdict(int)
         freq_items_pos = defaultdict(int)
         freq_items_neg = defaultdict(int)
 
-        if classes is None:
+        assert len(database) == len(classes)
 
-            # Count support for each item in the projected database
-            for sequence in database:
+        # Count support for each item in the projected database
+        for sequence, class_value in zip(database, classes):
 
-                used = set()
+            used = set()
 
-                for item in sequence:
+            for item in sequence:
 
-                    if item in used:
-                        continue
+                if item in used:
+                    continue
 
-                    freq_items[item] += 1
+                freq_items[item] += 1
 
-                    used.add(item)
+                if class_value == 0:
+                    freq_items_neg[item] += 1
 
-        else:
+                elif class_value == 1:
+                    freq_items_pos[item] += 1                    
 
-            assert len(database) == len(classes)
-
-            # Count support for each item in the projected database
-            for sequence, class_value in zip(database, classes):
-
-                used = set()
-
-                for item in sequence:
-
-                    if item in used:
-                        continue
-
-                    freq_items[item] += 1
-
-                    if class_value == 0:
-                        freq_items_neg[item] += 1
-
-                    elif class_value == 1:
-                        freq_items_pos[item] += 1
-
-                    else:
-                        raise ValueError(f"Class value {class_value} is not supported")
-
-                    used.add(item)
+                used.add(item)
 
         return freq_items, freq_items_neg, freq_items_pos
 
@@ -357,7 +340,7 @@ class PrefixSpan(BaseModel):
         # prepare data for while loop
         # more memory efficient than recursion - prevents stack overflow
         stack = [StackObject.from_annotated_sequences(prefix=[], annotated_sequences=sequences)]
-        frequent_pattern_lookup = []
+
         patterns = []
 
         while stack:
@@ -368,6 +351,9 @@ class PrefixSpan(BaseModel):
                 stack_object.database,
                 stack_object.classes
             )
+
+            # check if classes have been provided
+            class_provided: bool = stack_object.classes[0] is not None
 
             for item, count in counts.items():
 
@@ -382,8 +368,8 @@ class PrefixSpan(BaseModel):
                 frequent_pattern = FrequentPattern(
                     sequence_values=new_prefix,
                     support=count,
-                    support_pos=counts_pos.get(item, 0),
-                    support_neg=counts_neg.get(item, 0),
+                    support_pos=counts_pos.get(item, 0) if class_provided else None,
+                    support_neg=counts_neg.get(item, 0) if class_provided else None,
                 )
 
                 patterns.append(frequent_pattern)
@@ -405,11 +391,10 @@ class PrefixSpan(BaseModel):
                 # if the new projected db does not have enough entries
                 # that could satisfy the min support threshold
                 # continue with next iteration
-                if len(new_projected_db) < self.min_support_abs:
+                if len(new_projected_db) + len(new_prefix) < self.min_support_abs:
                     continue
 
                 stack.append(StackObject(database=new_projected_db, classes=new_classes, prefix=new_prefix))
-                frequent_pattern_lookup.append((counts, counts_neg, counts_pos))
 
         return patterns
 
@@ -432,22 +417,32 @@ class PrefixSpan(BaseModel):
                 if len(consequent) == 0:
                     continue
 
-                antecedent_pattern = lookup[str(antecedent)]
+                try:
+
+                    antecedent_pattern = lookup[str(antecedent)]
+
+                except KeyError as e:
+
+                    raise KeyError(f"""Lookup dict does not contain all the necessary values. This is likely due to an incomplete list of frequent pattners. Missing: {e}""")
 
                 confidence = ConfidenceCalculator.calculate_confidence(
                     support_antecedent=antecedent_pattern.support,
                     support_antecedent_and_consequent=sequence.support
                 )
 
-                confidence_pos = ConfidenceCalculator.calculate_confidence(
-                    support_antecedent=antecedent_pattern.support_pos,
-                    support_antecedent_and_consequent=sequence.support_pos
-                )
+                confidence_pos, confidence_neg = None, None
 
-                confidence_neg = ConfidenceCalculator.calculate_confidence(
-                    support_antecedent=antecedent_pattern.support_neg,
-                    support_antecedent_and_consequent=sequence.support_neg
-                )
+                if antecedent_pattern.support_pos is not None:
+
+                    confidence_pos = ConfidenceCalculator.calculate_confidence(
+                        support_antecedent=antecedent_pattern.support_pos,
+                        support_antecedent_and_consequent=sequence.support_pos
+                    )
+
+                    confidence_neg = ConfidenceCalculator.calculate_confidence(
+                        support_antecedent=antecedent_pattern.support_neg,
+                        support_antecedent_and_consequent=sequence.support_neg
+                    )
 
                 rules.append(
                     FrequentPatternWithConfidence(
@@ -463,6 +458,30 @@ class PrefixSpan(BaseModel):
                 )
 
         return rules
+
+    def summarise_patterns_in_dataframe(self, data: DataFrame[DatasetSchema]) -> pd.DataFrame:
+
+        prefix_df = Dataset(
+            raw_data=data
+        )
+
+        sequences = prefix_df.get_sequences()
+
+        frequent_patterns = self.get_frequent_patterns(sequences)
+
+        frequent_patterns_with_confidence = self.get_frequent_patterns_with_confidence(
+            frequent_patterns
+        )
+
+        df = pd.DataFrame([el.model_dump() for el in frequent_patterns_with_confidence])
+
+        if DatasetRulesSchema.support_pos in df.columns:
+            df["delta_confidence"] = df["confidence_pos"] - df["confidence_neg"]
+            df.sort_values(by=["delta_confidence"], inplace=True, ascending=False)
+
+        return df
+
+
 
     def execute(self, dataset: pd.DataFrame) -> List[FrequentPatternWithConfidence]:
 
@@ -582,7 +601,7 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
         )
 
         return data
-
+    
     def _select_significant_greater_than_zero(self, *, data: DatasetUniqueRules, **kwargs) -> DatasetUniqueRules:
 
         """
