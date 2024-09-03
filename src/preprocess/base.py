@@ -8,11 +8,11 @@ from src.util.caching import PickleCacheHandler, hash_dataframe
 class BaseFeatureEncoder(ABC):
 
     @abstractmethod
-    def _encode_train(self, *args, **kwargs) -> dict:
+    def _encode_train(self, *, data: pd.DataFrame, **kwargs) -> dict:
         raise NotImplementedError()
     
     @abstractmethod
-    def _encode_test(self, *args, **kwargs) -> dict:
+    def _encode_test(self, *, data: pd.DataFrame, **kwargs) -> dict:
         raise NotImplementedError()
     
     def execute(self, *, data_train: pd.DataFrame, data_test: pd.DataFrame, **kwargs) -> dict:

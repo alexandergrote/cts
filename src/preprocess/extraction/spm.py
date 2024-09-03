@@ -1,167 +1,271 @@
 import pandas as pd
+import sys
 
-from tqdm import tqdm
-from pathlib import Path
-from datetime import datetime
-from pydantic import BaseModel
-from typing import List, Optional
+from collections import defaultdict
+from pandera.typing import DataFrame
+from pydantic import BaseModel, conint, ConfigDict, field_validator
+from typing import List, Optional, Union, Tuple, Dict
 
-from src.preprocess.extraction.v1.ts_features import PrefixSpan, RuleClassifier
+
 from src.preprocess.base import BaseFeatureEncoder
-from src.util.caching import PickleCacheHandler, hash_dataframe
-from src.util.custom_logging import console
+from src.preprocess.util.rules import RuleEncoder
+from src.preprocess.util.metrics import ConfidenceCalculator
+from src.preprocess.util.types import AnnotatedSequence, FrequentPattern, StackObject, FrequentPatternWithConfidence
+from src.preprocess.util.datasets import Dataset, DatasetSchema, DatasetRulesSchema, DatasetUniqueRulesSchema
 
-class SPM(BaseModel, BaseFeatureEncoder):
 
-    id_columns: List[str]
-    event_column: str
-    time_column: str
-    target_column: str
-    splitting_symbol: str = ' --> '
-    itertool_threshold: Optional[int] = None
+class PrefixSpan(BaseModel, BaseFeatureEncoder):
+    
+    max_sequence_length: conint(ge=0) = sys.maxsize
+    min_support_abs: conint(ge=0) = 0
 
-    def _get_unique_rules(self, *, data: pd.DataFrame, **kwargs) -> pd.DataFrame:
-            
-        # work on copy
-        rules = data.copy(deep=True)
+    model_config = ConfigDict(extra="forbid")
 
-        # init column names
-        rule_column = 'index'
-        sorting_column = 'confidence'
-        confidence_column = 'confidence'
+    @field_validator('min_support_abs', mode='before')
+    def _convert_none_to_number(cls, v: Optional[int]):
+        if v is None:
+            return 0
+        return v
 
-        # sort by abs delta confidence to make drop duplicates easier
-        # keep the rules with the higher absolute delta confidence
-        rules[sorting_column] = rules[confidence_column].abs()
-        rules.sort_values(by=sorting_column, ascending=False, inplace=True)
+    def get_item_counts(self, database: List[List[str]], classes: Union[List[int], List[None]]) -> Tuple[Dict[str, int], Dict[str, int], Dict[str, int]]:
 
-        # prepare rules for vectorized comparison
-        rules_as_list = rules[rule_column].str.split(self.splitting_symbol)
-        rules_as_str = rules_as_list.apply(lambda x: f'{self.splitting_symbol}'.join(list(filter(None, x))))
+        freq_items = defaultdict(int)
+        freq_items_pos = defaultdict(int)
+        freq_items_neg = defaultdict(int)
 
-        # drop duplicates
-        mask = rules_as_str.duplicated(keep='first')
-        rules = rules[~mask]
+        assert len(database) == len(classes)
 
-        # drop sorting column
-        rules.drop(columns=[sorting_column], inplace=True)
+        # Count support for each item in the projected database
+        for sequence, class_value in zip(database, classes):
+
+            used = set()
+
+            for item in sequence:
+
+                if item in used:
+                    continue
+
+                freq_items[item] += 1
+
+                if class_value == 0:
+                    freq_items_neg[item] += 1
+
+                elif class_value == 1:
+                    freq_items_pos[item] += 1                    
+
+                used.add(item)
+
+        return freq_items, freq_items_neg, freq_items_pos
+
+    def get_frequent_patterns(self, sequences: List[AnnotatedSequence]) -> List[FrequentPattern]:
+
+        # prepare data for while loop
+        # more memory efficient than recursion - prevents stack overflow
+        stack = [StackObject.from_annotated_sequences(prefix=[], annotated_sequences=sequences)]
+
+        patterns = []
+
+        while stack:
+
+            stack_object = stack.pop()
+
+            counts, counts_neg, counts_pos = self.get_item_counts(
+                stack_object.database,
+                stack_object.classes
+            )
+
+            # check if classes have been provided
+            class_provided: bool = stack_object.classes[0] is not None
+
+            for item, count in counts.items():
+
+                if count < self.min_support_abs:
+                    continue
+
+                if len(stack_object.prefix) + 1 > self.max_sequence_length:
+                    continue
+
+                new_prefix = stack_object.prefix + [item]
+
+                frequent_pattern = FrequentPattern(
+                    sequence_values=new_prefix,
+                    support=count,
+                    support_pos=counts_pos.get(item, 0) if class_provided else None,
+                    support_neg=counts_neg.get(item, 0) if class_provided else None,
+                )
+
+                patterns.append(frequent_pattern)
+
+                new_projected_db = []
+                new_classes = []
+
+                for sequence, class_value in zip(stack_object.database, stack_object.classes):
+
+                    try:
+
+                        index = sequence.index(item)
+                        new_projected_db.append(sequence[index + 1:])
+                        new_classes.append(class_value)
+
+                    except ValueError:
+                        continue
+
+                # if the new projected db does not have enough entries
+                # that could satisfy the min support threshold
+                # continue with next iteration
+                if len(new_projected_db) + len(new_prefix) < self.min_support_abs:
+                    continue
+
+                stack.append(StackObject(database=new_projected_db, classes=new_classes, prefix=new_prefix))
+
+        return patterns
+
+    def get_frequent_patterns_with_confidence(self, frequent_patterns: List[FrequentPattern]) -> List[FrequentPatternWithConfidence]:
+
+        lookup = {str(pattern.sequence_values): pattern for pattern in frequent_patterns}
+        
+        rules = []
+
+        for sequence in frequent_patterns:
+
+            if len(sequence.sequence_values) == 1:
+                continue
+
+            for i in range(len(sequence.sequence_values)):
+
+                antecedent = sequence.sequence_values[:i + 1]
+                consequent = sequence.sequence_values[i + 1:]
+
+                if len(consequent) == 0:
+                    continue
+
+                try:
+
+                    antecedent_pattern = lookup[str(antecedent)]
+
+                except KeyError as e:
+
+                    raise KeyError(f"""Lookup dict does not contain all the necessary values. This is likely due to an incomplete list of frequent pattners. Missing: {e}""")
+
+                confidence = ConfidenceCalculator.calculate_confidence(
+                    support_antecedent=antecedent_pattern.support,
+                    support_antecedent_and_consequent=sequence.support
+                )
+
+                confidence_pos, confidence_neg = None, None
+
+                if antecedent_pattern.support_pos is not None:
+
+                    confidence_pos = ConfidenceCalculator.calculate_confidence(
+                        support_antecedent=antecedent_pattern.support_pos,
+                        support_antecedent_and_consequent=sequence.support_pos
+                    )
+
+                    confidence_neg = ConfidenceCalculator.calculate_confidence(
+                        support_antecedent=antecedent_pattern.support_neg,
+                        support_antecedent_and_consequent=sequence.support_neg
+                    )
+
+                rules.append(
+                    FrequentPatternWithConfidence(
+                        antecedent=antecedent,
+                        consequent=consequent,
+                        support=sequence.support,
+                        support_pos=sequence.support_pos,
+                        support_neg=sequence.support_neg,
+                        confidence=confidence,
+                        confidence_pos=confidence_pos,
+                        confidence_neg=confidence_neg,
+                    )
+                )
 
         return rules
-    
-    def _apply_rule_to_ts(self, *, rules: pd.DataFrame, event: pd.DataFrame, **kwargs):
 
-        hash_str = '__'.join([hash_dataframe(rules), hash_dataframe(event)])
+    def summarise_patterns_in_dataframe(self, data: DataFrame[DatasetSchema]) -> pd.DataFrame:
 
-        cache_handler = PickleCacheHandler(
-            filepath=Path('rule_clf') / f'{hash_str}.pickle'
+        frequent_patterns_with_confidence = self.execute(
+            dataset=data
         )
 
-        res = cache_handler.read()
+        df = pd.DataFrame([el.model_dump() for el in frequent_patterns_with_confidence])
 
-        if res is not None:
-            return res
+        if DatasetRulesSchema.support_pos not in df.columns:
+            raise ValueError(f"""Column {DatasetRulesSchema.support_pos} not found in dataframe""")
 
+        if df[DatasetRulesSchema.support_pos].isna().all() == False:
+            df[DatasetUniqueRulesSchema.delta_confidence] = df[DatasetRulesSchema.confidence_pos] - df[DatasetRulesSchema.confidence_neg]
+            df.sort_values(by=[DatasetUniqueRulesSchema.delta_confidence], inplace=True, ascending=False)
+
+        return df.dropna(axis=1)
+
+    def _encode_train(self, data: pd.DataFrame, **kwargs) -> Dict:
 
         # work on copy
-        rules_copy = rules.copy(deep=True)
-        event_copy = event.copy(deep=True)
-
-        # check data validity
-        assert 'index' in rules_copy.columns
-        assert self.time_column in event_copy.columns
-        assert self.event_column in event_copy.columns
-        for col in self.id_columns:
-            assert col in event_copy.columns
-
-        # to apply the rules, we need to make sure that the incoming dataframe is ordered
-        event_copy = event_copy.sort_values(by=self.time_column)
-        event_copy.reset_index(drop=True, inplace=True)
-
-        # create sequence for each id
-        column_name = 'event_sequences'
-        event_grouped = event_copy.groupby(self.id_columns)
-        event_sequences = event_grouped.apply(lambda x:  list(x[self.event_column]))
-        event_sequences.name = column_name
-        event_sequences_df = event_sequences.to_frame()
-
-        dataframes = [event_sequences_df.reset_index()]
-
-        for _, row in tqdm(rules_copy.iterrows(), total=len(rules_copy)):
-
-            rule = list(filter(None, row['index'].split(self.splitting_symbol)))
-            rule_clf = RuleClassifier(rule=rule, _cache={})
-            
-            sequences = event_sequences_df[column_name].to_list()
-            result = rule_clf.apply_rules(sequences)
-
-            dataframe = pd.DataFrame({row['index']: result})
-
-            dataframes.append(dataframe)
-
-        event_sequences_df = pd.concat(dataframes, axis=1)
-
-        # fill missing values
-        event_sequences_df.fillna(False, inplace=True)
-
-        # drop column name
-        event_sequences_df.drop(column_name, axis=1, inplace=True)
-        event_sequences_df.reset_index(inplace=True)
-
-        # write to cache
-        cache_handler.write(event_sequences_df)
-
-        return event_sequences_df
-
-    def _encode(self, *, data: pd.DataFrame, **kwargs) -> dict:
-
         data_copy = data.copy(deep=True)
 
-        data_copy.sort_values(by=self.time_column, inplace=True)
-
-        prefix_span = PrefixSpan(
-            id_columns=self.id_columns,
-            event_column=self.event_column,
-            splitting_symbol=self.splitting_symbol,
-            itertool_threshold=self.itertool_threshold,
-            norm_support=True,
-            min_support_rel=0.001,
-            min_support_abs=100
+        prefix_df = Dataset(
+            raw_data=data_copy
         )
 
-        console.log('Extracting rules from data...')
+        sequences = prefix_df.get_sequences()
+        sequence_values = [el.sequence_values for el in sequences]
 
-        rules = prefix_span.execute(data=data_copy)
+        frequent_patterns = self.get_frequent_patterns(sequences)
 
-        console.log('Creating unique rules...')
-        rules['index'] = rules.apply(lambda x: f"{x['antecedent']}{self.splitting_symbol*2}{x['precedent']}", axis=1)
-        
-        rules = self._get_unique_rules(data=rules)
+        rules = [el.sequence_values for el in frequent_patterns]
 
-        console.log('Applying rules to data...')
-        data_one_hot = self._apply_rule_to_ts(rules=rules, event=data_copy)
+        encoded_dataframe = RuleEncoder.encode(
+            rules=rules, 
+            sequences2classify=sequence_values
+        )
 
-        data_class = data_copy[self.id_columns +  [self.target_column]].drop_duplicates()
-        data_one_hot = data_one_hot.merge(data_class, right_on=self.id_columns, left_on=self.id_columns)
-        
-        data_one_hot.drop(columns=self.id_columns + ['index'], inplace=True)
+        kwargs['data'] = encoded_dataframe
+        kwargs['rules'] = rules
 
-        return dict(data=data_one_hot)
+        return kwargs
     
+    def _encode_test(self, *, data: pd.DataFrame, **kwargs) -> Dict:
+        # encode rules as a binary feature on test data
 
-if __name__ == '__main__':
+        # assert requirements
+        assert 'rules' in kwargs, "Rules must be provided to the feature selector"
+        rules = kwargs['rules']
 
-    import hashlib
+        assert isinstance(rules, list), "Rules must be of type list"
+        assert all(isinstance(el, list) for el in rules), "Rules must be of type list of lists"
 
-    case_name = "test_" + hashlib.sha1(str.encode(str(datetime.now()))).hexdigest()
-    sequence = ['a', 'b', 'c', 'd', 'e']
+        # assert type of data
+        assert isinstance(data, pd.DataFrame), "Data must be of type pd.DataFrame"
+        
+        data_copy = Dataset(
+            raw_data=data.copy(deep=True)
+        )
 
-    df = pd.DataFrame(sequence, columns=['events'])
-    df['case_id'] = 1
-    df['timestamp'] = pd.date_range('2020-01-01', periods=len(sequence), freq='D')
+        sequences = data_copy.get_sequences()
 
-    spm = SPM(id_columns=['case_id'], event_column='events', time_column='timestamp')
-    result = spm.execute(data=df, case_name=case_name)
+        sequences_values = [el.sequence_values for el in sequences]
 
-    data = result['data']
-    print(data)
+        encoded_dataframe = RuleEncoder.encode(
+            rules=rules, 
+            sequences2classify=sequences_values
+        )
 
+        
+        return {'data': encoded_dataframe}
+
+    def execute(self, dataset: pd.DataFrame) -> List[FrequentPatternWithConfidence]:
+
+        prefix_df = Dataset(
+            raw_data=dataset
+        )
+
+        sequences = prefix_df.get_sequences()
+
+        frequent_patterns = self.get_frequent_patterns(sequences)
+
+        # todo: this step can be optimised if we ignore the possibility of different antecedent and consequent
+        frequent_patterns_with_confidence = self.get_frequent_patterns_with_confidence(
+            frequent_patterns
+        )
+
+        return frequent_patterns_with_confidence

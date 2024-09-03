@@ -16,6 +16,8 @@ class TimeSeriesFeatureSelection(BaseModel, BaseFeatureSelector):
         assert 'rules' in kwargs, "Rules must be provided to the feature selector"
         
         rules = kwargs['rules']
+
+        from IPython import embed; embed()
         assert isinstance(rules, pd.DataFrame), "Rules must be a pandas DataFrame"
         assert 'index' in rules.columns, "Rules must have an index column"
         assert 'mean_ranking' in rules.columns, "Rules must have a mean_ranking column"
