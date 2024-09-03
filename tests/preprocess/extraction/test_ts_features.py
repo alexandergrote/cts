@@ -3,7 +3,8 @@ import unittest
 
 from src.preprocess.extraction.ts_features import Dataset, \
     AnnotatedSequence, PrefixSpan, FrequentPatternWithConfidence, \
-    FrequentPattern, SPMFeatureSelector
+    FrequentPattern, SPMFeatureSelector, DatasetUniqueRulesSchema, \
+    DatasetSchema
 
 
 class TestDataset(unittest.TestCase):
@@ -110,7 +111,6 @@ class TestPrefixSpan(unittest.TestCase):
         for el in [item, item_neg, item_pos]:
             with self.subTest(msg=f'item: {el}'):
                 self.assertIsInstance(el, dict)
-
 
     def test_get_frequent_patterns(self):
 
@@ -272,7 +272,19 @@ class TestPrefixSpan(unittest.TestCase):
             self.prefix_df.raw_data
         )
 
-        print(result)
+        self.assertIsInstance(result, pd.DataFrame)
+        self.assertTrue(DatasetUniqueRulesSchema.delta_confidence in result.columns)
+
+        result = prefixspan.summarise_patterns_in_dataframe(
+            self.prefix_df.raw_data.drop(
+                columns=[DatasetSchema.class_column]
+            )
+        )
+
+        
+        self.assertIsInstance(result, pd.DataFrame)
+        self.assertFalse(DatasetUniqueRulesSchema.delta_confidence in result.columns)
+
 
     def test_execute(self):
 

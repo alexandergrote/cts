@@ -475,11 +475,14 @@ class PrefixSpan(BaseModel):
 
         df = pd.DataFrame([el.model_dump() for el in frequent_patterns_with_confidence])
 
-        if DatasetRulesSchema.support_pos in df.columns:
-            df["delta_confidence"] = df["confidence_pos"] - df["confidence_neg"]
-            df.sort_values(by=["delta_confidence"], inplace=True, ascending=False)
+        if DatasetRulesSchema.support_pos not in df.columns:
+            raise ValueError(f"""Column {DatasetRulesSchema.support_pos} not found in dataframe""")
 
-        return df
+        if df[DatasetRulesSchema.support_pos].isna().all() == False:
+            df[DatasetUniqueRulesSchema.delta_confidence] = df[DatasetRulesSchema.confidence_pos] - df[DatasetRulesSchema.confidence_neg]
+            df.sort_values(by=[DatasetUniqueRulesSchema.delta_confidence], inplace=True, ascending=False)
+
+        return df.dropna(axis=1)
 
 
 
