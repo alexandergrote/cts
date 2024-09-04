@@ -7,6 +7,7 @@ from sklearn.feature_selection import mutual_info_classif
 from src.util.caching import hash_dataframe, PickleCacheHandler
 from src.preprocess.base import BaseFeatureSelector
 
+
 class MutInfoImportance(BaseModel):
 
     def get_feature_importance(self, X: pd.DataFrame, y: pd.Series) -> pd.Series:
@@ -25,7 +26,6 @@ class MutInfoImportance(BaseModel):
             cache_handler.write(obj=result)
 
         return result
-
 
 
 class MutInfoFeatSelection(BaseModel, BaseFeatureSelector):

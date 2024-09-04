@@ -249,7 +249,6 @@ class PrefixSpan(BaseModel, BaseFeatureEncoder):
             rules=rules, 
             sequences2classify=sequences_values
         )
-
         
         return {'data': encoded_dataframe}
 

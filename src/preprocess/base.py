@@ -27,10 +27,13 @@ class BaseFeatureEncoder(ABC):
 
         result = cache_handler.read()
 
-        if result is None:
+        if True:
 
             result_train: dict = self._encode_train(data=data_train, **kwargs)
             data_train_processed = result_train['data']
+
+            assert len(data_train_processed) > 0
+
             rules = result_train.get('rules', {})
             kwargs['rules'] = rules
             
@@ -94,9 +97,10 @@ class BaseFeatureSelector(ABC):
 
         result = cache_handler.read()
 
-        if result is None:
+        if True:
             data_train_processed = self._select_features_train(data=data_train, **kwargs)
             data_test_processed = self._select_features_test(data=data_test, **kwargs)
+            
             cache_handler.write(obj=(data_train_processed, data_test_processed))
         else:
             data_train_processed, data_test_processed = result

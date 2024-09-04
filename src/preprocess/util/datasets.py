@@ -21,12 +21,9 @@ class Dataset(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    def get_sequences(self) -> List[AnnotatedSequence]:
+    def get_sequences(self) -> pd.Series:
 
-        data_copy = self.raw_data.copy(deep=True) 
-
-        # ensure that the events are strings
-        data_copy[DatasetSchema.event_column] = data_copy[DatasetSchema.event_column].astype(str)
+        data_copy = self.raw_data.copy(deep=True)
 
         # since we are interested in calculating confidence of rules
         # we need at least a sequence with length 2
@@ -95,6 +92,62 @@ class Dataset(BaseModel):
         )
 
         return prefix_df
+
+
+class DatasetAggregatedSchema(pa.DataFrameModel):
+    id_column: Series[str] = pa.Field(coerce=True)
+    sequence_values: Series[List[str]]
+    class_value: Optional[Series[int]]
+
+
+class DatasetAggregated(BaseModel):
+    data: DataFrame[DatasetAggregatedSchema]
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    @classmethod
+    def from_pandas(cls, data: DataFrame[DatasetSchema]) -> "DatasetAggregated":
+
+        # work on copy
+        data_copy = data.copy(deep=True)
+
+        # since we are interested in calculating confidence of rules
+        # we need at least a sequence with length 2
+        # as a first step, we can remove all sequences with length 1
+        sequence_nunique = data_copy.groupby([DatasetSchema.id_column])[DatasetSchema.event_column].nunique() != 1
+        sequence_nunique.name = 'to_keep'
+        data_copy = data_copy.merge(sequence_nunique, left_on=[DatasetSchema.id_column], right_index=True)
+        data_copy = data_copy[data_copy['to_keep'] == True]
+
+        data_copy_grouped = data_copy.groupby([DatasetSchema.id_column])
+
+        # since this column is optional, we add it here and set it to None as its default value
+        if DatasetSchema.class_column not in data_copy.columns:
+            data_copy[DatasetSchema.class_column] = None
+
+        sequences = data_copy_grouped[DatasetSchema.event_column].apply(list)    
+        classes = data_copy_grouped[DatasetSchema.class_column].apply(list)
+        
+        # check if all class values are identical for a its sequence
+        if (data_copy_grouped[DatasetSchema.class_column].nunique() > 1).any():
+            raise ValueError(f"class values for sequence {index} are not identical")
+
+        annotated_sequence_records = []
+
+        for (index, value), class_value in zip(sequences.items(), classes):
+
+            annotated_sequence_records.append({
+                DatasetAggregatedSchema.id_column: index,
+                DatasetAggregatedSchema.sequence_values: value,
+                DatasetAggregatedSchema.class_value: class_value[0]
+            })
+
+        # format to dataframe
+        result = cls(
+            data=pd.DataFrame.from_records(annotated_sequence_records)
+        )
+
+        return result
 
 
 class DatasetRulesSchema(pa.DataFrameModel):

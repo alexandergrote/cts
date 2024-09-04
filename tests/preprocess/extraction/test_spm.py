@@ -299,7 +299,6 @@ class TestPrefixSpan(unittest.TestCase):
             with self.subTest(msg=f'rule: {rule}'):
                 self.assertTrue(all([el == expected[i] for i, el in enumerate(result_df[rule].values)]))
 
-
     def test_execute(self):
 
         prefixspan = PrefixSpan()

@@ -15,7 +15,7 @@ from src.util.custom_logging import console
 from src.preprocess.extraction.spm import PrefixSpan
 from src.preprocess.util.types import FrequentPatternWithConfidence
 from src.preprocess.util.rules import RuleEncoder
-from src.preprocess.util.datasets import Dataset, DatasetSchema, DatasetRulesSchema, DatasetRules, DatasetUniqueRules, DatasetUniqueRulesSchema
+from src.preprocess.util.datasets import Dataset, DatasetSchema, DatasetRulesSchema, DatasetRules, DatasetUniqueRules, DatasetUniqueRulesSchema, DatasetAggregated, DatasetAggregatedSchema
 from src.preprocess.base import BaseFeatureEncoder
 
 
@@ -107,16 +107,22 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
 
         predictions_grouped.reset_index(inplace=True)
 
+        console.log("Number of unique patterns: {}".format(predictions_grouped.shape[0]))
+
         predictions_grouped[DatasetSchema.id_column] = \
             predictions_grouped[DatasetSchema.id_column].apply(
                 lambda x: x.replace('][', ', ').replace('[', '').replace(']', ''))
 
+
+        # aggreation of two lists via 'sum' is equal to the extension of a list
         unique_predictions = predictions_grouped.groupby(DatasetSchema.id_column).agg('sum')
         unique_predictions.reset_index(inplace=True)
 
         data = DatasetUniqueRules(
             data=unique_predictions
         )
+
+        console.log("Number of unique patterns after aggregation: {}".format(data.data.shape[0]))
 
         return data
     
@@ -165,6 +171,8 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
             data=data_copy[mask]
         )
 
+        console.log("Number of unique rules after selection: {}".format(result.data.shape[0]))
+
         return result
 
     def _encode_train(self, *args, data: pd.DataFrame, **kwargs):
@@ -187,20 +195,23 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
         # encode rules as a binary feature
         console.log(f"{self.__class__.__name__}: Encoding rules")
 
-        sequences = Dataset(
-            raw_data=data
-        ).get_sequences()
+        data_agg = DatasetAggregated.from_pandas(
+            data=data
+        ).data
 
-        sequences_values = [el.sequence_values for el in sequences]
+        class_values = data_agg[DatasetAggregatedSchema.class_value].to_list()
+        sequences_values = data_agg[DatasetAggregatedSchema.sequence_values].to_list()
 
         selected_patterns.data[DatasetUniqueRulesSchema.id_column] = \
             selected_patterns.data[DatasetUniqueRulesSchema.id_column]\
                 .apply(lambda x: x.replace("'", '').split(', '))
 
         encoded_dataframe = RuleEncoder.encode(
-            rules=selected_patterns.data['id_column'].to_list(), 
+            rules=selected_patterns.data[DatasetUniqueRulesSchema.id_column].to_list(), 
             sequences2classify=sequences_values
         )
+
+        encoded_dataframe[DatasetSchema.class_column] = class_values
 
         # save output
         kwargs['rules'] = selected_patterns
@@ -220,17 +231,19 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
         # assert type of data
         assert isinstance(data, pd.DataFrame), "Data must be of type pd.DataFrame"
         
-        data_copy = Dataset(
-            raw_data=data.copy(deep=True)
-        )
+        data_agg = DatasetAggregated.from_pandas(
+            data=data
+        ).data
 
-        sequences = data_copy.get_sequences()
+        class_values = data_agg[DatasetAggregatedSchema.class_value].to_list()
+        sequences_values = data_agg[DatasetAggregatedSchema.sequence_values].to_list()
 
-        sequences_values = [el.sequence_values for el in sequences]
 
         encoded_dataframe = RuleEncoder.encode(
             rules=rules.data[DatasetUniqueRulesSchema.id_column].to_list(), 
             sequences2classify=sequences_values
         )
+
+        encoded_dataframe[DatasetSchema.class_column] = class_values
         
         return {'data': encoded_dataframe}

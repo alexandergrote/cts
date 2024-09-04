@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from typing import Optional
 
 from src.preprocess.base import BaseFeatureSelector
+from src.preprocess.util.datasets import DatasetUniqueRules, DatasetUniqueRulesSchema
 
 
 class TimeSeriesFeatureSelection(BaseModel, BaseFeatureSelector):
@@ -14,14 +15,9 @@ class TimeSeriesFeatureSelection(BaseModel, BaseFeatureSelector):
     def _select_features_train(self, data: pd.DataFrame, **kwargs) -> pd.DataFrame:
 
         assert 'rules' in kwargs, "Rules must be provided to the feature selector"
-        
         rules = kwargs['rules']
-
-        from IPython import embed; embed()
-        assert isinstance(rules, pd.DataFrame), "Rules must be a pandas DataFrame"
-        assert 'index' in rules.columns, "Rules must have an index column"
-        assert 'mean_ranking' in rules.columns, "Rules must have a mean_ranking column"
-
+        assert isinstance(rules, DatasetUniqueRules), "Rules must be a DatasetUniqueRules"
+        
         data_copy = data.copy(deep=True)
 
         if self.n_features is None:
