@@ -100,7 +100,7 @@ def main(cfg: DictConfig) -> None:
     # needed for exporting
     output['config'] = cfg
 
-    exporter.export(**output)
+    #exporter.export(**output)
 
 
 if __name__ == '__main__':

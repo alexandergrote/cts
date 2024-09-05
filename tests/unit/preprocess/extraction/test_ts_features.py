@@ -1,8 +1,8 @@
 import pandas as pd
 import unittest
 
-from src.preprocess.util.types import AnnotatedSequence, FrequentPatternWithConfidence 
-from src.preprocess.util.datasets import Dataset
+from src.preprocess.util.types import FrequentPatternWithConfidence 
+from src.preprocess.util.datasets import Dataset, DatasetSchema
 from src.preprocess.extraction.ts_features import SPMFeatureSelector
 
 
@@ -66,6 +66,9 @@ class TestSPMFeatureSelection(unittest.TestCase):
         # check if dataframe only contains binary results
         self.assertTrue(all([el in [0, 1] for el in result_df.values.flatten()]))
 
+        # check if class column is present
+        self.assertTrue(DatasetSchema.class_column in result_df.columns)
+
         # check output for individual rules
         rules = {
             'A_B_C': [1, 1, 0, 1, 0, 0],
@@ -96,6 +99,9 @@ class TestSPMFeatureSelection(unittest.TestCase):
 
         result_df = result['data']
         self.assertIsInstance(result_df, pd.DataFrame)
+
+        # check if class column is present
+        self.assertTrue(DatasetSchema.class_column in result_df.columns)
 
         # check if dataframe only contains binary results
         self.assertTrue(all([el in [0, 1] for el in result_df.values.flatten()]))

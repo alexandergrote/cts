@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import pandera as pa
 
-from pydantic import  BaseModel, field_validator
+from pydantic import  BaseModel, field_validator, confloat
 from typing import List, Literal, Optional
 from pandera.typing import DataFrame
 from tqdm import tqdm
@@ -15,7 +15,7 @@ from src.util.custom_logging import console
 from src.preprocess.extraction.spm import PrefixSpan
 from src.preprocess.util.types import FrequentPatternWithConfidence
 from src.preprocess.util.rules import RuleEncoder
-from src.preprocess.util.datasets import Dataset, DatasetSchema, DatasetRulesSchema, DatasetRules, DatasetUniqueRules, DatasetUniqueRulesSchema, DatasetAggregated, DatasetAggregatedSchema
+from src.preprocess.util.datasets import DatasetSchema, DatasetRulesSchema, DatasetRules, DatasetUniqueRules, DatasetUniqueRulesSchema, DatasetAggregated, DatasetAggregatedSchema
 from src.preprocess.base import BaseFeatureEncoder
 
 
@@ -33,6 +33,7 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
 
     multitesting: Optional[dict] = None
     p_value_threshold: float = 0.01
+    criterion_buffer: confloat(ge=0, le=1) = 0
 
     @field_validator("multitesting", mode="before")
     def _set_multitesting(cls, v):
@@ -149,7 +150,7 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
 
             # get observations
             obs = np.abs(np.array(row[self.criterion]))
-            values = np.zeros_like(obs)  
+            values = np.zeros_like(obs) + self.criterion_buffer
                 
             test = mannwhitneyu(obs, values, alternative='greater')
             p_values.append(test.pvalue)

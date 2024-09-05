@@ -5,7 +5,7 @@ from pydantic import BaseModel, model_validator
 from typing import List, Dict
 
 from src.fetch_data.base import BaseDataLoader
-from src.preprocess.extraction.v1.ts_features import RuleClassifier
+from src.preprocess.util.rules import RuleClassifier
 from src.util.caching import pickle_cache
 from src.util.constants import Directory
 

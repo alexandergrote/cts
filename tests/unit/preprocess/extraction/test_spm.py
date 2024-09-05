@@ -248,6 +248,9 @@ class TestPrefixSpan(unittest.TestCase):
         result_df = result['data']
         self.assertIsInstance(result_df, pd.DataFrame)
 
+        # check if class column is present
+        self.assertTrue(DatasetSchema.class_column in result_df.columns)
+
         # check if dataframe only contains binary results
         self.assertTrue(all([el in [0, 1] for el in result_df.values.flatten()]))
 
@@ -285,8 +288,11 @@ class TestPrefixSpan(unittest.TestCase):
         result_df = result['data']
         self.assertIsInstance(result_df, pd.DataFrame)
 
+        # check if class column is present
+        self.assertTrue(DatasetSchema.class_column in result_df.columns)
+
         # check if dataframe only contains binary results
-        self.assertTrue(all([el in [0, 1] for el in result_df.values.flatten()]))
+        self.assertTrue(all([el in [0, 1] for el in result_df.drop(columns=[DatasetSchema.class_column]).values.flatten()]))
 
         # check output for individual rules
         rules = {

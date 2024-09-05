@@ -1,29 +1,29 @@
 import pandas as pd
 
 from pydantic import BaseModel
-from typing import Any, Optional, List
+from typing import List
 
 
-class Rule(BaseModel):
+class RuleClassifier(BaseModel):
 
-    """
+    rule: List[str]
 
-    ('A' -> 'B') -> 'C'
+    def apply_rules(self, sequences: List[List[str]]) -> List[bool]:
 
-    """
+        result = []
 
-    antecedent: Any
-    consequent: str
+        for sequence in sequences:
+            result.append(
+                RuleEncoder.is_subsequence(self.rule, sequence)
+            )
 
-    # metrics
-    support: Optional[float] = None
-    confidence: Optional[float] = None
+        return result
 
 
 class RuleEncoder(BaseModel):
 
     @staticmethod
-    def is_subsequence(subseq, seq):
+    def is_subsequence(subseq: List[str], seq: List[str]):
         it = iter(seq)
         return all(item in it for item in subseq)
     

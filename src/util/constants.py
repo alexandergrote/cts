@@ -1,3 +1,4 @@
+import hydra
 from pathlib import Path
 from enum import Enum
 
@@ -51,6 +52,15 @@ HYDRA_CONFIG = {
     'config_name': File.CONFIG.stem,
     'version_base': "1.1"
 }
+
+def get_hydra_output_dir() -> Path:
+
+    try:
+        config = hydra.core.hydra_config.HydraConfig
+        return Path(config.get().runtime.output_dir)
+    
+    except ValueError:
+        return Directory.OUTPUT_DIR
 
 
 def replace_placeholder_in_dict(dictionary, placeholder, replacement):

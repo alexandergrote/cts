@@ -7,12 +7,13 @@ params:
       bootstrap_repetitions: 10
       bootstrap_sampling_fraction: 0.8
       p_value_threshold: 0.01
+      criterion_buffer: 0.1
       criterion: delta_confidence
       prefixspan_config:
         class_name: 'src.preprocess.extraction.ts_features.PrefixSpan'
         params:
           min_support_abs: 20
-          max_sequence_length: 100
+          max_sequence_length: 3
       multitesting:
         method: 'fdr_by' # 'bonferroni'
         alpha: 0.01

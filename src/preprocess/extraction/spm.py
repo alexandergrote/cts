@@ -209,6 +209,7 @@ class PrefixSpan(BaseModel, BaseFeatureEncoder):
 
         sequences = prefix_df.get_sequences()
         sequence_values = [el.sequence_values for el in sequences]
+        class_values = [el.class_value for el in sequences]
 
         frequent_patterns = self.get_frequent_patterns(sequences)
 
@@ -218,6 +219,8 @@ class PrefixSpan(BaseModel, BaseFeatureEncoder):
             rules=rules, 
             sequences2classify=sequence_values
         )
+
+        encoded_dataframe[DatasetSchema.class_column] = class_values
 
         kwargs['data'] = encoded_dataframe
         kwargs['rules'] = rules
@@ -244,11 +247,14 @@ class PrefixSpan(BaseModel, BaseFeatureEncoder):
         sequences = data_copy.get_sequences()
 
         sequences_values = [el.sequence_values for el in sequences]
+        class_values = [el.class_value for el in sequences]
 
         encoded_dataframe = RuleEncoder.encode(
             rules=rules, 
             sequences2classify=sequences_values
         )
+
+        encoded_dataframe[DatasetSchema.class_column] = class_values
         
         return {'data': encoded_dataframe}
 
