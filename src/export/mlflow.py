@@ -14,9 +14,9 @@ class Exporter(BaseModel, BaseExporter):
 
     @staticmethod
     @validate_arguments(config={"arbitrary_types_allowed": True})
-    def _log_artifacts():
+    def _log_artifacts(path: Path):
 
-        for file in list(Path.cwd().glob("*")):
+        for file in list(path.glob("*")):
 
             # ignore hydra output
             if file.name in [".hydra", "main.log", r"\\"]:
@@ -84,9 +84,11 @@ class Exporter(BaseModel, BaseExporter):
 
         assert "config" in kwargs, "kwargs must contain config"
         assert "metrics" in kwargs, "kwaargs must contain metrics"
+        assert "output_dir" in kwargs, "kwargs must contain output_dir"
 
         config = kwargs["config"]
         metrics = kwargs["metrics"]
+        output_dir = kwargs["output_dir"]
 
         assert isinstance(config, dict)
         assert isinstance(metrics, dict)
@@ -117,4 +119,4 @@ class Exporter(BaseModel, BaseExporter):
             Exporter._log_metrics_from_dict(metrics)
 
             # log all artifacts
-            Exporter._log_artifacts()
+            Exporter._log_artifacts(path=output_dir)

@@ -1,7 +1,7 @@
 import pandas as pd
 import unittest
 
-from src.preprocess.util.types import FrequentPatternWithConfidence 
+from src.preprocess.util.types import BootstrapRound 
 from src.preprocess.util.datasets import Dataset, DatasetSchema
 from src.preprocess.extraction.ts_features import SPMFeatureSelector
 
@@ -40,10 +40,10 @@ class TestSPMFeatureSelection(unittest.TestCase):
             prefixspan_config=self.prefixspan_config
         )
 
-        patterns = feat_alg._bootstrap(data=self.prefix_df.raw_data)
+        bootstrap_rounds = feat_alg._bootstrap(data=self.prefix_df.raw_data)
     
-        for pattern in patterns:
-            self.assertIsInstance(pattern, FrequentPatternWithConfidence)
+        for round in bootstrap_rounds:
+            self.assertIsInstance(round, BootstrapRound)
 
     def test_encode_train(self):
 

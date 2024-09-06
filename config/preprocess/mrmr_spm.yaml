@@ -4,29 +4,18 @@ params:
   extractor:
     class_name: src.preprocess.extraction.ts_features.SPMFeatureSelector
     params:
-      repetitions: 10
-      corr_threshold: 0.5
-      key_in_result_dict: 'data'
-      keep_class: True
-      treatment_attr_name: '%target_column%'
-      treatment_attr_value: '1'
-      splitting_symbol: " --> "
-      ts_id_columns:
-        - '%id_column%'
-      ts_event_column: '%event_column%'
-      ts_datetime_column: '%time_column%'
+      bootstrap_repetitions: 10
+      bootstrap_sampling_fraction: 0.8
+      p_value_threshold: 0.01
+      criterion_buffer: 0.1
+      criterion: delta_confidence
       prefixspan_config:
         class_name: 'src.preprocess.extraction.ts_features.PrefixSpan'
         params:
-          id_columns: [ '%id_column%']
-          event_column: '%event_column%'
-          timestamp_column: '%time_column%'
-          rule_max_length: 999
-          rule_min_length: 1
-          separator: " --> "
-          itertool_threshold: 3
+          min_support_abs: 20
+          max_sequence_length: 3
       multitesting:
-        method: 'fdr_by'
+        method: 'fdr_by' # 'bonferroni'
         alpha: 0.01
   selector:
     class_name: src.preprocess.selection.mrmr.MRMRFeatSelection

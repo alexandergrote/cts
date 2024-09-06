@@ -3,6 +3,7 @@ import xgboost
 import yaml
 from pydantic import BaseModel, model_validator
 from typing import Optional, Any
+from pathlib import Path
 import pandas as pd
 
 from src.model.base import BaseProcessModel
@@ -34,7 +35,7 @@ class SklearnModel(BaseModel, BaseProcessModel):
 
         return self
 
-    def fit(self, x_train: pd.DataFrame, y_train: pd.Series, **kwargs):
+    def fit(self, x_train: pd.DataFrame, y_train: pd.Series, output_dir: Path, **kwargs):
 
         self.model.fit(x_train, y_train)
 
@@ -58,8 +59,8 @@ class SklearnModel(BaseModel, BaseProcessModel):
             })
 
         # save results
-        Pickler.write(importance_df, 'importance.pickle')
-        Pickler.write(self.model, 'model.pickle')
+        Pickler.write(importance_df, output_dir / 'importance.pickle')
+        Pickler.write(self.model, output_dir / 'model.pickle')
 
         kwargs['x_train'] = x_train
         kwargs['y_train'] = y_train

@@ -13,7 +13,7 @@ from statsmodels.stats.multitest import multipletests
 from src.util.dynamic_import import DynamicImport
 from src.util.custom_logging import console
 from src.preprocess.extraction.spm import PrefixSpan
-from src.preprocess.util.types import FrequentPatternWithConfidence
+from src.preprocess.util.types import BootstrapRound
 from src.preprocess.util.rules import RuleEncoder
 from src.preprocess.util.datasets import DatasetSchema, DatasetRulesSchema, DatasetRules, DatasetUniqueRules, DatasetUniqueRulesSchema, DatasetAggregated, DatasetAggregatedSchema
 from src.preprocess.base import BaseFeatureEncoder
@@ -66,7 +66,7 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
         return data[mask]
 
     @pa.check_types
-    def _bootstrap(self, *, data: DataFrame[DatasetSchema], **kwargs) -> List[FrequentPatternWithConfidence]:
+    def _bootstrap(self, *, data: DataFrame[DatasetSchema], **kwargs) -> List[BootstrapRound]:
 
         prefix: PrefixSpan = DynamicImport.import_class_from_dict(
             dictionary=self.prefixspan_config
@@ -84,27 +84,40 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
             # get output on sample
             prediction = prefix.execute(dataset=data_sub)
     
-            predictions.extend(prediction)
+            predictions.append(BootstrapRound(
+                n_samples=len(data_sub),
+                freq_patterns=prediction
+            ))
 
         return predictions
 
-    def _get_unique_patterns(self, patterns: List[FrequentPatternWithConfidence]) -> DatasetUniqueRules:
+    def _get_unique_patterns(self, bootstrap_rounds: List[BootstrapRound]) -> DatasetUniqueRules:
 
         # this consists of two processes:
         # 1) joining bootstrap results
         # 2) joining rules that are essentially the same based on the event order, but differ in their antecedent and consequent
 
-        patterns_df = DatasetRules.create_from_frequent_pattern(
-            freq_pattern=patterns
+        patterns_df = DatasetRules.create_from_bootstrap_rounds(
+            bootstrap_rounds=bootstrap_rounds
         ).data
 
         patterns_df[DatasetSchema.id_column] = \
             patterns_df[DatasetRulesSchema.antecedent].astype('str') + \
             patterns_df[DatasetRulesSchema.consequent].astype('str')
+        
+        # normalize support
+        # needed for ranking later
+        patterns_df[DatasetRulesSchema.support] = patterns_df[DatasetRulesSchema.support] / patterns_df[DatasetRulesSchema.total_observations]
+
+        # columns with multiple values given as a list
+        columns_with_lists = [
+            DatasetRulesSchema.delta_confidence, 
+            DatasetRulesSchema.inverse_entropy, 
+            DatasetRulesSchema.support
+        ]
 
         predictions_grouped = patterns_df.groupby([DatasetSchema.id_column]) \
-            [[DatasetRulesSchema.delta_confidence, DatasetRulesSchema.inverse_entropy]] \
-                .agg(list)
+            [columns_with_lists].agg(list)
 
         predictions_grouped.reset_index(inplace=True)
 
@@ -114,9 +127,9 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
             predictions_grouped[DatasetSchema.id_column].apply(
                 lambda x: x.replace('][', ', ').replace('[', '').replace(']', ''))
 
-
         # aggreation of two lists via 'sum' is equal to the extension of a list
         unique_predictions = predictions_grouped.groupby(DatasetSchema.id_column).agg('sum')
+        
         unique_predictions.reset_index(inplace=True)
 
         data = DatasetUniqueRules(
@@ -183,11 +196,11 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
 
         # bootstrap rules
         console.log(f"{self.__class__.__name__}: Bootstrapped Rule Mining")
-        patterns = self._bootstrap(data=data_copy)
+        bootsrap_rounds = self._bootstrap(data=data_copy)
 
         # get unique rules
         console.log(f"{self.__class__.__name__}: Obtaining unique rules")
-        unique_patterns = self._get_unique_patterns(patterns=patterns)
+        unique_patterns = self._get_unique_patterns(bootstrap_rounds=bootsrap_rounds)
 
         # select informative rules
         console.log(f"{self.__class__.__name__}: Selecting rules")

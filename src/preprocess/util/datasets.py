@@ -1,11 +1,17 @@
 import pandas as pd
+import numpy as np
 import pandera as pa
 
 from pydantic import BaseModel, ConfigDict
-from typing import Optional, List
+from typing import Optional, List, Literal, Tuple
 from pandera.typing import DataFrame, Series
 
-from src.preprocess.util.types import AnnotatedSequence, FrequentPatternWithConfidence
+from src.preprocess.util.types import AnnotatedSequence, FrequentPatternWithConfidence, BootstrapRound
+
+
+@pa.extensions.register_check_method(statistics=["min_value", "max_value"], check_type="element_wise")
+def is_between(list_obj, *, min_value, max_value):
+    return all([min_value <= el <= max_value for el in list_obj])
 
 
 class DatasetSchema(pa.DataFrameModel):
@@ -21,7 +27,7 @@ class Dataset(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    def get_sequences(self) -> pd.Series:
+    def get_sequences(self) -> List[AnnotatedSequence]:
 
         data_copy = self.raw_data.copy(deep=True)
 
@@ -75,9 +81,9 @@ class Dataset(BaseModel):
             for e_idx, event in enumerate(sequence):
 
                 record = {
-                    'id_column': str(id),
-                    'time_column': e_idx,
-                    'event_column': event,
+                    DatasetSchema.id_column: str(id),
+                    DatasetSchema.time_column: e_idx,
+                    DatasetSchema.event_column: event,
                 }
 
                 if classes is not None:
@@ -165,6 +171,7 @@ class DatasetRulesSchema(pa.DataFrameModel):
 
     delta_confidence: Series[float]
     inverse_entropy: Series[float]
+    total_observations: Series[int]
 
 
 class DatasetRules(BaseModel):
@@ -172,18 +179,28 @@ class DatasetRules(BaseModel):
     data: DataFrame[DatasetRulesSchema]
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
-
+    
     @classmethod
-    def create_from_frequent_pattern(cls, freq_pattern: List[FrequentPatternWithConfidence]) -> "DatasetRules":
+    def create_from_bootstrap_rounds(cls, bootstrap_rounds: List[BootstrapRound]) -> "DatasetRules":
 
-        # enrich with delta confidence and inverse entropy
-        data = pd.DataFrame([{
-            **el.model_dump(),
-            **{
-                DatasetRulesSchema.delta_confidence: el.delta_confidence,
-                DatasetRulesSchema.inverse_entropy: el.inverse_entropy
-            }
-        } for el in freq_pattern])
+        records = []
+
+        for round in bootstrap_rounds:
+
+            total_observations = round.n_samples
+
+            for pattern in round.freq_patterns:
+
+                records.append({
+                    **pattern.model_dump(),
+                    **{
+                        DatasetRulesSchema.total_observations: total_observations,
+                        DatasetRulesSchema.delta_confidence: pattern.delta_confidence,
+                        DatasetRulesSchema.inverse_entropy: pattern.inverse_entropy
+                    }
+                })
+
+        data = pd.DataFrame.from_records(records)
 
         return DatasetRules(data=data)
 
@@ -192,10 +209,49 @@ class DatasetUniqueRulesSchema(pa.DataFrameModel):
     id_column: Series[str]
     delta_confidence: Series[List[float]]
     inverse_entropy: Series[List[float]]
+    support: Series[List[float]] = pa.Field(is_between={"min_value": 0, "max_value": 1})
+
+    class Config:
+        unique=["id_column"]
 
 
 class DatasetUniqueRules(BaseModel):
     data: DataFrame[DatasetUniqueRulesSchema]
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    def rank_rules(self, criterion: Literal[DatasetRulesSchema.delta_confidence, DatasetRulesSchema.inverse_entropy], ascending: bool = False, weighted_by_support: bool = False) -> List[Tuple[str, float]]:
+
+        # collect ids and values
+        ids, values = [], []
+
+        # loop through different rows
+        for _, row in self.data.iterrows():
+
+            ids.append(row[DatasetUniqueRulesSchema.id_column])
+
+            value = np.array(row[criterion])
+
+            if weighted_by_support:
+                support = np.array(row[DatasetUniqueRulesSchema.support])
+                value = value * support
+
+            mean_value = np.mean(value)
+
+            values.append(mean_value)
+
+        # convert to dataframe for easier manipulation
+        values_df = pd.DataFrame({
+            DatasetUniqueRulesSchema.id_column: ids,
+            criterion: values
+        })
+
+        # add absolute value to sort by
+        sorting_feature = f'{criterion}_abs'
+        values_df[sorting_feature] = values_df[criterion].abs()
+
+        # sort
+        values_df.sort_values(sorting_feature, ascending=ascending, inplace=True)
+
+        return list(zip(values_df[DatasetUniqueRulesSchema.id_column], values_df[criterion]))
 

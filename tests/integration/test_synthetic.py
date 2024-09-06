@@ -1,8 +1,13 @@
 import unittest
+from unittest.mock import patch
 from typing import List
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from src.util.load_hydra import get_hydra_config
 from src.main import main
 
+
+temp_dir = TemporaryDirectory()
 
 class TestSynthetic(unittest.TestCase):
 
@@ -20,23 +25,24 @@ class TestSynthetic(unittest.TestCase):
 
         self.assertIsNone(main(cfg))
 
-    def test_preprocess(self):
+    @patch("src.main.get_hydra_output_dir", return_value=Path(temp_dir.name))
+    def test_preprocess(self, mock_output_dir):
 
         selection_options = ['self', 'rf', 'mutinfo', 'mrmr']
         encoding_options = ['spm', 'oh']
-
-        selection_options = ['self']
-        encoding_options = ['oh']
+        n_features = ['null', 1]
 
         for selection in selection_options:
             for encoding in encoding_options:
+                for n_feature in n_features:
 
-                statement = f"preprocess={selection}_{encoding}"
+                    statement = f"preprocess={selection}_{encoding}_{str(n_feature)}"
 
-                with self.subTest(msg=statement):
-                    self._integration_test([
-                        f"preprocess={selection}_{encoding}",
-                    ])
+                    with self.subTest(msg=statement):
+                        self._integration_test([
+                            f"preprocess={selection}_{encoding}",
+                            f"preprocess.params.selector.params.n_features={n_feature}"
+                        ])
         
 
 

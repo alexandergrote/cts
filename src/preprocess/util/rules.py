@@ -1,7 +1,7 @@
 import pandas as pd
 
 from pydantic import BaseModel
-from typing import List
+from typing import List, ClassVar
 
 
 class RuleClassifier(BaseModel):
@@ -22,12 +22,19 @@ class RuleClassifier(BaseModel):
 
 class RuleEncoder(BaseModel):
 
+    string_separator: ClassVar[str] = '_'
+
     @staticmethod
     def is_subsequence(subseq: List[str], seq: List[str]):
         it = iter(seq)
         return all(item in it for item in subseq)
     
-    def encode(rules: List[List[str]], sequences2classify: List[List[str]], string_separator: str = '_') -> pd.DataFrame:
+    @staticmethod
+    def encode_rule_id(rule: List[str]) -> str:
+        return RuleEncoder.string_separator.join(rule)
+    
+    @staticmethod
+    def encode(rules: List[List[str]], sequences2classify: List[List[str]], ) -> pd.DataFrame:
 
         # result data
         data = []
@@ -36,11 +43,12 @@ class RuleEncoder(BaseModel):
         for sequence in sequences2classify:
 
             row_data = {}
-            indices.append(string_separator.join(sequence))
+            idx = RuleEncoder.encode_rule_id(sequence)
+            indices.append(idx)
 
             for rule in rules:
-
-                row_data[f'{string_separator.join(rule)}'] = RuleEncoder.is_subsequence(subseq=rule, seq=sequence)
+                rule_id = RuleEncoder.encode_rule_id(rule)
+                row_data[rule_id] = RuleEncoder.is_subsequence(subseq=rule, seq=sequence)
 
             data.append(row_data)
 

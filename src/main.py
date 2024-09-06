@@ -5,7 +5,7 @@ from omegaconf import DictConfig, OmegaConf
 
 # load package specific code
 from src.util.dynamic_import import DynamicImport
-from src.util.constants import replace_placeholder_in_dict, EnvMode, HYDRA_CONFIG
+from src.util.constants import replace_placeholder_in_dict, EnvMode, HYDRA_CONFIG, get_hydra_output_dir
 from src.util.custom_logging import console
 from src.util.check_experiment import experiment_exists
 from src.util.environment import PydanticEnvironment
@@ -73,6 +73,9 @@ def main(cfg: DictConfig) -> None:
         dictionary=cfg['export']
     )
 
+    # get folder for run
+    output_dir = get_hydra_output_dir()
+
     # execute all components
 
     console.log("Fetching data")
@@ -85,7 +88,7 @@ def main(cfg: DictConfig) -> None:
     output = preprocessor.execute(**output, case_name=experiment_name)
     
     console.log("Model Training & Inference")
-    model.fit(**output)
+    model.fit(output_dir=output_dir, **output)
     output = model.predict(**output)
     output = model.predict_proba(**output)
 
@@ -100,7 +103,7 @@ def main(cfg: DictConfig) -> None:
     # needed for exporting
     output['config'] = cfg
 
-    #exporter.export(**output)
+    exporter.export(output_dir=output_dir, **output)
 
 
 if __name__ == '__main__':

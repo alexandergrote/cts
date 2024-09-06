@@ -80,3 +80,8 @@ class StackObject(BaseModel):
             classes.append(annotated_sequence.class_value)
         
         return cls(prefix=prefix, database=database, classes=classes)
+
+
+class BootstrapRound(BaseModel):
+    n_samples: int
+    freq_patterns: List[FrequentPatternWithConfidence]

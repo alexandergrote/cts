@@ -4,6 +4,7 @@ from typing import Optional
 
 from src.preprocess.base import BaseFeatureSelector
 from src.preprocess.util.datasets import DatasetUniqueRules, DatasetUniqueRulesSchema
+from src.preprocess.util.rules import RuleEncoder
 
 
 class TimeSeriesFeatureSelection(BaseModel, BaseFeatureSelector):
@@ -24,12 +25,14 @@ class TimeSeriesFeatureSelection(BaseModel, BaseFeatureSelector):
             self._columns = data.columns.to_list()
             return data
         
-        all_rules = data_copy.filter(like=self.splitting_symbol).columns.to_list()
-        rules = rules[rules['index'].isin(all_rules)]
-        rules.sort_values(by='mean_ranking', ascending=False, inplace=True)
+        ranked_rules = rules.rank_rules(
+            criterion=DatasetUniqueRulesSchema.delta_confidence,
+            weighted_by_support=True
+        )
 
-        important_sequences = rules['index'].head(self.n_features).to_list()
+        # get top n_features rules and format them correctly to use them with the dataframe
+        top_rules = [RuleEncoder.encode_rule_id(rule=el[0]) for el in ranked_rules[:self.n_features]]
         
-        self._columns = important_sequences + [self.target_column]
+        self._columns = top_rules + [self.target_column]
 
         return data_copy[self._columns]
