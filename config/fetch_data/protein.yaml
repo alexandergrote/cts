@@ -1,3 +1,0 @@
-class_name: src.fetch_data.cts.CTSDataloader
-params:
-  path: 'ProteinSequences.csv'

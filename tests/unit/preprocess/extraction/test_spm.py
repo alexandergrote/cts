@@ -3,7 +3,8 @@ import pandas as pd
 
 from src.preprocess.extraction.spm import PrefixSpan
 from src.preprocess.util.types import FrequentPattern, FrequentPatternWithConfidence
-from src.preprocess.util.datasets import Dataset, DatasetSchema, DatasetUniqueRulesSchema
+from src.preprocess.util.datasets import DatasetUniqueRulesSchema
+from src.util.datasets import Dataset, DatasetSchema
 
 
 class TestPrefixSpan(unittest.TestCase):

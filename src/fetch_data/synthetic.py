@@ -8,6 +8,7 @@ from src.fetch_data.base import BaseDataLoader
 from src.preprocess.util.rules import RuleClassifier
 from src.util.caching import pickle_cache
 from src.util.constants import Directory
+from src.util.datasets import Dataset
 
 rng = np.random.default_rng(seed=0)
 
@@ -55,7 +56,7 @@ class DataLoader(BaseModel, BaseDataLoader):
 
 
     @pickle_cache(ignore_caching=False, cachedir=Directory.CACHING_DIR / 'synthetic')
-    def execute(self):
+    def get_data(self) -> Dataset:
 
         sequence_goals = {k: self.configuration[k][self.select_key] * self.n_samples for k in self.configuration}
         sequence_goals[None] = self.n_samples - sum(sequence_goals.values())
@@ -138,7 +139,7 @@ class DataLoader(BaseModel, BaseDataLoader):
 
         data = pd.DataFrame.from_records(records)
 
-        return {'data': data}
+        return data
 
 
 if __name__ == '__main__':

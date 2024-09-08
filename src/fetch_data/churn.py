@@ -1,6 +1,6 @@
 import pandas as pd
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, ConfigDict
 from typing import Optional
 from tqdm import tqdm
 from imblearn.under_sampling import RandomUnderSampler
@@ -8,6 +8,7 @@ from imblearn.under_sampling import RandomUnderSampler
 from src.fetch_data.base import BaseDataLoader
 from src.util.caching import pickle_cache
 from src.util.constants import Directory
+from src.util.datasets import Dataset, DatasetSchema
 
 
 class ChurnDataloader(BaseModel, BaseDataLoader):
@@ -21,9 +22,9 @@ class ChurnDataloader(BaseModel, BaseDataLoader):
     resampling_fraction: Optional[float] = None
     max_length: int = 100
     resampling_fraction: Optional[float] = None
+    n_samples: Optional[int] = None
 
-    class Config:
-        arbitrary_types_allowed=True
+    model_config = ConfigDict(arbitrary_types_allowed=True, extra='forbid')
 
     @field_validator('path')
     def _set_path(cls, v):
@@ -32,8 +33,8 @@ class ChurnDataloader(BaseModel, BaseDataLoader):
 
         return filepath
 
-    @pickle_cache(ignore_caching=False, cachedir=Directory.CACHING_DIR / 'churn')
-    def execute(self) -> dict:
+    @pickle_cache(ignore_caching=True, cachedir=Directory.CACHING_DIR / 'churn')
+    def get_data(self) -> Dataset:
 
         data = pd.read_csv(self.path)
 
@@ -49,6 +50,8 @@ class ChurnDataloader(BaseModel, BaseDataLoader):
 
         records = []
 
+        counter = 0
+
         for session_id, sequences in tqdm(trimmed_sequences.items(), total=len(trimmed_sequences)):
 
             time_idx = 0
@@ -56,46 +59,55 @@ class ChurnDataloader(BaseModel, BaseDataLoader):
             for sequence in sequences:
 
                 record = {
-                    'session_id': session_id,
-                    'product_action': sequence,
-                    'time': time_idx,
-                    'label': class_labels_mapping[session_id]
+                    DatasetSchema.id_column: session_id,
+                    DatasetSchema.event_column: sequence,
+                    DatasetSchema.time_column: time_idx,
+                    DatasetSchema.class_column: class_labels_mapping[session_id]
                 }
 
                 records.append(record)
 
                 time_idx += 1
 
+            counter += 1
+
+            if self.n_samples is not None and counter >= self.n_samples:
+                break
+
         data = pd.DataFrame.from_records(records)
 
         # resample if argument is provided
         if self.resampling_fraction is not None:
 
-            n_old = data['session_id'].nunique()
+            n_old = data[DatasetSchema.id_column].nunique()
 
             sampler = RandomUnderSampler(
                 sampling_strategy=self.resampling_fraction,
                 random_state=42
             )
 
-            tmp = data[['session_id', 'label']].drop_duplicates()
-            tmp['label'] = tmp['label'].astype(int)
-            ids, _ = sampler.fit_resample(tmp.drop(columns=['label']), tmp['label'])
+            tmp = data[[DatasetSchema.id_column, DatasetSchema.class_column]].drop_duplicates()
+            tmp[DatasetSchema.class_column] = tmp[DatasetSchema.class_column].astype(int)
+            ids, _ = sampler.fit_resample(tmp.drop(columns=[DatasetSchema.class_column]), tmp[DatasetSchema.class_column])
 
-            data = data[data['session_id'].isin(ids['session_id'].to_list())]
+            data = data[data[DatasetSchema.id_column].isin(ids[DatasetSchema.id_column].to_list())]
             
-            n_new = data['session_id'].nunique()
+            n_new = data[DatasetSchema.id_column].nunique()
 
             print(f"Resampled from {n_old} to {n_new} samples")
+
+        # format result
+        data[DatasetSchema.class_column] = data[DatasetSchema.class_column].astype('int64')
+
         
-        
-        return {'data': data}
+        return data
 
 
 if __name__ == '__main__':
 
     ts_data = ChurnDataloader(
-        path="release_10_23_2020.csv"
+        path="release_10_23_2020.csv",
+        n_samples=1000
     ).execute()
 
     print(ts_data['data'])

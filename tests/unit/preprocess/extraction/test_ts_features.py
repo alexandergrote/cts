@@ -2,7 +2,7 @@ import pandas as pd
 import unittest
 
 from src.preprocess.util.types import BootstrapRound 
-from src.preprocess.util.datasets import Dataset, DatasetSchema
+from src.util.datasets import Dataset, DatasetSchema
 from src.preprocess.extraction.ts_features import SPMFeatureSelector
 
 

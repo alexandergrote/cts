@@ -1,17 +1,20 @@
-from abc import ABC, abstractmethod
-
 import pandas as pd
 
+from abc import ABC, abstractmethod
+
+from src.util.datasets import Dataset, DatasetSchema
 
 class BaseDataLoader(ABC):
 
-    @abstractmethod
     def execute(self) -> dict:
-        raise NotImplementedError()
 
+        df = self.get_data()
 
-class BaseDataset(ABC):
-
+        DatasetSchema.validate(df)
+        
+        return {'data': df}
+    
     @abstractmethod
-    def get_data(self) -> pd.DataFrame:
+    def get_data(self) -> Dataset:
         raise NotImplementedError()
+    

@@ -11,7 +11,8 @@ from src.preprocess.base import BaseFeatureEncoder
 from src.preprocess.util.rules import RuleEncoder
 from src.preprocess.util.metrics import ConfidenceCalculator
 from src.preprocess.util.types import AnnotatedSequence, FrequentPattern, StackObject, FrequentPatternWithConfidence
-from src.preprocess.util.datasets import Dataset, DatasetSchema, DatasetRulesSchema, DatasetUniqueRulesSchema
+from src.preprocess.util.datasets import DatasetRulesSchema, DatasetUniqueRulesSchema
+from src.util.datasets import Dataset, DatasetSchema
 
 
 class PrefixSpan(BaseModel, BaseFeatureEncoder):
