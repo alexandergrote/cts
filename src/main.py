@@ -36,6 +36,7 @@ def main(cfg: DictConfig) -> None:
         if experiment_exists(experiment_name=experiment_name, random_seed=random_seed):
             console.log("Experiment already exists")
             return
+    
 
     for _, value in cfg['constants'].items():
 
