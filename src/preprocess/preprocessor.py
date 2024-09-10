@@ -4,14 +4,13 @@ from typing import Union, Dict, Any
 
 from src.util.dynamic_import import DynamicImport
 from src.util.custom_logging import console
+from src.util.datasets import DatasetSchema
 
 
 class FeatureMaker(BaseModel):
 
     extractor: Union[Dict[str, dict], Any]
     selector: Union[Dict[str, dict],  Any]
-
-    target_column: str
 
     class Config:
         arbitrary_types_allowed=True
@@ -21,7 +20,7 @@ class FeatureMaker(BaseModel):
         return DynamicImport.import_class_from_dict(dictionary=v)
     
     def _get_x_y(self, df: pd.DataFrame):
-        return df.drop(columns=self.target_column), df[self.target_column]
+        return df.drop(columns=DatasetSchema.class_column), df[DatasetSchema.class_column]
 
 
     def execute(self, **kwargs):

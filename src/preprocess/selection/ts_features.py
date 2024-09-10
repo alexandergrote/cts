@@ -5,11 +5,11 @@ from typing import Optional
 from src.preprocess.base import BaseFeatureSelector
 from src.preprocess.util.datasets import DatasetUniqueRules, DatasetUniqueRulesSchema
 from src.preprocess.util.rules import RuleEncoder
+from src.util.datasets import DatasetSchema
 
 
 class TimeSeriesFeatureSelection(BaseModel, BaseFeatureSelector):
 
-    target_column: str
     n_features: Optional[int] = None
     splitting_symbol: str
 
@@ -33,6 +33,6 @@ class TimeSeriesFeatureSelection(BaseModel, BaseFeatureSelector):
         # get top n_features rules and format them correctly to use them with the dataframe
         top_rules = [RuleEncoder.encode_rule_id(rule=el[0]) for el in ranked_rules[:self.n_features]]
         
-        self._columns = top_rules + [self.target_column]
+        self._columns = top_rules + [DatasetSchema.class_column]
 
         return data_copy[self._columns]

@@ -1,5 +1,4 @@
 defaults:
-  - constants: synthetic
   - fetch_data: synthetic
   - preprocess: self_spm
   - train_test_split: stratified

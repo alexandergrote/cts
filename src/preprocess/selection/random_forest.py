@@ -6,6 +6,7 @@ from sklearn.ensemble import RandomForestClassifier
 
 from src.util.caching import PickleCacheHandler, hash_dataframe
 from src.preprocess.base import BaseFeatureSelector
+from src.util.datasets import DatasetSchema
 
 class RFImportance(BaseModel):
 
@@ -30,7 +31,6 @@ class RFImportance(BaseModel):
 
 class RFFeatSelection(BaseModel, BaseFeatureSelector):
 
-    target_column: str
     n_features: Optional[int] = None
 
     def _select_features_train(self, data: pd.DataFrame, **kwargs) -> pd.DataFrame:
@@ -42,8 +42,8 @@ class RFFeatSelection(BaseModel, BaseFeatureSelector):
             return data
 
         # find all relevant features - 5 features should be selected
-        X = data.drop(columns=[self.target_column])
-        y = data[self.target_column]
+        X = data.drop(columns=[DatasetSchema.class_column])
+        y = data[DatasetSchema.class_column]
 
         # train random forest
         rf_importance = RFImportance()
@@ -52,7 +52,7 @@ class RFFeatSelection(BaseModel, BaseFeatureSelector):
 
         selected_features = feature_importance.head(self.n_features).index.tolist()
 
-        self._columns = selected_features + [self.target_column]
+        self._columns = selected_features + [DatasetSchema.class_column]
 
         return data[self._columns]
     
@@ -67,10 +67,9 @@ if __name__ == '__main__':
     )
     
     data = pd.DataFrame(X, columns=[f'feature_{i}' for i in range(10)])
-    data['target'] = y
+    data[DatasetSchema.class_column] = y
 
     result = RFFeatSelection(
-        target_column='target',
         n_features=200
     ).execute(data=data)
 

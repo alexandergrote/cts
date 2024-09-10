@@ -1,10 +1,6 @@
 class_name: src.fetch_data.synthetic.DataLoader
 params:
   n_samples: 20000
-  id_column: '%id_column%'
-  event_column: '%event_column%'
-  time_column: '%time_column%'
-  class_column: '%target_column%'
   configuration:
     'a-b':
       selection: 0.1

@@ -8,7 +8,7 @@ from src.fetch_data.base import BaseDataLoader
 from src.preprocess.util.rules import RuleClassifier
 from src.util.caching import pickle_cache
 from src.util.constants import Directory
-from src.util.datasets import Dataset
+from src.util.datasets import Dataset, DatasetSchema
 
 rng = np.random.default_rng(seed=0)
 
@@ -20,11 +20,6 @@ class DataLoader(BaseModel, BaseDataLoader):
 
     sequence_elements: List[str]
     separator: str
-
-    id_column: str
-    event_column: str
-    time_column: str
-    class_column: str
 
     # config columns
     select_key: str = 'selection'
@@ -106,8 +101,8 @@ class DataLoader(BaseModel, BaseDataLoader):
 
         # summarize data in a pandas dataframe
         data = pd.DataFrame({
-            self.event_column: result,
-            self.class_column: classes,
+            DatasetSchema.event_column: result,
+            DatasetSchema.class_column: classes,
             self.configuration_result_column: configuration_results
         })
 
@@ -117,7 +112,7 @@ class DataLoader(BaseModel, BaseDataLoader):
         relative_frequencies = data[self.configuration_result_column].value_counts(normalize=True).sort_values(ascending=False)
 
         # calculate the probability of class 1 for each element
-        probabilities = data.groupby(self.configuration_result_column)[self.class_column].mean().sort_values(ascending=False)
+        probabilities = data.groupby(self.configuration_result_column)[DatasetSchema.class_column].mean().sort_values(ascending=False)
 
 
         print('--relative frequencies--')
@@ -129,11 +124,11 @@ class DataLoader(BaseModel, BaseDataLoader):
         print('--data--')
         records = []
 
-        for idx, (rule, target) in enumerate(zip(data[self.event_column], data[self.class_column])):
+        for idx, (rule, target) in enumerate(zip(data[DatasetSchema.event_column], data[DatasetSchema.class_column])):
 
             time_idx = 0
             for rule_el in rule.split(self.separator):
-                records.append({self.id_column: idx, self.time_column: time_idx, self.event_column: rule_el, self.class_column: target})
+                records.append({DatasetSchema.id_column: idx, DatasetSchema.time_column: time_idx, DatasetSchema.event_column: rule_el, DatasetSchema.class_column: target})
                 time_idx += 1
 
 

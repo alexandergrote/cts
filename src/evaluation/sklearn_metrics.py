@@ -53,6 +53,8 @@ class Evaluator(BaseModel, BaseEvaluator):
         # result placeholder
         result = {}
 
+        from IPython import embed; embed()
+
         # use names in for loop to ensure consistency
         for metric in metrics:
 

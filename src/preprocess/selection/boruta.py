@@ -7,6 +7,7 @@ from pathlib import Path
 
 from src.preprocess.base import BaseFeatureSelector
 from src.util.caching import PickleCacheHandler, hash_dataframe
+from src.util.datasets import DatasetSchema
 
 
 class BorutaImportance(BaseModel):
@@ -38,7 +39,6 @@ class BorutaImportance(BaseModel):
 
 class BorutaFeatSelection(BaseModel, BaseFeatureSelector):
 
-    target_column: str
     n_features: Optional[int] = None
 
     def _select_features(self, data: pd.DataFrame, **kwargs) -> pd.DataFrame:
@@ -47,11 +47,11 @@ class BorutaFeatSelection(BaseModel, BaseFeatureSelector):
             return data
 
         importances = BorutaImportance().get_feature_importance(
-            X=data.drop(columns=[self.target_column]),
-            y=data[self.target_column]
+            X=data.drop(columns=[DatasetSchema.class_column]),
+            y=data[DatasetSchema.class_column]
         )
 
         importances.sort_values(ascending=False, inplace=True)
         selected_features = importances.head(self.n_features).index.to_list()
 
-        return data[selected_features + [self.target_column]]
+        return data[selected_features + [DatasetSchema.class_column]]

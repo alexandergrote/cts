@@ -3,13 +3,10 @@ from pydantic import BaseModel
 from typing import Optional, List
 
 from src.preprocess.base import BaseFeatureEncoder
+from src.util.datasets import DatasetSchema
 
 
 class OneHotEncoder(BaseModel, BaseFeatureEncoder):
-
-    id_column: str
-    feature_column: str
-    target_column: str
 
     _columns: Optional[List[str]] = None
 
@@ -18,19 +15,19 @@ class OneHotEncoder(BaseModel, BaseFeatureEncoder):
         data_copy = data.copy()
 
         # one hot encode data
-        df_pivot = data_copy[[self.id_column, self.feature_column]].drop_duplicates().pivot_table(index=self.id_column, columns=self.feature_column, aggfunc='size')
+        df_pivot = data_copy[[DatasetSchema.id_column, DatasetSchema.event_column]].drop_duplicates().pivot_table(index=DatasetSchema.id_column, columns=DatasetSchema.event_column, aggfunc='size')
         df_pivot = ~df_pivot.isna()
         df_pivot = df_pivot.astype(int)
-        df_pivot.index.name = self.id_column
+        df_pivot.index.name = DatasetSchema.id_column
         df_pivot.reset_index(inplace=True)
 
         # merge maleware back to data
-        df_maleware = data_copy[[self.id_column, self.target_column]].drop_duplicates()
-        df_pivot = df_pivot.merge(df_maleware, left_on=self.id_column, right_on=self.id_column, how='inner')
+        df_maleware = data_copy[[DatasetSchema.id_column, DatasetSchema.class_column]].drop_duplicates()
+        df_pivot = df_pivot.merge(df_maleware, left_on=DatasetSchema.id_column, right_on=DatasetSchema.id_column, how='inner')
 
-        assert df_pivot.shape[0] == data_copy[self.id_column].nunique()
+        assert df_pivot.shape[0] == data_copy[DatasetSchema.id_column].nunique()
         
-        return df_pivot.drop(columns=[self.id_column], errors='ignore')
+        return df_pivot.drop(columns=[DatasetSchema.id_column], errors='ignore')
     
     def _encode_train(self, *, data: pd.DataFrame, **kwargs) -> dict:
 

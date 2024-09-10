@@ -1,6 +1,5 @@
 class_name: src.preprocess.preprocessor.FeatureMaker
 params:
-  target_column: '%target_column%'
   extractor:
     class_name: src.preprocess.extraction.ts_features.SPMFeatureSelector
     params:
@@ -20,5 +19,4 @@ params:
   selector:
     class_name: src.preprocess.selection.mrmr.MRMRFeatSelection
     params:
-      target_column: '%target_column%'
       n_features: null      

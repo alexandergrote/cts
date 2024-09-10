@@ -42,22 +42,24 @@ class Experiment(BaseModel):
 
                     for encoding in ["oh", 'spm']:
 
-                        for n_features in ["null"]: #["null",1,2,3,4,5,6,7,8,9,10]:
+                        for n_features in ["null",1,2,3,4,5,6,7,8,9,10]:
 
                             exp_name = f'{encoding}__{dataset}__preprocess__{selection_method}__model__{model}__features__{n_features}'
 
                             overrides = [
-                                f'constants={dataset}',
                                 f'fetch_data={dataset}',
                                 f'preprocess={selection_method}_{encoding}',
                                 f'preprocess.params.selector.params.n_features={n_features}',
                                 f'train_test_split=stratified',
-                                f'train_test_split.params.random_state=0', #0,1,2,3,4,5,6,7,8,9',
+                                f'train_test_split.params.random_state=0,1,2,3,4',
                                 f'model={model}',
                                 f'evaluation=ml',
                                 f'export=mlflow',
                                 f'export.params.experiment_name={exp_name}'
                             ]
+
+                            if encoding == "spm":
+                                overrides.append(f'preprocess.params.extractor.params.prefixspan_config.params.min_support_abs=100')
 
                             experiments.append(cls(name=exp_name, overrides=overrides))
 

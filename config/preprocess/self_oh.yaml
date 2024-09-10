@@ -1,13 +1,12 @@
 class_name: src.preprocess.preprocessor.FeatureMaker
 params:
-  target_column: '%target_column%'
   extractor:
     class_name: src.preprocess.extraction.ts_features.SPMFeatureSelector
     params:
       bootstrap_repetitions: 10
       bootstrap_sampling_fraction: 0.8
       p_value_threshold: 0.01
-      criterion_buffer: 0.1
+      criterion_buffer: 0.05
       criterion: delta_confidence
       prefixspan_config:
         class_name: 'src.preprocess.extraction.ts_features.PrefixSpan'
@@ -20,7 +19,6 @@ params:
   selector:
     class_name: src.preprocess.selection.ts_features.TimeSeriesFeatureSelection
     params:
-      target_column: '%target_column%'
       splitting_symbol: " --> "
       n_features: null
       

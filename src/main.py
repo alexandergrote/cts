@@ -38,17 +38,6 @@ def main(cfg: DictConfig) -> None:
             return
     
 
-    for _, value in cfg['constants'].items():
-
-        placeholder = value['placeholder']
-        replacement = value['value']
-
-        cfg = replace_placeholder_in_dict(
-            dictionary=cfg,
-            placeholder=placeholder,
-            replacement=replacement
-        )
-
     # loading all components
     data_loader = DynamicImport.import_class_from_dict(
         dictionary=cfg['fetch_data']
@@ -85,6 +74,8 @@ def main(cfg: DictConfig) -> None:
     console.log("Splitting data")
     output = train_test_split.execute(**output)
 
+    print(output['data_test'][['id_column', 'class_column']].drop_duplicates()['class_column'].value_counts())
+
     console.log("Starting Preprocessing")
     output = preprocessor.execute(**output, case_name=experiment_name)
     
@@ -104,7 +95,9 @@ def main(cfg: DictConfig) -> None:
     # needed for exporting
     output['config'] = cfg
 
-    exporter.export(output_dir=output_dir, **output)
+    if env.mode == EnvMode.PROD:
+
+        exporter.export(output_dir=output_dir, **output)
 
 
 if __name__ == '__main__':

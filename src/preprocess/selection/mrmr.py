@@ -11,6 +11,7 @@ from src.preprocess.base import BaseFeatureSelector
 from src.preprocess.selection.random_forest import RFImportance
 from src.preprocess.util.correlation import theils_u
 from src.util.caching import PickleCacheHandler, hash_dataframe, hash_string
+from src.util.datasets import DatasetSchema
 
 FLOOR = .001
 
@@ -48,7 +49,6 @@ def theils_u_wrapper(target_column: str, features: List[str], X: pd.DataFrame) -
 
 class MRMRFeatSelection(BaseModel, BaseFeatureSelector):
 
-    target_column: str
     n_features: Optional[int] = None
 
     relevance_func: Callable = random_forest_classif
@@ -105,11 +105,11 @@ class MRMRFeatSelection(BaseModel, BaseFeatureSelector):
             return data
         
         # find all relevant features - 5 features should be selected
-        X = data.drop(columns=[self.target_column])
-        y = data[self.target_column]
+        X = data.drop(columns=[DatasetSchema.class_column])
+        y = data[DatasetSchema.class_column]
 
         selected_features = self._mrmr(X, y, self.n_features)
 
-        self._columns = selected_features + [self.target_column]
+        self._columns = selected_features + [DatasetSchema.class_column]
 
         return data[self._columns]
