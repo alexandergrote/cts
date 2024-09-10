@@ -227,6 +227,10 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
 
         encoded_dataframe[DatasetSchema.class_column] = class_values
 
+        # check number of rows
+        df_check = data_copy[['id_column', 'class_column']].drop_duplicates()
+        assert len(df_check) == len(encoded_dataframe), "Number of rows does not match"
+
         # save output
         kwargs['rules'] = selected_patterns
         kwargs['data'] = encoded_dataframe

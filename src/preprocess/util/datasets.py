@@ -32,14 +32,6 @@ class DatasetAggregated(BaseModel):
         # work on copy
         data_copy = data.copy(deep=True)
 
-        # since we are interested in calculating confidence of rules
-        # we need at least a sequence with length 2
-        # as a first step, we can remove all sequences with length 1
-        sequence_nunique = data_copy.groupby([DatasetSchema.id_column])[DatasetSchema.event_column].nunique() != 1
-        sequence_nunique.name = 'to_keep'
-        data_copy = data_copy.merge(sequence_nunique, left_on=[DatasetSchema.id_column], right_index=True)
-        data_copy = data_copy[data_copy['to_keep'] == True]
-
         data_copy_grouped = data_copy.groupby([DatasetSchema.id_column])
 
         # since this column is optional, we add it here and set it to None as its default value
