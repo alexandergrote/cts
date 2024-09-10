@@ -1,48 +1,72 @@
-import typer
 
+import os
+import sys
+
+from copy import copy
+from pydantic import BaseModel
 from typing import Optional, List
 
-from src.util.custom_logging import console
-from src.experiments.analysis.feat_selection import FeatureSelection
-from src.fetch_data.mlflow_engine import QueryEngine
-from src.experiments import Experiment
 from src.util.constants import Directory
 
 
-def get_experiment_configs() -> List[Experiment]:
+class Experiment(BaseModel):
 
-    experiments = Experiment.create_feature_selection_experiments()
+    name: str
+    overrides: Optional[List[str]] = None
 
-    return experiments
-    
+    @property
+    def command(self):
 
-def execute(experiment_name: Optional[str] = None):
+        if self.overrides is None:
+            self.overrides = []
 
-    experiments = get_experiment_configs()
+        overrides_copy = copy(self.overrides)
 
-    experiments_copy = experiments.copy()
+        # defaulting to os.system because compose api is limited
+        # and does not allow --multirun
+        final_command = sys.executable + f" {str(Directory.SRC / 'main.py')} --multirun " + " ".join(overrides_copy)
 
-    mlflow_engine = QueryEngine()
+        return final_command
 
-    analyser = FeatureSelection()   
+    def run(self):
 
-    if experiment_name is not None:
-        experiments_copy = [experiment for experiment in experiments_copy if experiment.name == experiment_name]
+        return_code = os.system(self.command)
 
-    for experiment in experiments_copy:
-        experiment.run()
+        if return_code != 0:
+            raise RuntimeError(f"Experiment {self.name} failed with return code {return_code}")
 
-    console.rule("Get aggregated results of experiment runs")
-
-    for experiment in experiments_copy:
-
-        console.log(f"Analyse experiment: {experiment.name}")
-
-        data = mlflow_engine.get_results_of_single_experiment(experiment_name=experiment.name, n=100)
+    @classmethod
+    def create_feature_selection_experiments(cls) -> List["Experiment"]:
         
-        analyser.analyse(data=data)
+        experiments = []
 
-if __name__ == "__main__":
-    typer.run(execute)
+        for dataset in ['synthetic', 'malware', 'churn']:
 
-    
+            for model in ["logistic_regression", "xgb", "nb"]:
+
+                for selection_method in ["mutinfo", "rf", "mrmr", "self"]:
+
+                    for encoding in ["oh", 'spm']:
+
+                        for n_features in ["null",1,2,3,4,5,6,7,8,9,10]:
+
+                            exp_name = f'{encoding}__{dataset}__preprocess__{selection_method}__model__{model}__features__{n_features}'
+
+                            overrides = [
+                                f'fetch_data={dataset}',
+                                f'preprocess={selection_method}_{encoding}',
+                                f'preprocess.params.selector.params.n_features={n_features}',
+                                f'train_test_split=stratified',
+                                f'train_test_split.params.random_state=0,1,2,3,4',
+                                f'model={model}',
+                                f'evaluation=ml',
+                                f'export=mlflow',
+                                f'export.params.experiment_name={exp_name}'
+                            ]
+
+                            if encoding == "spm":
+                                overrides.append(f'preprocess.params.extractor.params.prefixspan_config.params.min_support_abs=100')
+
+                            experiments.append(cls(name=exp_name, overrides=overrides))
+
+        return experiments
