@@ -31,6 +31,6 @@ class FeatureSelection(BaseModel, BaseAnalyser):
         df_to_plot.sort_values(by=[dataset_col, model_col, feat_extractor_col, feat_selector_col, n_features_col], inplace=True)
         df_to_plot.columns = ['dataset','model', 'feat_extractor', 'feat_selector', 'n_features', 'metric_col_auc_mean', 'metric_col_auc_std', 'metric_col_f1_mean', 'metric_col_f1_std']
         
-        print(
+        console.print(
             df_to_plot.to_markdown()
         )

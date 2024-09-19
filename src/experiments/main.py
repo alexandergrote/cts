@@ -1,5 +1,4 @@
 
-import os
 import sys
 
 from copy import copy
@@ -28,15 +27,11 @@ class Experiment(BaseModel):
 
         return final_command
 
-    def run(self):
 
-        return_code = os.system(self.command)
-
-        if return_code != 0:
-            raise RuntimeError(f"Experiment {self.name} failed with return code {return_code}")
+class ExperimentFactory(BaseModel):
 
     @classmethod
-    def create_feature_selection_experiments(cls) -> List["Experiment"]:
+    def create_feature_selection_experiments(cls) -> List[Experiment]:
         
         experiments = []
 
@@ -64,9 +59,40 @@ class Experiment(BaseModel):
                                 f'export.params.experiment_name={exp_name}'
                             ]
 
+                            # only the ts feature selection method has this field
                             if encoding == "spm":
                                 overrides.append(f'preprocess.params.extractor.params.prefixspan_config.params.min_support_abs=100')
 
-                            experiments.append(cls(name=exp_name, overrides=overrides))
+                            experiments.append(Experiment(name=exp_name, overrides=overrides))
+
+        return experiments
+    
+    @classmethod
+    def create_cost_benefit_experiments(cls) -> List[Experiment]:
+
+        experiments = []
+
+        for dataset in ['synthetic']:            
+
+            for selection_method in ["mutinfo", "rf", "mrmr", "self"]:
+
+                for n_features in [10]:
+
+                    exp_name = f'cost__{dataset}__preprocess__{selection_method}__model__{model}__features__{n_features}'
+
+                    overrides = [
+                        f'fetch_data={dataset}',
+                        f'preprocess={selection_method}_spm',
+                        f'preprocess.params.selector.params.n_features=10',
+                        f'preprocess.params.extractor.params.prefixspan_config.params.min_support_abs=100',
+                        f'train_test_split=stratified',
+                        f'train_test_split.params.random_state=0',
+                        f'model=xgb',
+                        f'evaluation=ml',
+                        f'export=mlflow',
+                        f'export.params.experiment_name={exp_name}'
+                    ]
+
+                    experiments.append(Experiment(name=exp_name, overrides=overrides))
 
         return experiments

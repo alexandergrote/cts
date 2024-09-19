@@ -5,7 +5,7 @@ from omegaconf import DictConfig, OmegaConf
 
 # load package specific code
 from src.util.dynamic_import import DynamicImport
-from src.util.constants import replace_placeholder_in_dict, EnvMode, HYDRA_CONFIG, get_hydra_output_dir
+from src.util.constants import EnvMode, HYDRA_CONFIG, get_hydra_output_dir
 from src.util.custom_logging import console
 from src.util.check_experiment import experiment_exists
 from src.util.environment import PydanticEnvironment
