@@ -10,6 +10,7 @@ from typing import Optional, List
 from src.util.custom_logging import console
 from src.experiments.analysis.base import BaseAnalyser
 from src.experiments.analysis.feat_selection import FeatureSelection
+from src.experiments.analysis.cost_benefit import CostBenefit
 from src.fetch_data.mlflow_engine import QueryEngine
 from src.experiments.main import Experiment, ExperimentFactory
 
@@ -97,17 +98,22 @@ class ExperimentRunner(BaseModel):
 
         executeable_list = []
 
-        experiments = ExperimentFactory.create_feature_selection_experiments()
+        combinations = [
+            (ExperimentFactory.create_feature_selection_experiments(), FeatureSelection()),
+            (ExperimentFactory.create_cost_benefit_experiments(), CostBenefit())
+        ]
 
-        if len(experiments) == 0:
-            raise ValueError("No experiments found.")
-        
-        runner_feat_selection = cls(
-            analyser=FeatureSelection(), 
-            experiments=experiments
-        )
+        for experiments, analyser in combinations:
 
-        executeable_list.append(runner_feat_selection)
+            if len(experiments) == 0:
+                raise ValueError("No experiments found.")
+            
+            runner = cls(
+                analyser=analyser, 
+                experiments=experiments
+            )
+
+            executeable_list.append(runner)
 
         return executeable_list    
     
@@ -120,7 +126,9 @@ def execute(analyser: str, filter_name: Optional[str] = None, run_in_parallel: b
     
     experiments = [el if re.match(analyser, el.analyser.__class__.__name__, flags=re.IGNORECASE) else None for el in experiments]
 
-    if len(list(filter(None, experiments))) > 1:
+    experiments = list(filter(None, experiments))
+
+    if len(experiments) > 1:
         console.print(f"More than one analyser matches the provided string: {analyser}")
         return
     

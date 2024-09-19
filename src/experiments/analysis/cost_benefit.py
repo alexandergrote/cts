@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from src.experiments.analysis.base import BaseAnalyser
 
 
-class FeatureSelection(BaseModel, BaseAnalyser):
+class CostBenefit(BaseModel, BaseAnalyser):
 
     def analyse(self, data: pd.DataFrame, **kwargs):
 
