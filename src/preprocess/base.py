@@ -58,7 +58,7 @@ class BaseFeatureSelector(ABC):
     @abstractmethod
     def _select_features_train(self, data: pd.DataFrame, **kwargs) -> dict:
         raise NotImplementedError()
-    
+
     def _select_features_test(self, data: pd.DataFrame, **kwargs) -> pd.DataFrame:
 
         if self._columns is None:

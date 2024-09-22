@@ -74,8 +74,6 @@ def main(cfg: DictConfig) -> None:
     console.log("Splitting data")
     output = train_test_split.execute(**output)
 
-    print(output['data_test'][['id_column', 'class_column']].drop_duplicates()['class_column'].value_counts())
-
     console.log("Starting Preprocessing")
     output = preprocessor.execute(**output, case_name=experiment_name)
     
@@ -95,8 +93,11 @@ def main(cfg: DictConfig) -> None:
     # needed for exporting
     output['config'] = cfg
 
-    if env.mode == EnvMode.PROD:
+    # adding run time and memory consumption to metrics
+    output['metrics']['feature_selection_duration'] = output['feature_selection_duration']
+    output['metrics']['feature_selection_max_memory'] = output['feature_selection_max_memory']
 
+    if env.mode == EnvMode.PROD:
         exporter.export(output_dir=output_dir, **output)
 
 

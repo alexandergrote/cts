@@ -15,7 +15,8 @@ from src.util.custom_logging import console
 from src.preprocess.extraction.spm import PrefixSpan
 from src.preprocess.util.types import BootstrapRound
 from src.preprocess.util.rules import RuleEncoder
-from src.preprocess.util.datasets import DatasetSchema, DatasetRulesSchema, DatasetRules, DatasetUniqueRules, DatasetUniqueRulesSchema, DatasetAggregated, DatasetAggregatedSchema
+from src.util.datasets import Dataset, DatasetSchema
+from src.preprocess.util.datasets import DatasetRulesSchema, DatasetRules, DatasetUniqueRules, DatasetUniqueRulesSchema, DatasetAggregated, DatasetAggregatedSchema
 from src.preprocess.base import BaseFeatureEncoder
 
 
@@ -81,8 +82,18 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
                 lambda x: self._bootstrap_id_selection(data=x, random_state=i)
             )
 
-            # get output on sample
-            prediction = prefix.execute(dataset=data_sub)
+            prefix_df = Dataset(
+                raw_data=data_sub
+            )
+
+            sequences = prefix_df.get_sequences()
+
+            frequent_patterns = prefix.get_frequent_patterns(sequences)
+
+            # todo: this step can be optimised if we ignore the possibility of different antecedent and consequent
+            prediction = prefix.get_frequent_patterns_with_confidence(
+                frequent_patterns
+            )
     
             predictions.append(BootstrapRound(
                 n_samples=len(data_sub),

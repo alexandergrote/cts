@@ -5,6 +5,7 @@ from typing import Union, Dict, Any
 from src.util.dynamic_import import DynamicImport
 from src.util.custom_logging import console
 from src.util.datasets import DatasetSchema
+from src.util.profile import max_memory_tracker, time_tracker, Tracker
 
 
 class FeatureMaker(BaseModel):
@@ -25,11 +26,19 @@ class FeatureMaker(BaseModel):
 
     def execute(self, **kwargs):
 
-        console.log("Extracting features")
-        output = self.extractor.execute(**kwargs)
+        tracker = Tracker()
 
-        console.log("Selecting features")
-        output = self.selector.execute(**output)
+        with time_tracker(tracker=tracker), max_memory_tracker(tracker=tracker):
+
+            console.log("Extracting features")
+            output = self.extractor.execute(**kwargs)
+
+            console.log("Selecting features")
+            output = self.selector.execute(**output)
+
+
+        kwargs['feature_selection_duration'] = tracker.time_taken_seconds
+        kwargs['feature_selection_max_memory'] = tracker.max_memory_mb
 
         kwargs['x_train'], kwargs['y_train'] = self._get_x_y(output['data_train'])
         kwargs['x_test'], kwargs['y_test'] = self._get_x_y(output['data_test'])

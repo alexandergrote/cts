@@ -258,20 +258,3 @@ class PrefixSpan(BaseModel, BaseFeatureEncoder):
         encoded_dataframe[DatasetSchema.class_column] = class_values
         
         return {'data': encoded_dataframe}
-
-    def execute(self, dataset: pd.DataFrame) -> List[FrequentPatternWithConfidence]:
-
-        prefix_df = Dataset(
-            raw_data=dataset
-        )
-
-        sequences = prefix_df.get_sequences()
-
-        frequent_patterns = self.get_frequent_patterns(sequences)
-
-        # todo: this step can be optimised if we ignore the possibility of different antecedent and consequent
-        frequent_patterns_with_confidence = self.get_frequent_patterns_with_confidence(
-            frequent_patterns
-        )
-
-        return frequent_patterns_with_confidence

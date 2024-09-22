@@ -72,23 +72,30 @@ class ExperimentFactory(BaseModel):
 
         experiments = []        
 
-        for selection_method in ["mutinfo", "rf", "mrmr", "self"]:
+        for selection_method in ["rf_prefix", "self_spm"]:# ["mutinfo_prefix", "rf_prefix", "mrmr_prefix", "self_spm"]:
 
-            exp_name = f'cost__preprocess__{selection_method}'
+            for sample_size in [1000, 2000, 3000, 4000, 5000]:
 
-            overrides = [
-                f'fetch_data=synthetic',
-                f'preprocess={selection_method}_spm',
-                f'preprocess.params.selector.params.n_features=10',
-                f'preprocess.params.extractor.params.prefixspan_config.params.min_support_abs=100',
-                f'train_test_split=stratified',
-                f'train_test_split.params.random_state=0',
-                f'model=naive',
-                f'evaluation=ml',
-                f'export=mlflow',
-                f'export.params.experiment_name={exp_name}'
-            ]
+                exp_name = f'cost__preprocess__{selection_method}__sample_size__{sample_size}'
 
-            experiments.append(Experiment(name=exp_name, overrides=overrides))
+                overrides = [
+                    f'fetch_data=synthetic',
+                    f'fetch_data.params.n_samples={sample_size}',
+                    f'preprocess={selection_method}',
+                    f'preprocess.params.selector.params.n_features=10',
+                    f'train_test_split=stratified',
+                    f'train_test_split.params.random_state=0,1,2,3,4',
+                    f'model=random_chance',
+                    f'evaluation=ml',
+                    f'export=mlflow',
+                    f'export.params.experiment_name={exp_name}'
+                ]
+
+                if selection_method == "self_spm":
+                    overrides.append(f'preprocess.params.extractor.params.prefixspan_config.params.min_support_abs=100')
+                else:
+                    overrides.append(f'preprocess.params.extractor.params.min_support_abs=100')
+
+                experiments.append(Experiment(name=exp_name, overrides=overrides))
 
         return experiments

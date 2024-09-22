@@ -51,7 +51,15 @@ class ExperimentRunner(BaseModel):
         Returns:
             subprocess.CompletedProcess: The result of the process execution.
         """
-        return subprocess.run(command, shell=True, check=True)
+
+        # get output from command
+        try:
+            output = subprocess.run(command, shell=True, check=True)
+        except subprocess.CalledProcessError as e:
+            print(f"Error: {e.stderr.decode('utf-8')}")
+
+        
+        return output
 
 
     @staticmethod
@@ -71,7 +79,8 @@ class ExperimentRunner(BaseModel):
 
         return results
 
-    def run(self, run_in_parallel: bool = False, skip_execution: bool = False):
+
+    def run(self, run_in_parallel: bool = False, skip_execution: bool = False, skip_visualization: bool = False):
 
         if not skip_execution:
 
@@ -83,7 +92,10 @@ class ExperimentRunner(BaseModel):
             else:
 
                 for experiment in self.experiments:
-                    experiment.run()
+                    ExperimentRunner.run_process(experiment.command)
+
+        if skip_visualization:
+            return
 
         console.rule("Get aggregated results of experiment runs")
 
@@ -118,7 +130,7 @@ class ExperimentRunner(BaseModel):
         return executeable_list    
     
 
-def execute(analyser: str, filter_name: Optional[str] = None, run_in_parallel: bool = False, skip_execution: bool = False):
+def execute(analyser: str, filter_name: Optional[str] = None, run_in_parallel: bool = False, skip_execution: bool = False, skip_visualization: bool = False):
 
     experiments = ExperimentRunner.get_all_runners()
 
@@ -150,18 +162,19 @@ def execute(analyser: str, filter_name: Optional[str] = None, run_in_parallel: b
 
         experiment_analyser.experiments = selected_exp
 
+    if len(experiment_analyser.experiments) > 1:
         
-    tmp_names = '\n'.join([el.name for el in experiment_analyser.experiments])
-    console.print(f"You are about to run these experiments:\n{tmp_names}")
+        tmp_names = '\n'.join([el.name for el in experiment_analyser.experiments])
+        console.print(f"You are about to run these experiments:\n{tmp_names}")
 
-    console.print("Press y to continue or n to abort.")
-    answer = input("y/n: ")
+        console.print("Press y to continue or n to abort.")
+        answer = input("y/n: ")
 
-    if answer!= "y":
-        console.print("Aborting...")
-        return
+        if answer!= "y":
+            console.print("Aborting...")
+            return
     
-    experiment_analyser.run(run_in_parallel=run_in_parallel, skip_execution=skip_execution)
+    experiment_analyser.run(run_in_parallel=run_in_parallel, skip_execution=skip_execution, skip_visualization=skip_visualization)
     
 
 if __name__ == "__main__":
