@@ -2,6 +2,7 @@ import typer
 import concurrent.futures
 import subprocess
 import re
+import os
 import pandas as pd
 
 from pydantic import BaseModel, Field, ConfigDict
@@ -12,9 +13,13 @@ from src.experiments.analysis.base import BaseAnalyser
 from src.experiments.analysis.feat_selection import FeatureSelection
 from src.experiments.analysis.cost_benefit import CostBenefit
 from src.fetch_data.mlflow_engine import QueryEngine
-from src.experiments.main import Experiment, ExperimentFactory
+from src.experiments.util.factory import ExperimentFactory
+from src.experiments.util.types import Experiment
+from src.util.caching import environ_pickle_cache
 
 mlflow_engine = QueryEngine()
+
+os.environ["src.experiments.cli.py.ExperimentRunner.get_experiment_data_from_mlflow"] = "cached"
 
 
 class ExperimentRunner(BaseModel):
@@ -79,6 +84,16 @@ class ExperimentRunner(BaseModel):
 
         return results
 
+    @staticmethod
+    @environ_pickle_cache()
+    def get_experiment_data_from_mlflow(experiments: List[str]):
+
+        data = pd.concat(
+            [mlflow_engine.get_results_of_single_experiment(experiment_name=el, n=100) for el in experiments]
+        )
+
+        return data
+
 
     def run(self, run_in_parallel: bool = False, skip_execution: bool = False, skip_visualization: bool = False):
 
@@ -99,9 +114,9 @@ class ExperimentRunner(BaseModel):
 
         console.rule("Get aggregated results of experiment runs")
 
-        datasets = pd.concat(
-            [mlflow_engine.get_results_of_single_experiment(experiment_name=experiment.name, n=100) for experiment in self.experiments]
-            )
+        experiments = [el.name for el in self.experiments]
+
+        datasets = ExperimentRunner.get_experiment_data_from_mlflow(experiments=experiments)
 
         self.analyser.analyse(data=datasets)
 
