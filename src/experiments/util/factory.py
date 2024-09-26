@@ -53,11 +53,10 @@ class ExperimentFactory(BaseModel):
 
         experiments = []        
 
-        for selection_method in ["rf_prefix", "self_spm"]:# ["mutinfo_prefix", "rf_prefix", "mrmr_prefix", "self_spm"]:
+        for selection_method in ["mutinfo_prefix", "rf_prefix", "mrmr_prefix", "self_spm"]:
 
-            #for sample_size in [1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000]:
-            for sample_size in [1000, 2000, 3000, 4000, 5000]:
-
+            for sample_size in [1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000]:
+            
                 exp_name = f'cost__preprocess__{selection_method}__sample_size__{sample_size}'
 
                 overrides = [
@@ -66,7 +65,7 @@ class ExperimentFactory(BaseModel):
                     f'preprocess={selection_method}',
                     f'preprocess.params.selector.params.n_features=10',
                     f'train_test_split=stratified',
-                    f'train_test_split.params.random_state=0,1,2,3,4',
+                    f'train_test_split.params.random_state=0',
                     f'model=random_chance',
                     f'evaluation=ml',
                     f'export=mlflow',

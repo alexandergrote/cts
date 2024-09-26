@@ -138,8 +138,14 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
             predictions_grouped[DatasetSchema.id_column].apply(
                 lambda x: x.replace('][', ', ').replace('[', '').replace(']', ''))
 
-        # aggreation of two lists via 'sum' is equal to the extension of a list
-        unique_predictions = predictions_grouped.groupby(DatasetSchema.id_column).agg('sum')
+        # calculate the average delta_confidence for each row
+        predictions_grouped['avg_delta_confidence'] = predictions_grouped['delta_confidence'].apply(lambda x: np.mean(np.abs(x)))
+
+        # group by id_column and find the index of the row with the highest average delta_confidence for each group
+        idx = predictions_grouped.groupby('id_column')['avg_delta_confidence'].idxmax()
+
+        # select the rows with the highest average delta_confidence for each group
+        unique_predictions = predictions_grouped.loc[idx]
         
         unique_predictions.reset_index(inplace=True)
 
