@@ -3,7 +3,7 @@ import sys
 
 from collections import defaultdict
 from pandera.typing import DataFrame
-from pydantic import BaseModel, conint, ConfigDict, field_validator
+from pydantic import BaseModel, conint, ConfigDict, field_validator, confloat
 from typing import List, Optional, Union, Tuple, Dict
 
 
@@ -19,10 +19,11 @@ class PrefixSpan(BaseModel, BaseFeatureEncoder):
     
     max_sequence_length: conint(ge=0) = sys.maxsize
     min_support_abs: conint(ge=0) = 0
+    min_support_rel: confloat(ge=0, le=1) = 0
 
     model_config = ConfigDict(extra="forbid")
 
-    @field_validator('min_support_abs', mode='before')
+    @field_validator('min_support_abs', 'min_support_rel', mode='before')
     def _convert_none_to_number(cls, v: Optional[int]):
         if v is None:
             return 0
@@ -81,6 +82,9 @@ class PrefixSpan(BaseModel, BaseFeatureEncoder):
             for item, count in counts.items():
 
                 if count < self.min_support_abs:
+                    continue
+
+                if count < self.min_support_rel * len(sequences):
                     continue
 
                 if len(stack_object.prefix) + 1 > self.max_sequence_length:
@@ -184,8 +188,17 @@ class PrefixSpan(BaseModel, BaseFeatureEncoder):
 
     def summarise_patterns_in_dataframe(self, data: DataFrame[DatasetSchema]) -> pd.DataFrame:
 
-        frequent_patterns_with_confidence = self.execute(
-            dataset=data
+        prefix_df = Dataset(
+            raw_data=data
+        )
+
+        sequences = prefix_df.get_sequences()
+
+        frequent_patterns = self.get_frequent_patterns(sequences)
+
+        # todo: this step can be optimised if we ignore the possibility of different antecedent and consequent
+        frequent_patterns_with_confidence = self.get_frequent_patterns_with_confidence(
+            frequent_patterns
         )
 
         df = pd.DataFrame([el.model_dump() for el in frequent_patterns_with_confidence])

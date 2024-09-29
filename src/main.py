@@ -86,16 +86,24 @@ def main(cfg: DictConfig) -> None:
     output = evaluator.evaluate(**output)
     console.log(output.get('metrics'))
 
-    print(output.get('y_train').value_counts(normalize=True))
-    print(output.get('y_test').value_counts(normalize=True))
+    y_train = output.get('y_train')
+    y_test = output.get('y_test')
+
+    if y_train is not None:
+        print(y_train.value_counts(normalize=True))
+        
+    if y_test is not None:
+        print(y_test.value_counts(normalize=True))
 
     # add config to kwargs
     # needed for exporting
     output['config'] = cfg
 
     # adding run time and memory consumption to metrics
-    output['metrics']['feature_selection_duration'] = output['feature_selection_duration']
-    output['metrics']['feature_selection_max_memory'] = output['feature_selection_max_memory']
+    key_feat_sel = 'feature_selection_duration'
+    key_feat_sel_mem = 'feature_selection_max_memory'
+    output['metrics'][key_feat_sel] = output.get(key_feat_sel, -1)
+    output['metrics'][key_feat_sel_mem] = output.get(key_feat_sel_mem, -1)
 
     if env.mode == EnvMode.PROD:
         exporter.export(output_dir=output_dir, **output)

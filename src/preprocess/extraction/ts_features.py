@@ -18,6 +18,7 @@ from src.preprocess.util.rules import RuleEncoder
 from src.util.datasets import Dataset, DatasetSchema
 from src.preprocess.util.datasets import DatasetRulesSchema, DatasetRules, DatasetUniqueRules, DatasetUniqueRulesSchema, DatasetAggregated, DatasetAggregatedSchema
 from src.preprocess.base import BaseFeatureEncoder
+from src.util.caching import environ_pickle_cache
 
 
 class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
@@ -30,10 +31,10 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
     ] = DatasetUniqueRulesSchema.delta_confidence
 
     bootstrap_repetitions: int = 5
-    bootstrap_sampling_fraction: float = 0.8
+    bootstrap_sampling_fraction: confloat(ge=0, le=1) = 0.8
 
     multitesting: Optional[dict] = None
-    p_value_threshold: float = 0.01
+    p_value_threshold: confloat(ge=0, le=1) = 0.01
     criterion_buffer: confloat(ge=0, le=1) = 0
 
     @field_validator("multitesting", mode="before")
@@ -141,6 +142,13 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
         # calculate the average delta_confidence for each row
         predictions_grouped['avg_delta_confidence'] = predictions_grouped['delta_confidence'].apply(lambda x: np.mean(np.abs(x)))
 
+        # print most frequent patterns after aggregation
+        console.log("Most frequent patterns after aggregation:")
+        print(predictions_grouped.sort_values(by='avg_delta_confidence', ascending=False).head(10))
+
+        # print max sequence length
+        print("Max sequence length: {}".format(predictions_grouped['id_column'].apply(lambda x: len(x.split(','))).max()))
+
         # group by id_column and find the index of the row with the highest average delta_confidence for each group
         idx = predictions_grouped.groupby('id_column')['avg_delta_confidence'].idxmax()
 
@@ -196,7 +204,12 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
 
             _, pvals_corrected, _, _ = multipletests(p_values_array, **self.multitesting)
 
+            # debugging purposes
+            data_copy['p_vals'] = pvals_corrected
+
             mask = np.array(pvals_corrected) < self.p_value_threshold
+
+        print(data_copy.sort_values(by='avg_delta_confidence', ascending=False).head(10))
 
         result = DatasetUniqueRules(
             data=data_copy[mask]
@@ -206,7 +219,8 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
 
         return result
 
-    def _encode_train(self, *args, data: pd.DataFrame, **kwargs):
+    @environ_pickle_cache()
+    def _encode_train(self, *args, data: pd.DataFrame, **kwargs) -> dict:
 
         # work on copy
         data_copy = data.copy(deep=True)
@@ -254,7 +268,7 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
 
         return kwargs
     
-    def _encode_test(self, *args, data: pd.DataFrame, **kwargs):
+    def _encode_test(self, *args, data: pd.DataFrame, **kwargs) -> dict:
 
         # encode rules as a binary feature on test data
 

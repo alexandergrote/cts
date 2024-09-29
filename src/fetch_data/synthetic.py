@@ -50,7 +50,7 @@ class DataLoader(BaseModel, BaseDataLoader):
                 raise ValueError(f'Sum of probabilities is not in [0, 1]')
 
 
-    @pickle_cache(ignore_caching=False, cachedir=Directory.CACHING_DIR / 'synthetic')
+    @pickle_cache(ignore_caching=True, cachedir=Directory.CACHING_DIR / 'synthetic')
     def get_data(self) -> Dataset:
 
         sequence_goals = {k: self.configuration[k][self.select_key] * self.n_samples for k in self.configuration}
@@ -141,15 +141,15 @@ if __name__ == '__main__':
 
     from src.util.config_import import YamlConfigLoader
 
-    config = YamlConfigLoader.read_yaml(key='fetch_data')
+    config = YamlConfigLoader.read_yaml(key='fetch_data', overrides=['fetch_data=synthetic'])
 
     data_loader = DataLoader(**config['params'])
     data = data_loader.execute()['data']
 
-    event_column = '%event_column%'
-    id_column = '%id_column%'
-    time_column = '%time_column%'
-    target_column = '%target_column%'
+    event_column = DatasetSchema.event_column
+    id_column = DatasetSchema.id_column
+    time_column = DatasetSchema.time_column
+    target_column = DatasetSchema.class_column
 
     # unique events
     print('unique events')
@@ -173,6 +173,6 @@ if __name__ == '__main__':
 
     # get average class distribution
     print('class distribution')
-    print(data['%target_column%'].mean())
+    print(data[target_column].mean())
 
     

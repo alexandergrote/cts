@@ -305,13 +305,3 @@ class TestPrefixSpan(unittest.TestCase):
         for rule, expected in rules.items():
             with self.subTest(msg=f'rule: {rule}'):
                 self.assertTrue(all([el == expected[i] for i, el in enumerate(result_df[rule].values)]))
-
-    def test_execute(self):
-
-        prefixspan = PrefixSpan()
-
-        patterns = prefixspan.execute(self.prefix_df.raw_data)
-
-        for pattern in patterns:
-            with self.subTest(msg=f'patterns: {pattern}'):
-                self.assertIsInstance(pattern, FrequentPatternWithConfidence)

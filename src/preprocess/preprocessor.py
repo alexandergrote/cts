@@ -1,7 +1,9 @@
 import pandas as pd
+
 from pydantic import BaseModel, field_validator
 from typing import Union, Dict, Any
 
+from src.preprocess.extraction.ts_features import SPMFeatureSelector
 from src.util.dynamic_import import DynamicImport
 from src.util.custom_logging import console
 from src.util.datasets import DatasetSchema
@@ -36,12 +38,45 @@ class FeatureMaker(BaseModel):
             console.log("Selecting features")
             output = self.selector.execute(**output)
 
+        # add output to kwargs
+        kwargs = {**kwargs, **output}
 
+        # add tracker metrics to kwargs, needed for paper analysis
         kwargs['feature_selection_duration'] = tracker.time_taken_seconds
         kwargs['feature_selection_max_memory'] = tracker.max_memory_mb
 
         kwargs['x_train'], kwargs['y_train'] = self._get_x_y(output['data_train'])
         kwargs['x_test'], kwargs['y_test'] = self._get_x_y(output['data_test'])
+
+        # save correlation data, needed for paper analysis
+        if kwargs['case_name'].startswith('correlation_'):
+
+            if not isinstance(self.extractor, SPMFeatureSelector):
+                raise ValueError("Feature maker must be SPMFeatureSelector")
+
+            rules = kwargs['rules'].data.copy(deep=True)
+            rules['id_column'] = rules['id_column'].apply(lambda x: '_'.join(x))
+            rules['avg_delta_confidence'] = rules['delta_confidence'].apply(lambda x: sum(x)/len(x))
+            delta_conf_mapping = dict(zip(rules['id_column'], rules['avg_delta_confidence']))
+
+            y_train = kwargs['y_train'].copy(deep=True)
+            x_train = kwargs['x_train'].copy(deep=True)
+
+            records = []
+
+            for col in x_train.columns:
+
+                avg_target = y_train[x_train[col]].mean()
+                delta_conf = delta_conf_mapping[col]
+
+                records.append({
+                    'pattern': col,
+                    'avg_target': avg_target,
+                    'delta_conf': delta_conf,
+                })
+
+            data = pd.DataFrame(records)
+            data.to_csv("correlations.csv", index=False)
 
         return kwargs
 

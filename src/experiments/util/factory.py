@@ -1,9 +1,5 @@
-
-import sys
-
-from copy import copy
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import List
 
 from src.util.constants import Directory
 from src.experiments.util.types import Experiment
@@ -78,5 +74,31 @@ class ExperimentFactory(BaseModel):
                     overrides.append(f'preprocess.params.extractor.params.min_support_abs=100')
 
                 experiments.append(Experiment(name=exp_name, overrides=overrides))
+
+        return experiments
+
+    @classmethod
+    def create_correlation_experiments(cls) -> List[Experiment]:
+
+        experiments = []        
+
+        for dataset in ["synthetic", "malware", "churn"]:
+            
+            exp_name = f'correlation_{dataset}'
+
+            overrides = [
+                f'fetch_data={dataset}',
+                f'preprocess=self_spm',
+                'preprocess.params.extractor.params.prefixspan_config.params.min_support_abs=100',
+                'preprocess.params.extractor.params.prefixspan_config.params.min_support_rel=0.05',
+                f'train_test_split=stratified',
+                f'train_test_split.params.random_state=0',
+                f'model=random_chance',
+                f'evaluation=ml',
+                f'export=mlflow',
+                f'export.params.experiment_name={exp_name}'
+            ]
+
+            experiments.append(Experiment(name=exp_name, overrides=overrides))
 
         return experiments

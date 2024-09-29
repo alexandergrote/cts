@@ -1,0 +1,81 @@
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+from pydantic import BaseModel
+from scipy.stats import pearsonr
+
+from src.experiments.analysis.base import BaseAnalyser
+from src.util.mlflow_util import uri_to_path
+
+
+sns.set_style('white')
+
+
+class Correlations(BaseModel, BaseAnalyser):
+
+    def analyse(self, data: pd.DataFrame, **kwargs):
+
+        # work on copy
+        data_copy = data.copy(deep=True)
+        data_copy.reset_index(inplace=True, drop=True)
+
+        # track data 
+        records = []
+
+        # run info meta.artifact_uri
+        for _, row in data_copy.iterrows():
+
+            exp_name = row['params.export.params.experiment_name']
+            artifact_uri = row['meta.artifact_uri']  
+
+            directory = uri_to_path(artifact_uri)
+            data = pd.read_csv(directory / "correlations.csv")
+            
+            print(data[['avg_target', 'delta_conf']].corr())
+            
+            pearsonr_result = pearsonr(data['avg_target'], data['delta_conf'], alternative='greater')
+            p_value = pearsonr_result.pvalue
+            corr_value = pearsonr_result.correlation
+
+            print(exp_name, p_value, corr_value)
+
+            # add to records
+            records.append((exp_name, data, p_value, corr_value))
+
+        sns.set(font_scale=1.5)
+        sns.set_style('white')
+
+        f, axes = plt.subplots(1, len(records), sharey=False, figsize=(24,6))
+
+        for idx, (exp_name, data, p_value, corr_value) in enumerate(records):
+
+            data.rename({'avg_target': 'Average Target Value', 'delta_conf': 'Confidence Delta', 'mean_ranking': 'Ranking'}, axis=1, inplace=True)
+            #sns.scatterplot(data=data[mask], x='Confidence Delta', y='Deviation From Average Target', color='grey', linewidth=1, edgecolor='grey', markers='x')
+
+            p_value_verbose = f"p<{p_value:.2f}"
+
+            if p_value < 0.01:
+                p_value_verbose = "p<0.01"
+
+            if p_value < 0.001:
+                p_value_verbose = "p<0.001"
+
+            corr_verbose = round(corr_value, 2)           
+    
+
+            title = f"{exp_name.split('_')[-1].upper()}\n(ρ={corr_verbose}, {p_value_verbose})"
+            
+            if len(records) == 1:
+                axes.title.set_text(title)
+                sns.regplot(data=data, x='Confidence Delta', y='Average Target Value', color='grey', ax=axes)
+            else:
+                axes[idx].title.set_text(title)
+                #axes[idx].set_ylim(0, 1)  # Set the x-axis range from 0 to 1
+                sns.regplot(data=data, x='Confidence Delta', y='Average Target Value', color='grey', ax=axes[idx])
+                
+        plt.tick_params(axis='x', which='both', bottom=True, top=False, labelbottom=True)
+        plt.tick_params(axis='y', which='both', left=True, right=False, labelleft=True)
+
+        plt.tight_layout()
+        plt.show()

@@ -21,6 +21,15 @@ class TimeSeriesFeatureSelection(BaseModel, BaseFeatureSelector):
         
         data_copy = data.copy(deep=True)
 
+        ranked_rules = rules.rank_rules(
+            criterion=DatasetUniqueRulesSchema.delta_confidence,
+            weighted_by_support=False
+        )
+
+        print(ranked_rules[:10])
+        print('-'*10)
+        print(ranked_rules[-10:])
+
         if self.n_features is None:
             self._columns = data.columns.to_list()
             return data

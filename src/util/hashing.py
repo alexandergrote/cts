@@ -37,10 +37,34 @@ class Hash(BaseModel):
 
         if isinstance(obj, float):
             return str(obj.__hash__())
+        
+        if isinstance(obj, BaseModel):
 
-        print(obj)
+            # pydantic private fields are not included in model dumps
+            # there may be other edge cases where this is not true
+            # but for pragmatic reasons we will stick to this solutionfor now.
 
-        raise ValueError(f"Object {obj} cannot be hashed")
+            # todo: investigate if there is a better way to do this.
+
+            public_values = obj.model_dump()
+            private_values = obj.__pydantic_private__ if obj.__pydantic_private__ is not None else {}
+
+            pyd_dict = {**public_values, **private_values}
+
+            return Hash.hash_recursive(**pyd_dict)
+        
+        if hasattr(obj, 'hash'):
+
+            hash_value = obj.hash()
+
+            if not isinstance(hash_value, str):
+                raise ValueError(f"Object {obj} has a 'hash' function, but it does not return a string.")
+            
+            return hash_value
+
+        from IPython import embed; embed()
+
+        raise ValueError(f"Object {obj} cannot be hashed. You may consider defining an explicit 'hash' function.")
     
     @staticmethod
     def hash_dict(dictionary: dict) -> str:  
@@ -59,6 +83,15 @@ class Hash(BaseModel):
     
     @staticmethod
     def hash_recursive(*args, **kwargs) -> str:
+
+        """
+        This function is used to create a unique hash from all arguments. 
+        
+        It first checks if an argument is a dictionary, list, tuple, etc. and a correspondig hashing function is called
+        If an argument does not fall into these categories, it is passed to the hash function.
+        """
+
+        # todo: refactor this function to be more intuitive and to avoid repetitive code
         
         hash_list = []
         
@@ -80,6 +113,8 @@ class Hash(BaseModel):
         
         for key, value in kwargs.items():
 
+            hash_list.append(Hash.hash(key))
+
             if isinstance(value, dict):
                 hash_list.append(Hash.hash_dict(value))
                 continue
@@ -92,9 +127,8 @@ class Hash(BaseModel):
                 hash_list.append(Hash.hash_tuple(value))
                 continue
 
-            hash_list.append(Hash.hash(key))
             hash_list.append(Hash.hash(value))
 
-        hash_str = ''.join(hash_list)
+        hash_str = '_'.join(hash_list)
         
         return Hash.hash(hash_str)

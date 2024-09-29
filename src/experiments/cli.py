@@ -12,14 +12,13 @@ from src.util.custom_logging import console
 from src.experiments.analysis.base import BaseAnalyser
 from src.experiments.analysis.feat_selection import FeatureSelection
 from src.experiments.analysis.cost_benefit import CostBenefit
+from src.experiments.analysis.correlations import Correlations
 from src.fetch_data.mlflow_engine import QueryEngine
 from src.experiments.util.factory import ExperimentFactory
 from src.experiments.util.types import Experiment
 from src.util.caching import environ_pickle_cache
 
 mlflow_engine = QueryEngine()
-
-os.environ["src.experiments.cli.py.ExperimentRunner.get_experiment_data_from_mlflow"] = "cached"
 
 
 class ExperimentRunner(BaseModel):
@@ -127,7 +126,8 @@ class ExperimentRunner(BaseModel):
 
         combinations = [
             (ExperimentFactory.create_feature_selection_experiments(), FeatureSelection()),
-            (ExperimentFactory.create_cost_benefit_experiments(), CostBenefit())
+            (ExperimentFactory.create_cost_benefit_experiments(), CostBenefit()),
+            (ExperimentFactory.create_correlation_experiments(), Correlations())
         ]
 
         for experiments, analyser in combinations:
@@ -145,7 +145,10 @@ class ExperimentRunner(BaseModel):
         return executeable_list    
     
 
-def execute(analyser: str, filter_name: Optional[str] = None, run_in_parallel: bool = False, skip_execution: bool = False, skip_visualization: bool = False):
+def execute(analyser: str, filter_name: Optional[str] = None, run_in_parallel: bool = False, skip_execution: bool = False, skip_visualization: bool = False, cache_mlflow: bool = False):
+
+    if cache_mlflow:
+        os.environ["src.experiments.cli.py.ExperimentRunner.get_experiment_data_from_mlflow"] = "cached"
 
     experiments = ExperimentRunner.get_all_runners()
 
