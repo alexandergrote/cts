@@ -1,12 +1,11 @@
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
-import matplotlib.lines as mlines
 
 from pydantic import BaseModel
 
 from src.experiments.analysis.base import BaseAnalyser
-
+from src.util.constants import Directory
 
 sns.set_style('white')
 
@@ -130,5 +129,6 @@ class CostBenefit(BaseModel, BaseAnalyser):
         # Create a legend and center it above the plots
         #legend_handles, _ = axs[0, 0].get_legend_handles_labels()
         #fig.legend(legend_handles, data_copy[scenario_col].unique(), loc='upper center', ncol=len(data_copy[scenario_col].unique()))
-
+        plt.tight_layout()
+        plt.savefig(Directory.FIGURES_DIR / 'cost_benefit.pdf', dpi=300)
         plt.show()

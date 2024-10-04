@@ -13,6 +13,13 @@ class Directory:
     OUTPUT_DIR = ROOT / "outputs"
     CACHING_DIR = ROOT / "caching"
     MLFLOW_TRACKING_URI = ROOT / "mlruns"
+    FIGURES_DIR = ROOT / "figures"
+
+    @classmethod
+    def create_dirs(cls):
+        dirs = [cls.DATA, cls.CONFIG, cls.OUTPUT_DIR, cls.CACHING_DIR, cls.MLFLOW_TRACKING_URI, cls.FIGURES_DIR]
+        for dir in dirs:
+            dir.mkdir(parents=True, exist_ok=True)
 
 
 class File:
@@ -95,3 +102,6 @@ def replace_placeholder_in_dict(dictionary, placeholder, replacement):
         elif isinstance(value, str):
             dictionary[key] = value.replace(placeholder, replacement)
     return dictionary
+
+
+Directory.create_dirs()

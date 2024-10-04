@@ -25,7 +25,6 @@ class FeatureMaker(BaseModel):
     def _get_x_y(self, df: pd.DataFrame):
         return df.drop(columns=DatasetSchema.class_column), df[DatasetSchema.class_column]
 
-
     def execute(self, **kwargs):
 
         tracker = Tracker()

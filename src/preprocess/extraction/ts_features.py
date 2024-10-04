@@ -250,7 +250,7 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
         encoded_dataframe[DatasetSchema.class_column] = class_values
 
         # check number of rows
-        df_check = data_copy[['id_column', 'class_column']].drop_duplicates()
+        df_check = data_copy[[DatasetSchema.id_column, DatasetSchema.class_column]].drop_duplicates()
         assert len(df_check) == len(encoded_dataframe), "Number of rows does not match"
 
         # save output
@@ -259,6 +259,7 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
 
         return kwargs
     
+    @environ_pickle_cache()
     def _encode_test(self, *args, data: pd.DataFrame, **kwargs) -> dict:
 
         # encode rules as a binary feature on test data

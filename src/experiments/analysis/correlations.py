@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from scipy.stats import pearsonr
 
 from src.experiments.analysis.base import BaseAnalyser
+from src.util.constants import Directory
 from src.util.mlflow_util import uri_to_path
 
 
@@ -76,4 +77,5 @@ class Correlations(BaseModel, BaseAnalyser):
         plt.tick_params(axis='y', which='both', left=True, right=False, labelleft=True)
 
         plt.tight_layout()
+        plt.savefig(Directory.FIGURES_DIR / 'scatter_correlation.pdf', dpi=300)
         plt.show()
