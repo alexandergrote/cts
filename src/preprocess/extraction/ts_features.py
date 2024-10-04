@@ -142,13 +142,6 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
         # calculate the average delta_confidence for each row
         predictions_grouped['avg_delta_confidence'] = predictions_grouped['delta_confidence'].apply(lambda x: np.mean(np.abs(x)))
 
-        # print most frequent patterns after aggregation
-        console.log("Most frequent patterns after aggregation:")
-        print(predictions_grouped.sort_values(by='avg_delta_confidence', ascending=False).head(10))
-
-        # print max sequence length
-        print("Max sequence length: {}".format(predictions_grouped['id_column'].apply(lambda x: len(x.split(','))).max()))
-
         # group by id_column and find the index of the row with the highest average delta_confidence for each group
         idx = predictions_grouped.groupby('id_column')['avg_delta_confidence'].idxmax()
 
@@ -208,8 +201,6 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
             data_copy['p_vals'] = pvals_corrected
 
             mask = np.array(pvals_corrected) < self.p_value_threshold
-
-        print(data_copy.sort_values(by='avg_delta_confidence', ascending=False).head(10))
 
         result = DatasetUniqueRules(
             data=data_copy[mask]

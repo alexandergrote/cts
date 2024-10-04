@@ -32,13 +32,11 @@ class Correlations(BaseModel, BaseAnalyser):
             directory = uri_to_path(artifact_uri)
             data = pd.read_csv(directory / "correlations.csv")
             
-            print(data[['avg_target', 'delta_conf']].corr())
-            
             pearsonr_result = pearsonr(data['avg_target'], data['delta_conf'], alternative='greater')
             p_value = pearsonr_result.pvalue
             corr_value = pearsonr_result.correlation
 
-            print(exp_name, p_value, corr_value)
+            print(exp_name, 'corr_value:', corr_value,'p-value:', p_value)
 
             # add to records
             records.append((exp_name, data, p_value, corr_value))
@@ -66,14 +64,14 @@ class Correlations(BaseModel, BaseAnalyser):
 
             title = f"{exp_name.split('_')[-1].upper()}\n(ρ={corr_verbose}, {p_value_verbose})"
             
-            if len(records) == 1:
-                axes.title.set_text(title)
-                sns.regplot(data=data, x='Confidence Delta', y='Average Target Value', color='grey', ax=axes)
-            else:
-                axes[idx].title.set_text(title)
-                #axes[idx].set_ylim(0, 1)  # Set the x-axis range from 0 to 1
-                sns.regplot(data=data, x='Confidence Delta', y='Average Target Value', color='grey', ax=axes[idx])
-                
+
+            ax_obj = axes if len(records) == 1 else axes[idx]
+
+            ax_obj.title.set_text(title)
+            sns.regplot(data=data, x='Confidence Delta', y='Average Target Value', color='grey', ax=ax_obj)
+            ax_obj.set_ylim(0, 1)
+            
+
         plt.tick_params(axis='x', which='both', bottom=True, top=False, labelbottom=True)
         plt.tick_params(axis='y', which='both', left=True, right=False, labelleft=True)
 

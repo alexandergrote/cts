@@ -26,10 +26,6 @@ class TimeSeriesFeatureSelection(BaseModel, BaseFeatureSelector):
             weighted_by_support=False
         )
 
-        print(ranked_rules[:10])
-        print('-'*10)
-        print(ranked_rules[-10:])
-
         if self.n_features is None:
             self._columns = data.columns.to_list()
             return data

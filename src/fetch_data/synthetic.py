@@ -135,44 +135,4 @@ class DataLoader(BaseModel, BaseDataLoader):
         data = pd.DataFrame.from_records(records)
 
         return data
-
-
-if __name__ == '__main__':
-
-    from src.util.config_import import YamlConfigLoader
-
-    config = YamlConfigLoader.read_yaml(key='fetch_data', overrides=['fetch_data=synthetic'])
-
-    data_loader = DataLoader(**config['params'])
-    data = data_loader.execute()['data']
-
-    event_column = DatasetSchema.event_column
-    id_column = DatasetSchema.id_column
-    time_column = DatasetSchema.time_column
-    target_column = DatasetSchema.class_column
-
-    # unique events
-    print('unique events')
-    print(data[event_column].nunique())
-
-    # get unique event counts
-    print('event counts')
-    print(data[event_column].value_counts(normalize=False).mean())
-
-    # get average sequence length
-    print('sequence length')
-    print(data.groupby(id_column).size().mean())
-
-    # get min sequence length
-    print('min sequence length')
-    print(data.groupby(id_column).size().min())
-
-    # get max sequence length
-    print('max sequence length')
-    print(data.groupby(id_column).size().max())
-
-    # get average class distribution
-    print('class distribution')
-    print(data[target_column].mean())
-
     
