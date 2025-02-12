@@ -77,7 +77,7 @@ class DatasetRulesSchema(pa.DataFrameModel):
     confidence_neg: Series[float]
 
     delta_confidence: Series[float]
-    inverse_entropy: Series[float]
+    centered_inverse_entropy: Series[float]
     total_observations: Series[int]
 
 
@@ -103,7 +103,7 @@ class DatasetRules(BaseModel):
                     **{
                         DatasetRulesSchema.total_observations: total_observations,
                         DatasetRulesSchema.delta_confidence: pattern.delta_confidence,
-                        DatasetRulesSchema.inverse_entropy: pattern.inverse_entropy
+                        DatasetRulesSchema.centered_inverse_entropy: pattern.centered_inverse_entropy
                     }
                 })
 
@@ -115,7 +115,7 @@ class DatasetRules(BaseModel):
 class DatasetUniqueRulesSchema(pa.DataFrameModel):
     id_column: Series[str]
     delta_confidence: Series[List[float]]
-    inverse_entropy: Series[List[float]]
+    centered_inverse_entropy: Series[List[float]]
     support: Series[List[float]] = pa.Field(is_between={"min_value": 0, "max_value": 1})
 
     class Config:
@@ -127,7 +127,7 @@ class DatasetUniqueRules(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    def rank_rules(self, criterion: Literal[DatasetRulesSchema.delta_confidence, DatasetRulesSchema.inverse_entropy], ascending: bool = False, weighted_by_support: bool = False) -> List[Tuple[str, float]]:
+    def rank_rules(self, criterion: Literal[DatasetRulesSchema.delta_confidence, DatasetRulesSchema.centered_inverse_entropy], ascending: bool = False, weighted_by_support: bool = False) -> List[Tuple[str, float]]:
 
         # collect ids and values
         ids, values = [], []

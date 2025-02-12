@@ -27,7 +27,7 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
 
     criterion: Literal[
         DatasetUniqueRulesSchema.delta_confidence, 
-        DatasetUniqueRulesSchema.inverse_entropy
+        DatasetUniqueRulesSchema.centered_inverse_entropy
     ] = DatasetUniqueRulesSchema.delta_confidence
 
     bootstrap_repetitions: int = 5
@@ -124,7 +124,7 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
         # columns with multiple values given as a list
         columns_with_lists = [
             DatasetRulesSchema.delta_confidence, 
-            DatasetRulesSchema.inverse_entropy, 
+            DatasetRulesSchema.centered_inverse_entropy, 
             DatasetRulesSchema.support
         ]
 
@@ -140,10 +140,11 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
                 lambda x: x.replace('][', ', ').replace('[', '').replace(']', ''))
 
         # calculate the average delta_confidence for each row
-        predictions_grouped['avg_delta_confidence'] = predictions_grouped['delta_confidence'].apply(lambda x: np.mean(np.abs(x)))
+        avg_criterion_col = f'avg_{self.criterion}'
+        predictions_grouped[avg_criterion_col] = predictions_grouped[self.criterion].apply(lambda x: np.mean(np.abs(x)))
 
         # group by id_column and find the index of the row with the highest average delta_confidence for each group
-        idx = predictions_grouped.groupby('id_column')['avg_delta_confidence'].idxmax()
+        idx = predictions_grouped.groupby('id_column')[avg_criterion_col].idxmax()
 
         # select the rows with the highest average delta_confidence for each group
         unique_predictions = predictions_grouped.loc[idx]

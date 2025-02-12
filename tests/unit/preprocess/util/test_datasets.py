@@ -12,7 +12,7 @@ class TestDatasetUniqueRules(unittest.TestCase):
         self.data = pd.DataFrame({
             DatasetUniqueRulesSchema.id_column: ['a', 'b'],
             DatasetUniqueRulesSchema.delta_confidence: [[0.1], [0.3, 0.4]],
-            DatasetUniqueRulesSchema.inverse_entropy: [[0.5], [-0.7, 0.8]],
+            DatasetUniqueRulesSchema.centered_inverse_entropy: [[0.5], [-0.7, 0.8]],
             DatasetUniqueRulesSchema.support: [[1/3], [3/7, 4/7]],
         })
 
@@ -31,7 +31,7 @@ class TestDatasetUniqueRules(unittest.TestCase):
         dataset = DatasetUniqueRules(data=self.data)
 
         ranked_rules = dataset.rank_rules(
-            criterion=DatasetUniqueRulesSchema.inverse_entropy,
+            criterion=DatasetUniqueRulesSchema.centered_inverse_entropy,
         )
 
         expected = [('a', 0.5), ('b', 0.05)]

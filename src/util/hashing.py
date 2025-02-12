@@ -62,8 +62,6 @@ class Hash(BaseModel):
             
             return hash_value
 
-        from IPython import embed; embed()
-
         raise ValueError(f"Object {obj} cannot be hashed. You may consider defining an explicit 'hash' function.")
     
     @staticmethod

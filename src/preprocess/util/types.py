@@ -55,13 +55,33 @@ class FrequentPatternWithConfidence(BaseModel):
     def inverse_entropy(self) -> float:
 
         if self.support_pos is None:
-            raise ValueError("Delta confidence calculation not possible.")
+            raise ValueError("Entropy calculation not possible.")
 
         entropy = EntropyCalculator.calculate_entropy(
             probability= self.support_pos / self.support
         )
 
         return 1 - entropy
+    
+    @property
+    def centered_inverse_entropy(self):
+
+        if (self.support_pos is None) or (self.support_neg is None):
+            raise ValueError("Entropy calculation is not possible")
+        
+        if self.support != self.support_pos + self.support_neg:
+            raise ValueError("Numbers do not match")
+        
+        max_entropy = EntropyCalculator.calculate_entropy(probability=0.5)
+
+        if self.support_pos == self.support_neg:
+            return max_entropy
+        
+        sign = 1 if self.support_pos > self.support_neg else -1
+
+        centered_inverse_entropy = sign * self.inverse_entropy / max_entropy
+
+        return centered_inverse_entropy
 
 
 class StackObject(BaseModel):

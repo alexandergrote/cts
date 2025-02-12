@@ -37,15 +37,47 @@ class TestChurn(unittest.TestCase):
                 for n_feature in n_features:
 
                     statement = f"preprocess={selection}_{encoding}_{str(n_feature)}"
+class TestChurnEntropy(unittest.TestCase):
+
+    def _integration_test(self, overrides: List[str] = []):
+
+        default_overrides = [
+            'fetch_data=churn', 
+            'fetch_data.params.n_samples=1000',
+            'preprocess.params.extractor.params.criterion="centered_inverse_entropy"',
+            'export=dummy'
+        ]
+
+        final_overrides = overrides + default_overrides
+
+        cfg = get_hydra_config(overrides=final_overrides)
+
+        self.assertIsNone(main(cfg))
+
+    @patch("src.main.get_hydra_output_dir", return_value=Path(temp_dir.name))
+    def test_preprocess(self, mock_output_dir):
+
+        selection_options = ['self']
+        encoding_options = ['spm']
+        n_features = ['null']
+
+        for selection in selection_options:
+            for encoding in encoding_options:
+                for n_feature in n_features:
+
+                    statement = f"preprocess={selection}_{encoding}_{str(n_feature)}"
 
                     with self.subTest(msg=statement):
                         self._integration_test([
                             f"preprocess={selection}_{encoding}",
                             f"preprocess.params.selector.params.n_features={n_feature}"
                         ])
-        
 
-
+                    with self.subTest(msg=statement):
+                        self._integration_test([
+                            f"preprocess={selection}_{encoding}",
+                            f"preprocess.params.selector.params.n_features={n_feature}"
+                        ])
         
 
 
