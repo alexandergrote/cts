@@ -13,6 +13,8 @@ from src.preprocess.util.metrics import ConfidenceCalculator
 from src.preprocess.util.types import AnnotatedSequence, FrequentPattern, StackObject, FrequentPatternWithConfidence
 from src.preprocess.util.datasets import DatasetRulesSchema, DatasetUniqueRulesSchema
 from src.util.datasets import Dataset, DatasetSchema
+from src.util.profile import time_tracker, Tracker
+from src.util.custom_logging import console
 
 
 class PrefixSpan(BaseModel, BaseFeatureEncoder):
@@ -217,24 +219,32 @@ class PrefixSpan(BaseModel, BaseFeatureEncoder):
         # work on copy
         data_copy = data.copy(deep=True)
 
-        prefix_df = Dataset(
-            raw_data=data_copy
-        )
+        # track time
+        mining_tracker = Tracker()
+        encoding_tracker = Tracker()
 
-        sequences = prefix_df.get_sequences()
-        sequence_values = [el.sequence_values for el in sequences]
-        class_values = [el.class_value for el in sequences]
+        with time_tracker(tracker=mining_tracker, description="Mining: "):
 
-        frequent_patterns = self.get_frequent_patterns(sequences)
+            prefix_df = Dataset(
+                raw_data=data_copy
+            )
 
-        rules = [el.sequence_values for el in frequent_patterns]
+            sequences = prefix_df.get_sequences()
+            sequence_values = [el.sequence_values for el in sequences]
+            class_values = [el.class_value for el in sequences]
 
-        encoded_dataframe = RuleEncoder.encode(
-            rules=rules, 
-            sequences2classify=sequence_values
-        )
+            frequent_patterns = self.get_frequent_patterns(sequences)
 
-        encoded_dataframe[DatasetSchema.class_column] = class_values
+            rules = [el.sequence_values for el in frequent_patterns]
+
+        with time_tracker(tracker=encoding_tracker, description="Encoding: "):
+
+            encoded_dataframe = RuleEncoder.encode(
+                rules=rules, 
+                sequences2classify=sequence_values
+            )
+
+            encoded_dataframe[DatasetSchema.class_column] = class_values
 
         kwargs['data'] = encoded_dataframe
         kwargs['rules'] = rules
