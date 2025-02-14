@@ -16,12 +16,14 @@ class FeatureSelection(BaseModel, BaseAnalyser):
         # work on copy
         data_copy = data.copy(deep=True)
 
-        dataset_col, n_features_col = 'params.fetch_data.class_name', 'params.preprocess.params.selector.params.n_features'
-        model_col = 'params.model.params.model'
-        feat_extractor_col = 'params.preprocess.params.extractor.class_name'
-        feat_selector_col = 'params.preprocess.params.selector.class_name'
+        dataset_col, dataset_col_v = 'params.fetch_data.class_name', 'Data'
+        n_features_col, n_features_col_v = 'params.preprocess.params.selector.params.n_features', 'Number of Features'
+        model_col, model_col_v = 'params.model.params.model', 'Model'
+        feat_extractor_col, feat_extractor_col_v = 'params.preprocess.params.extractor.class_name', 'Feature Extractor'
+        feat_selector_col, feat_selector_col_v = 'params.preprocess.params.selector.class_name', 'Feature Selector'
 
-        metric_col_auc, metric_col_f1 = 'metrics.roc_auc_score', 'metrics.f1_score'
+        metric_col_auc, metric_col_auc_v = 'metrics.roc_auc_score', 'ROC AUC Score'
+        metric_col_f1, metric_col_f1_v = 'metrics.f1_score', 'F1 Score'
         metric_col = [metric_col_auc, metric_col_f1]
 
         # exclude none results
@@ -38,31 +40,18 @@ class FeatureSelection(BaseModel, BaseAnalyser):
 
         df_to_plot = data_copy.groupby([dataset_col, model_col, feat_extractor_col, feat_selector_col, n_features_col])[metric_col].agg(['mean', 'std']).reset_index()
         df_to_plot.sort_values(by=[dataset_col, model_col, feat_extractor_col, feat_selector_col, n_features_col], inplace=True)
-        df_to_plot.columns = ['dataset','model', 'feat_extractor', 'feat_selector', 'n_features', 'metric_col_auc_mean', 'metric_col_auc_std', 'metric_col_f1_mean', 'metric_col_f1_std']
+        df_to_plot.columns = [dataset_col_v, model_col_v, feat_extractor_col_v, feat_selector_col_v, n_features_col_v, metric_col_auc_v, f'{metric_col_auc_v} std', metric_col_f1_v, f'{metric_col_f1_v} std']
         
         print(
             df_to_plot.to_markdown()
         )
 
-        metric_col_v = 'AUC'
-        dataset_col_v = 'Dataset'
-        feat_col_v = 'Algorithm'
-        n_features_col_v = 'Number of Features' 
-
-        data_copy.rename(columns={
-            metric_col_auc: metric_col_v, 
-            dataset_col: dataset_col_v, 
-            feat_selector_col: feat_col_v, 
-            n_features_col: n_features_col_v
-        }, inplace=True)
-
-
-        data_copy.replace({
+        df_to_plot.replace({
 
             'MRMRFeatSelection': 'mRMR',
             'MutInfoFeatSelection': 'Mutual Information',
             'RFFeatSelection': 'Random Forest',
-            'TimeSeriesFeatureSelection': 'Delta Confidence',
+            'SPMFeatureSelector': 'Delta Confidence',
             'ChurnDataloader': 'Churn',
             'MalwareDataloader': 'Malware',
             'DataLoader': 'Synthetic',
@@ -70,23 +59,29 @@ class FeatureSelection(BaseModel, BaseAnalyser):
             'sklearn.naive_bayes.GaussianNB': 'Naïve Bayes',
             'xgboost.XGBClassifier': 'XGB',
             
-            
         }, inplace=True)
 
-        grey_palette = sns.color_palette(['grey'] * data_copy[feat_col_v].nunique())  # Adjust the number of grey tones based on the unique values in your hue column
+        grey_palette = sns.color_palette(['grey'] * df_to_plot[feat_selector_col_v].nunique())  # Adjust the number of grey tones based on the unique values in your hue column
 
-        # Define line styles for different categories in your hue column
-        line_styles = {
-            'mRMR': 'solid',
-            'Mutual Information': 'dashed',
-            'Random Forest': 'dashdot',
-            'Delta Confidence': 'dotted'
+        # Define markers for different categories in your hue column
+        markers = {
+            'mRMR': 'o', 
+            'Mutual Information': 'X',
+            'Random Forest': 's',  
+            'Delta Confidence': 'D' 
         }
 
-        g = sns.FacetGrid(data_copy, row=model_col, col=dataset_col_v, sharey=False, height=4, sharex=True, despine=False)
-        g.map_dataframe(sns.lineplot, x=n_features_col_v, y=metric_col_v, hue=feat_col_v, palette=grey_palette, style=feat_col_v)
+        g = sns.FacetGrid(df_to_plot, row=model_col_v, col=dataset_col_v, sharey=False, height=4, sharex=True, despine=False)
+        g.map_dataframe(
+            sns.lineplot, 
+            x=n_features_col_v, 
+            y=metric_col_auc_v, 
+            hue=model_col_v, 
+            palette=grey_palette, 
+            style=feat_extractor_col_v,
+            markers=markers
+        )
 
-        # Customizing the titles
         # Here we're using only '{col_name}' to display just the value of the column variable
         g.set_titles("{row_name} | {col_name}")
 
