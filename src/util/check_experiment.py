@@ -1,4 +1,5 @@
 import mlflow
+import os
 from typing import Optional, List
 from pathlib import Path
 
@@ -10,7 +11,11 @@ metrics = ['accuracy_score', 'f1_score', 'precision_score', 'recall_score', 'roc
 
 def experiment_exists(experiment_name: str, random_seed: int) -> bool:
 
-    tracking_uri = Path(rf"file:\\{str(Directory.ROOT)}\mlruns")
+    if os.name == 'nt':
+        tracking_uri = Path(rf"file:\\{str(Directory.ROOT)}\mlruns")
+    else:
+        tracking_uri = Path(rf"file:{str(Directory.ROOT)}\mlruns")
+
     mlflow.set_tracking_uri(str(tracking_uri))
 
     # filter string

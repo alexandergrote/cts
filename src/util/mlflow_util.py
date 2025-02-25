@@ -24,5 +24,5 @@ def uri_to_path(uri: str) -> Path:
         # convert / slashes to \ slashes
         # trim first two \ slashes
         parsed_uri_path = parsed_uri_path.replace('/', '\\')[1:]
-    
+
     return Path(parsed_uri_path)

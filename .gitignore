@@ -16,3 +16,4 @@ caching
 figures
 tmp
 .aider*
+.DS_Store
