@@ -19,7 +19,6 @@ class Directory:
     def create_dirs(cls):
         dirs = [cls.DATA, cls.CONFIG, cls.OUTPUT_DIR, cls.CACHING_DIR, cls.MLFLOW_TRACKING_URI, cls.FIGURES_DIR]
         for dir in dirs:
-            print(dir)
             dir.mkdir(parents=True, exist_ok=True)
 
 
