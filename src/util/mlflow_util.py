@@ -16,6 +16,14 @@ def get_mlflow_client() -> MlflowClient:
     return client
 
 
+def get_tracking_uri():
+
+    if os.name == 'nt':
+        return Path(rf"file:\\{str(Directory.ROOT)}\mlruns")
+    
+    return Path(rf"file:{str(Directory.ROOT)}/mlruns")
+
+
 def uri_to_path(uri: str) -> Path:
 
     parsed_uri_path = urlparse(uri).path

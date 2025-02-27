@@ -3,7 +3,7 @@ import os
 from typing import Optional, List
 from pathlib import Path
 
-from src.util.constants import Directory
+from src.util.mlflow_util import get_tracking_uri
 from notebooks.visualize.mlflow_utils import get_last_n_runs, runs_to_df
 
 metrics = ['accuracy_score', 'f1_score', 'precision_score', 'recall_score', 'roc_auc_score']
@@ -11,10 +11,7 @@ metrics = ['accuracy_score', 'f1_score', 'precision_score', 'recall_score', 'roc
 
 def experiment_exists(experiment_name: str, random_seed: int) -> bool:
 
-    if os.name == 'nt':
-        tracking_uri = Path(rf"file:\\{str(Directory.ROOT)}\mlruns")
-    else:
-        tracking_uri = Path(rf"file:{str(Directory.ROOT)}\mlruns")
+    tracking_uri = get_tracking_uri()
 
     mlflow.set_tracking_uri(str(tracking_uri))
 

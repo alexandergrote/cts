@@ -1,11 +1,10 @@
 import mlflow
-import os
 from pathlib import Path
 from pydantic import BaseModel, validate_arguments
 from omegaconf import DictConfig, ListConfig
 
 from src.export.base import BaseExporter
-from src.util.constants import Directory
+from src.util.mlflow_util import get_tracking_uri
 
 
 class Exporter(BaseModel, BaseExporter):
@@ -95,11 +94,7 @@ class Exporter(BaseModel, BaseExporter):
 
         
         # define tracking uri
-        tracking_uri = Directory.ROOT / "mlruns"
-
-        # overwrite uri if running on windows
-        if os.name == 'nt':
-            tracking_uri = Path(rf"file:\\{str(Directory.ROOT)}\mlruns")
+        tracking_uri = get_tracking_uri()
 
         # set tracking uri
         mlflow.set_tracking_uri(str(tracking_uri))

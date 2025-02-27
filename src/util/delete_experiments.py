@@ -1,20 +1,20 @@
 import mlflow
-import typer
+from argparse import ArgumentParser
 from pathlib import Path
 import re
 
 from src.util.constants import Directory
+from src.util.mlflow_util import get_tracking_uri
 
-app = typer.Typer()
-
-@app.command()
 def delete_experiments(pattern: str):
     """
     Delete MLflow experiments matching the given pattern.
 
     :param pattern: Regular expression pattern to search for in experiment names
     """
-    tracking_uri = Path(rf"file:\\{str(Directory.ROOT)}\mlruns")
+
+    tracking_uri = get_tracking_uri()
+    print(tracking_uri)
     mlflow.set_tracking_uri(str(tracking_uri))
 
     # Get a list of all experiments
@@ -41,8 +41,12 @@ def delete_experiments(pattern: str):
     # Iterate through the filtered experiments and delete them
     for experiment in filtered_experiments:
         exp_id = experiment.experiment_id
-        print(f"Deleting experiment ID: {experiment.name}")
+        print(f"Deleting experiment ID: {exp_id}, Name: {experiment.name}")
         mlflow.delete_experiment(exp_id)
 
 if __name__ == "__main__":
-    app()
+    parser = ArgumentParser(description="Delete MLflow experiments matching the given pattern.")
+    parser.add_argument("pattern", type=str, help="Regular expression pattern to search for in experiment names")
+    
+    args = parser.parse_args()
+    delete_experiments(args.pattern)
