@@ -44,7 +44,9 @@ class SklearnModel(BaseModel, BaseProcessModel):
 
         importance_df = None
 
-        if isinstance(self.model, xgboost.XGBClassifier):
+        verbose = kwargs.get('verbose', False)  # Check if verbose is in kwargs and set default to False
+
+        if isinstance(self.model, xgboost.XGBClassifier) and verbose:
 
             feature_importance = self.model.get_booster().get_score(importance_type='gain')
             importance_df = pd.DataFrame(feature_importance, index=[0]).T.reset_index()
