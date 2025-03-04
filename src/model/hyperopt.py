@@ -58,7 +58,7 @@ class HyperTuner(BaseModel, BaseProcessModel):
         return DynamicImport.import_class_from_dict(dictionary=v)
     
 
-    def _objective(self, trial: optuna.Trial, model: dict, x_train: pd.DataFrame, x_test: pd.DataFrame, y_train: pd.Series, y_test: pd.Series):
+    def _objective(self, trial: optuna.Trial, model: dict, x_train: pd.DataFrame, x_test: pd.DataFrame, y_train: pd.Series, y_test: pd.Series, **kwargs):
 
         params = self.hyperparams.get_params_for_study(trial)
 
@@ -70,7 +70,8 @@ class HyperTuner(BaseModel, BaseProcessModel):
 
         model.fit(
             x_train=x_train,
-            y_train=y_train
+            y_train=y_train,
+            **kwargs
         )
 
         y_pred_proba = model._predict_proba(x_test)
@@ -84,7 +85,7 @@ class HyperTuner(BaseModel, BaseProcessModel):
 
         return result['metrics']['f1_score']
 
-    def _run_hyperparameter_search(self, sequences: pd.DataFrame, targets: pd.Series) -> optuna.study.Study:
+    def _run_hyperparameter_search(self, sequences: pd.DataFrame, targets: pd.Series, **kwargs) -> optuna.study.Study:
 
         # split train test
         x_train, x_test, y_train, y_test = train_test_split(
@@ -109,7 +110,8 @@ class HyperTuner(BaseModel, BaseProcessModel):
                 x_train,
                 x_test,
                 y_train,
-                y_test
+                y_test,
+                output_dir = kwargs['output_dir'],
             ),
 
             n_trials=self.n_trials,
@@ -123,7 +125,8 @@ class HyperTuner(BaseModel, BaseProcessModel):
 
         study = self._run_hyperparameter_search(
             sequences=x_train,
-            targets=y_train
+            targets=y_train,
+            **kwargs
         )
 
         params = self.hyperparams.get_params_for_study(study.best_trial)
@@ -139,7 +142,8 @@ class HyperTuner(BaseModel, BaseProcessModel):
 
         self.model.fit(
             x_train=x_train,
-            y_train=y_train
+            y_train=y_train,
+            **kwargs
         ) 
 
         return kwargs
