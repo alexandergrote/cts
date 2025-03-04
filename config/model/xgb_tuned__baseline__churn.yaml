@@ -1,8 +1,0 @@
-class_name: src.model.sklearn_models.SklearnModel
-params:
-  model: 'xgboost.XGBClassifier'
-  params:
-    n_estimators: 73
-    max_depth: 10
-    learning_rate: 0.6894313444973256
-    objective: "binary:logistic"
