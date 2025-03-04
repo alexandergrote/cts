@@ -1,0 +1,38 @@
+# Interpretable Process Analysis Through Sequential Pattern Mining
+
+## Installation
+
+```
+pip install -r requirements.txt
+pip install .
+```
+
+To obtain the data for the two real-world datasts, you need to 
+
+## Structure
+
+Broadly speaking, the repository contains two pipelines that serve different purposes:
+1) Executing the Machine Learning experiments and storing the result of each run in a MlFlow database
+2) Afterwards, we can query the results and visualize them.
+
+You can run both pipelines together or indepently:
+
+- Only Machine Learning Experiment: `python src\experiments\cli.py <>`
+- Only Visualization: `python src\experiments\cli.py`
+- Both: `python src\experiments\cli.py`
+
+## Additional Remarks for Source Code Usage
+
+This repository contains some opionated snippets of code. For instance, it uses hydra for configuration management, mlflow to keep track of the machine learning runs and a custom cli interface for administering the different pipelines. With these remarks, we will hopefully make it easier for someone new to use this codebase.
+
+### Hydra
+
+First and foremost, the main entry script for each machine learning run is `src\main.py`. 
+
+### Mlflow
+
+Start the mlflow gui with 
+
+```
+mlflow ui --port 5000
+```
