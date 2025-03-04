@@ -23,18 +23,18 @@ class PydanticEnvironment(BaseModel):
 
         for key, value in data.items():
 
+            if 'cached_functions' == key:
+                continue
+
             # check if supplied argument is an enum and add value to environment
             if isinstance(value, EnvMode):
                 value = value.value
-
-            if 'cached_functions' in data:
-                continue
 
             os.environ[key] = str(value)
 
     @classmethod
     def create_from_environment(cls):
-        
+
         # create dictionary with all attributes of the class as keys and its environment variables as values
         data = {key: os.environ[key] for key in cls.model_fields.keys() if key != "cached_functions"}
 
