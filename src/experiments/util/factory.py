@@ -1,7 +1,6 @@
 from pydantic import BaseModel
 from typing import List
 
-from src.util.constants import Directory
 from src.experiments.util.types import Experiment
 
 
@@ -100,5 +99,56 @@ class ExperimentFactory(BaseModel):
             ]
 
             experiments.append(Experiment(name=exp_name, overrides=overrides))
+
+        return experiments
+
+    @classmethod
+    def create_benchmark_experiments(cls) -> List[Experiment]:
+
+        experiments = []
+
+        for dataset in ['synthetic', 'malware', 'churn']:
+
+            for model in ["lstm", "xgb_oh", "xgb_spm"]:
+
+                exp_name = f'benchmark__{dataset}__{model}'
+
+                preprocess = "NA"
+
+                if model == 'lstm':
+                    preprocess = f'baseline_lstm'
+
+                if model == 'xgb_oh':
+                    preprocess = 'baseline'
+
+                if model == 'xgb_spm':
+                    preprocess = 'self_spm'
+                
+                if model in ['xgb_oh', 'xgb_spm']:
+                    model = 'xgb'
+
+                cached_functions = [
+                    'src.preprocess.extraction.ts_features.py.SPMFeatureSelector._encode_train',
+                    'src.preprocess.extraction.ts_features.py.SPMFeatureSelector._encode_test',
+                    'src.fetch_data.synthetic.py.DataLoader.get_data',
+                    'src.fetch_data.churn.py.ChurnDataloader.get_data',
+                    'src.fetch_data.malware.py.MalwareDataloader.get_data'
+                ]
+
+                cached_functions_str = "[" + ','.join(cached_functions) + "]"  # without the square brackets, hydra does not recognize it as a list
+
+                overrides = [
+                    f'fetch_data={dataset}',
+                    f'preprocess={preprocess}',
+                    f'train_test_split=stratified',
+                    f'train_test_split.params.random_state=0,1,2,3,4',
+                    f'model={model}_tuned',
+                    f'evaluation=ml',
+                    f'export=mlflow',
+                    f'export.params.experiment_name={exp_name}',
+                    f'env.cached_functions="{cached_functions_str}"',
+                ]
+
+                experiments.append(Experiment(name=exp_name, overrides=overrides))
 
         return experiments
