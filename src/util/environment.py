@@ -7,17 +7,28 @@ from src.util.constants import EnvMode
 class PydanticEnvironment(BaseModel):
 
     mode: EnvMode
+    cached_functions: list[str] = []
 
     class Config:
         extra = 'forbid'
 
     @staticmethod
     def set_environment_variables(data: dict):
+
+        # in accordance with environment pickle cache
+        # specify environment variables for caching functions
+        if 'cached_functions' in data:
+            for function in data['cached_functions']:
+                os.environ[function] = "cached"
+
         for key, value in data.items():
 
             # check if supplied argument is an enum and add value to environment
             if isinstance(value, EnvMode):
                 value = value.value
+
+            if 'cached_functions' in data:
+                continue
 
             os.environ[key] = str(value)
 
@@ -25,7 +36,7 @@ class PydanticEnvironment(BaseModel):
     def create_from_environment(cls):
         
         # create dictionary with all attributes of the class as keys and its environment variables as values
-        data = {key: os.environ[key] for key in cls.model_fields.keys()}
+        data = {key: os.environ[key] for key in cls.model_fields.keys() if key != "cached_functions"}
 
         # check if attribute is enum and convert it to enum
         for key, value in data.items():

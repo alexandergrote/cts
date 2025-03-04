@@ -6,7 +6,7 @@ from tqdm import tqdm
 from imblearn.under_sampling import RandomUnderSampler
 
 from src.fetch_data.base import BaseDataLoader
-from src.util.caching import pickle_cache
+from src.util.caching import environ_pickle_cache
 from src.util.constants import Directory
 from src.util.datasets import Dataset, DatasetSchema
 
@@ -33,7 +33,7 @@ class ChurnDataloader(BaseModel, BaseDataLoader):
 
         return filepath
 
-    @pickle_cache(ignore_caching=True, cachedir=Directory.CACHING_DIR / 'churn')
+    @environ_pickle_cache()
     def get_data(self) -> Dataset:
 
         data = pd.read_csv(self.path)

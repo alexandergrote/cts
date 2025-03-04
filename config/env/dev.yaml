@@ -1,3 +1,2 @@
 mode: 'dev'
-src.preprocess.extraction.ts_features.py.SPMFeatureSelector._encode_train: cache
-src.preprocess.extraction.ts_features.py.SPMFeatureSelector._encode_test: cache
+cached_functions:
