@@ -7,7 +7,9 @@ pip install -r requirements.txt
 pip install .
 ```
 
-To obtain the data for the two real-world datasts, you need to 
+To obtain the data for the two real-world datasts, you need to go to the following links:
+- malware data: https://www.kaggle.com/datasets/ang3loliveira/malware-analysis-datasets-api-call-sequences
+- churn data: https://www.coveo.com/en/ailabs/shopper-intent-prediction-from-clickstream-e-commerce-data-with-minimal-browsing-information
 
 ## Structure
 
@@ -27,7 +29,7 @@ This repository contains some opionated snippets of code. For instance, it uses 
 
 ### Hydra
 
-First and foremost, the main entry script for each machine learning run is `src\main.py`. 
+First and foremost, the main entry script for each machine learning run is `src\main.py`. You can override the default configuration by passing in command line arguments. For example, to run the churn prediction pipeline with a different dataset, you can use the following command: ` python src\main.py fetch_data=churn`. For more information see the official [hydra documentation](https://hydra.cc/docs/intro/). 
 
 ### Mlflow
 
