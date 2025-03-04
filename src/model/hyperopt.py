@@ -48,6 +48,7 @@ class HyperTuner(BaseModel, BaseProcessModel):
 
     n_trials: int 
     timeout: int = 600
+    patience: int = 15
 
     model: Union[dict, Type[BaseProcessModel]]
     hyperparams: Union[dict, Type[BaseHyperParams]]
@@ -59,6 +60,11 @@ class HyperTuner(BaseModel, BaseProcessModel):
     
 
     def _objective(self, trial: optuna.Trial, model: dict, x_train: pd.DataFrame, x_test: pd.DataFrame, y_train: pd.Series, y_test: pd.Series, **kwargs):
+
+        if trial.number > self.patience:
+
+            if trial.study.best_trial.number + self.patience < trial.number:
+                raise optuna.TrialPruned()
 
         params = self.hyperparams.get_params_for_study(trial)
 
@@ -83,7 +89,9 @@ class HyperTuner(BaseModel, BaseProcessModel):
             y_test=y_test
         )
 
-        return result['metrics']['f1_score']
+        score = result['metrics']['f1_score']        
+
+        return score
 
     def _run_hyperparameter_search(self, sequences: pd.DataFrame, targets: pd.Series, **kwargs) -> optuna.study.Study:
 
@@ -153,69 +161,3 @@ class HyperTuner(BaseModel, BaseProcessModel):
     
     def _predict_proba(self, x_test, **kwargs):
         return self.model._predict_proba(x_test)
-
-
-if __name__ == '__main__':
-
-    from src.fetch_data.synthetic import DataLoader
-    from src.util.constants import Directory, replace_placeholder_in_dict
-
-    # get constants
-    with open(Directory.CONFIG / 'constants\synthetic.yaml', 'r') as file:
-        cfg = yaml.safe_load(file)
-
-    # get synthetic data
-    with open(Directory.CONFIG / 'fetch_data\synthetic.yaml', 'r') as file:
-        config = yaml.safe_load(file)['params']
-
-
-    for _, value in cfg.items():
-
-        placeholder = value['placeholder']
-        replacement = value['value']
-
-        config = replace_placeholder_in_dict(
-            dictionary=config,
-            placeholder=placeholder,
-            replacement=replacement
-        )
-
-    data_loader = DataLoader(**config)
-    data = data_loader.execute()['data']
-
-    mapping = {event: i+1 for i, event in enumerate(data['event_column'].unique())}
-    data['event_column'] = data['event_column'].map(mapping)
-
-    # get sequences from data
-    data.sort_values(by='timestamp', inplace=True)
-    sequences = data.groupby('id_column')['event_column'].apply(list).to_list()
-    targets = data.groupby('id_column')['target'].apply(lambda x: np.unique(x)[0]).to_list()
-
-    # get model config
-    with open(Directory.CONFIG / 'model\lstm.yaml', 'r') as file:
-        model_config = yaml.safe_load(file)
-
-    # get eval config
-    with open(Directory.CONFIG / 'evaluation\ml.yaml', 'r') as file:
-        eval_config = yaml.safe_load(file)
-
-    hyperparams = {'class_name': 'src.model.hyperopt.LSTMHyperParams', 'params': None}
-
-    tuner = HyperTuner(
-        n_trials=1,
-        timeout=600,
-        model=model_config,
-        evaluator=eval_config,
-        hyperparams=hyperparams
-    )
-
-    x_train = pd.DataFrame(sequences)
-    y_train = pd.Series(targets)
-
-    tuner.fit(
-        x_train=x_train,
-        y_train=y_train
-    )
-
-    tuner.predict(x_train)
-    tuner.predict_proba(x_train)
