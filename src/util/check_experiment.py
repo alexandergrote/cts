@@ -1,10 +1,8 @@
 import mlflow
-import os
 from typing import Optional, List
 from pathlib import Path
 
-from src.util.mlflow_util import get_tracking_uri
-from notebooks.visualize.mlflow_utils import get_last_n_runs, runs_to_df
+from src.util.mlflow_util import get_tracking_uri, get_last_n_runs, runs_to_df
 
 metrics = ['accuracy_score', 'f1_score', 'precision_score', 'recall_score', 'roc_auc_score']
 
