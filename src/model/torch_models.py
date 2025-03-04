@@ -11,6 +11,14 @@ from src.model.util.torch_util import TorchMixin
 from src.util.dynamic_import import DynamicImport
 from src.util.constants import Directory
 
+DEVICE = torch.device('cpu')
+
+if torch.cuda.is_available():
+    DEVICE = torch.device('cuda')
+
+if torch.backends.mps.is_available():
+    DEVICE = torch.device('mps')
+
 
 class LSTMBenchmark(BaseModel, BaseProcessModel, TorchMixin):
 
@@ -24,7 +32,7 @@ class LSTMBenchmark(BaseModel, BaseProcessModel, TorchMixin):
     optimizer: Optional[torch.optim.Adam] = None
     loss_fn: nn.BCEWithLogitsLoss = nn.BCEWithLogitsLoss()
 
-    device: torch.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device: torch.device = DEVICE
 
     event_mapping: Optional[dict] = None
 
@@ -207,82 +215,5 @@ class LSTMBenchmark(BaseModel, BaseProcessModel, TorchMixin):
             sigmoid_values = sigmoid_values.cpu().detach().numpy()
             sigmoid_values = np.hstack([1 - sigmoid_values, sigmoid_values])
 
-            return sigmoid_values
-            
-
-
-if __name__ == '__main__':
-
-    import yaml
-    from src.fetch_data.synthetic import DataLoader
-    from src.util.constants import Directory, replace_placeholder_in_dict
-
-    # get constants
-    with open(Directory.CONFIG / 'constants\synthetic.yaml', 'r') as file:
-        cfg = yaml.safe_load(file)
-
-    # get synthetic data
-    with open(Directory.CONFIG / 'fetch_data\synthetic.yaml', 'r') as file:
-        config = yaml.safe_load(file)['params']
-
-
-    for _, value in cfg.items():
-
-        placeholder = value['placeholder']
-        replacement = value['value']
-
-        config = replace_placeholder_in_dict(
-            dictionary=config,
-            placeholder=placeholder,
-            replacement=replacement
-        )
-
-    data_loader = DataLoader(**config)
-    data = data_loader.execute()['data']
-
-    # get model config
-    with open(Directory.CONFIG / 'model\lstm.yaml', 'r') as file:
-        config = yaml.safe_load(file)['params']
-
-    model = LSTMBenchmark(**config)
-
-    mapping = {event: i+1 for i, event in enumerate(data['event_column'].unique())}
-    data['event_column'] = data['event_column'].map(mapping)
-
-    # get sequences from data
-    data.sort_values(by='timestamp', inplace=True)
-    sequences = data.groupby('id_column')['event_column'].apply(list).to_list()
-    targets = data.groupby('id_column')['target'].apply(lambda x: np.unique(x)[0]).to_list()
-    
-    # split train test
-    from sklearn.model_selection import train_test_split
-
-    x_train, x_test, y_train, y_test = train_test_split(
-        sequences, targets, test_size=0.2, random_state=42
-    )
-    
-    model.fit(
-        x_train=pd.DataFrame(x_train),
-        y_train=pd.Series(y_train)
-    )
-
-    y_pred_proba = model.predict_proba(pd.DataFrame(x_test))['y_pred_proba']
-    y_pred = model.predict(pd.DataFrame(x_test))['y_pred']
-
-    # get evaluation config
-    with open(Directory.CONFIG / 'evaluation\ml.yaml', 'r') as file:
-        cfg = yaml.safe_load(file)
-
-    evaluator = DynamicImport.import_class_from_dict(cfg)
-
-    result = evaluator.evaluate(
-        y_pred=y_pred,
-        y_pred_proba=y_pred_proba, 
-        y_test=y_test
-    )
-    
-    print(result['metrics'])
-
-
-    
+            return sigmoid_values  
 
