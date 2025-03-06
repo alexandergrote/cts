@@ -19,7 +19,7 @@ class ExperimentFactory(BaseModel):
 
                     for encoding in ["oh", 'spm']:
 
-                        for n_features in ["null",1,2,3,4,5,6,7,8,9,10]:
+                        for n_features in [1,2,3,4,5,6,7,8,9,10]:
 
                             exp_name = f'{encoding}__{dataset}__preprocess__{selection_method}__model__{model}__features__{n_features}'
 
@@ -114,9 +114,26 @@ class ExperimentFactory(BaseModel):
                 exp_name = f'benchmark__{dataset}__{model}'
 
                 preprocess = "NA"
+                additional_overriedes = []  # Initialize additional_overrides as an empty list
 
                 if model == 'lstm':
+                    
                     preprocess = f'baseline_lstm'
+
+                    vocab_size = 2
+
+                    if dataset == 'synthetic':
+                        vocab_size = 16
+                    elif dataset == 'malware':
+                        vocab_size = 260
+                    elif dataset == 'churn':
+                        vocab_size = 6
+                    else:
+                        raise ValueError(f"Unknown dataset: {dataset}")  # Raise an error for unknown datasets
+
+                    additional_overriedes = [
+                        f'model.params.model.params.model.params.vocab_size={vocab_size}'
+                    ]
 
                 if model == 'xgb_oh':
                     preprocess = 'baseline'
@@ -135,19 +152,21 @@ class ExperimentFactory(BaseModel):
                     'src.fetch_data.malware.py.MalwareDataloader.get_data'
                 ]
 
-                cached_functions_str = "[" + ','.join(cached_functions) + "]"  # without the square brackets, hydra does not recognize it as a list
+                cached_functions_str = "[" + ','.join(cached_functions) + "]" # without the square brackets, hydra does not recognize it as a list
 
                 overrides = [
                     f'fetch_data={dataset}',
                     f'preprocess={preprocess}',
                     f'train_test_split=stratified',
-                    f'train_test_split.params.random_state=0,1,2,3,4',
+                    f'train_test_split.params.random_state=0', # ,1,2,3,4
                     f'model={model}_tuned',
                     f'evaluation=ml',
                     f'export=mlflow',
                     f'export.params.experiment_name={exp_name}',
-                    f'env.cached_functions="{cached_functions_str}"',
+                    f'env.cached_functions={cached_functions_str}'
                 ]
+
+                overrides.extend(additional_overriedes)
 
                 experiments.append(Experiment(name=exp_name, overrides=overrides))
 
