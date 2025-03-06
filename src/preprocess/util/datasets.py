@@ -7,17 +7,25 @@ from typing import Optional, List, Literal, Tuple
 from pandera.typing import DataFrame, Series
 
 from src.util.datasets import DatasetSchema
-from src.util.custom_types import AnnotatedSequence
-from src.preprocess.util.types import AnnotatedSequence, FrequentPatternWithConfidence, BootstrapRound
+from src.preprocess.util.types import BootstrapRound
 
 
 @pa.extensions.register_check_method(statistics=["min_value", "max_value"], check_type="element_wise")
 def is_between(list_obj, *, min_value, max_value):
     return all([min_value <= el <= max_value for el in list_obj])
 
+
+@pa.extensions.register_check_method(statistics=[], check_type="element_wise")
+def is_list_of_strings(lst):
+    return isinstance(lst, list) and all(isinstance(x, str) for x in lst)
+
+@pa.extensions.register_check_method(statistics=[], check_type="element_wise")
+def is_list_of_floats(lst):
+    return isinstance(lst, list) and all(isinstance(x, float) for x in lst)
+
 class DatasetAggregatedSchema(pa.DataFrameModel):
     id_column: Series[str] = pa.Field(coerce=True)
-    sequence_values: Series[List[str]]
+    sequence_values: Series[object] = pa.Field(is_list_of_strings=pa.Check.is_list_of_strings)
     class_value: Optional[Series[int]]
 
 
@@ -65,8 +73,8 @@ class DatasetAggregated(BaseModel):
 
 class DatasetRulesSchema(pa.DataFrameModel):
 
-    antecedent: Series[List[str]]
-    consequent: Series[List[str]]
+    antecedent: Series[object] = pa.Field(is_list_of_strings=pa.Check.is_list_of_strings)
+    consequent: Series[object] = pa.Field(is_list_of_strings=pa.Check.is_list_of_strings)
 
     support: Series[int]
     support_pos: Series[int]
@@ -114,9 +122,9 @@ class DatasetRules(BaseModel):
 
 class DatasetUniqueRulesSchema(pa.DataFrameModel):
     id_column: Series[str]
-    delta_confidence: Series[List[float]]
-    centered_inverse_entropy: Series[List[float]]
-    support: Series[List[float]] = pa.Field(is_between={"min_value": 0, "max_value": 1})
+    delta_confidence: Series[object] = pa.Field(is_list_of_floats=pa.Check.is_list_of_floats)
+    centered_inverse_entropy: Series[object] = pa.Field(is_list_of_floats=pa.Check.is_list_of_floats)
+    support: Series[object] = pa.Field(is_between={"min_value": 0, "max_value": 1})
 
     class Config:
         unique=["id_column"]
