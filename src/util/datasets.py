@@ -5,7 +5,7 @@ from typing import Optional, List
 from pandera.typing import DataFrame, Series
 from pydantic import BaseModel, ConfigDict
 
-from src.util.types import AnnotatedSequence
+from src.util.custom_types import AnnotatedSequence
 
 class DatasetSchema(pa.DataFrameModel):
     event_column: Series[str] = pa.Field(coerce=True)

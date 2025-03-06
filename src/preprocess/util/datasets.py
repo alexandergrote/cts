@@ -7,7 +7,7 @@ from typing import Optional, List, Literal, Tuple
 from pandera.typing import DataFrame, Series
 
 from src.util.datasets import DatasetSchema
-from src.util.types import AnnotatedSequence
+from src.util.custom_types import AnnotatedSequence
 from src.preprocess.util.types import AnnotatedSequence, FrequentPatternWithConfidence, BootstrapRound
 
 

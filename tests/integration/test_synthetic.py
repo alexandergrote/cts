@@ -17,8 +17,6 @@ class TestSyntheticDeltaConfidence(unittest.TestCase):
             'fetch_data=synthetic', 
             'fetch_data.params.n_samples=1000',
             'preprocess.params.selector.params.n_features=10',
-            'preprocess.params.extractor.params.prefixspan_config.params.min_support_abs=100',
-            'preprocess.params.extractor.params.prefixspan_config.params.min_support_rel=0.05',
             'train_test_split=stratified',
             'train_test_split.params.random_state=0',
             'model=random_chance',
@@ -45,10 +43,20 @@ class TestSyntheticDeltaConfidence(unittest.TestCase):
 
                     statement = f"preprocess={selection}_{encoding}_{str(n_feature)}"
 
+                    additional_overrides = []
+
+                    if selection == 'self':
+                    
+                        additional_overrides.extend([
+                            'preprocess.params.extractor.params.prefixspan_config.params.min_support_abs=100',
+                            'preprocess.params.extractor.params.prefixspan_config.params.min_support_rel=0.05',
+                        ])
+
                     with self.subTest(msg=statement):
                         self._integration_test([
                             f"preprocess={selection}_{encoding}",
-                            f"preprocess.params.selector.params.n_features={n_feature}"
+                            f"preprocess.params.selector.params.n_features={n_feature}",
+                            *additional_overrides
                         ])
 
 

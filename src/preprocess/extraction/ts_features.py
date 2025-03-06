@@ -79,9 +79,10 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
         for i in tqdm(range(self.bootstrap_repetitions)):
 
             # select sample
-            data_sub = data.groupby(DatasetSchema.class_column, group_keys=False).apply(
-                lambda x: self._bootstrap_id_selection(data=x, random_state=i)
-            )
+            data_sub = pd.concat([
+                self._bootstrap_id_selection(data=x, random_state=i)
+                for _, x in data.groupby(DatasetSchema.class_column, group_keys=False)
+            ])
 
             prefix_df = Dataset(
                 raw_data=data_sub
