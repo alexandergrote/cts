@@ -23,6 +23,10 @@ def main(cfg: DictConfig) -> None:
 
     cfg = OmegaConf.to_container(cfg)
 
+    # display caching warning
+    if cfg['env']['cached_functions'] is None:
+        cfg['env']['cached_functions'] = []
+
     # environment variables
     PydanticEnvironment.set_environment_variables(cfg['env'])
     env = PydanticEnvironment.create_from_environment()
