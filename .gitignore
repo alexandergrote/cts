@@ -17,3 +17,4 @@ figures
 tmp
 .aider*
 .DS_Store
+build
