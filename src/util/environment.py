@@ -17,9 +17,17 @@ class PydanticEnvironment(BaseModel):
 
         # in accordance with environment pickle cache
         # specify environment variables for caching functions
-        if 'cached_functions' in data:
-            for function in data['cached_functions']:
+        key = 'cached_functions'
+
+        cached_functions = data.get(key, [])  # get the list of cached functions or an empty list if not present
+
+        if isinstance(cached_functions, list):  # check if the value is a list
+            for function in cached_functions:
                 os.environ[function] = "cached"
+        else:
+            # handle the case where 'cached_functions' is not a list
+            # you might want to log a warning or raise an error here
+            raise ValueError(f"'cached_functions' is not a list, got {type(cached_functions)} instead.")
 
         for key, value in data.items():
 
