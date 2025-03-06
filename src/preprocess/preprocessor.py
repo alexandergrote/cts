@@ -1,3 +1,4 @@
+import arrow
 import pandas as pd
 
 from pydantic import BaseModel, field_validator

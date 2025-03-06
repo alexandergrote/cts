@@ -32,13 +32,13 @@ def max_memory_tracker(tracker: Tracker):
     
 
 @contextlib.contextmanager
-def time_tracker(tracker: Tracker):
+def time_tracker(tracker: Tracker, description: str = "Execution time: "):
     start_time = time.time()
     yield
     end_time = time.time()
     execution_time = end_time - start_time
     tracker.time_taken = execution_time
-    console.print(f"Execution time: {tracker.time_taken_seconds:.2f} seconds")
+    console.print(f"{description}{tracker.time_taken_seconds:.2f} seconds")
     
 
 
