@@ -63,10 +63,16 @@ def environ_pickle_cache():
             
             filename_components = [repo_path, fn.__qualname__]
             current_filename = '.'.join(filename_components)
+
+            # ignore self in function call
+            new_args = args[1:]
+
+            # ignore case_name in caching -> focus only on data
+            new_kwargs = {k: v for k, v in kwargs.items() if k != 'case_name'}
                       
             # create hash for shorter filenames
             hash_object = Hash.hash_recursive(
-                *args, **kwargs
+                *new_args, **new_kwargs
             )
 
             cachedir = Directory.CACHING_DIR / current_filename
