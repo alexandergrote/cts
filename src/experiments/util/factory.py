@@ -23,16 +23,27 @@ class ExperimentFactory(BaseModel):
 
                             exp_name = f'{encoding}__{dataset}__preprocess__{selection_method}__model__{model}__features__{n_features}'
 
+                            cached_functions = [
+                                'src.preprocess.extraction.ts_features.py.SPMFeatureSelector._encode_train',
+                                'src.preprocess.extraction.ts_features.py.SPMFeatureSelector._encode_test',
+                                'src.fetch_data.synthetic.py.DataLoader.get_data',
+                                'src.fetch_data.churn.py.ChurnDataloader.get_data',
+                                'src.fetch_data.malware.py.MalwareDataloader.get_data'
+                            ]
+
+                            cached_functions_str = "[" + ','.join(cached_functions) + "]" # without the square brackets, hydra does not recognize it as a list
+
                             overrides = [
                                 f'fetch_data={dataset}',
                                 f'preprocess={selection_method}_{encoding}',
                                 f'preprocess.params.selector.params.n_features={n_features}',
                                 f'train_test_split=stratified',
-                                f'train_test_split.params.random_state=0,1,2,3,4',
+                                f'train_test_split.params.random_state=0,1,2,3,4'
                                 f'model={model}',
                                 f'evaluation=ml',
                                 f'export=mlflow',
-                                f'export.params.experiment_name={exp_name}'
+                                f'export.params.experiment_name={exp_name}',
+                                f'env.cached_functions={cached_functions_str}'
                             ]
 
                             # only the ts feature selection method has this field
