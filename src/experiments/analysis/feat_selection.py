@@ -52,6 +52,7 @@ class FeatureSelection(BaseModel, BaseAnalyser):
             'MutInfoFeatSelection': 'Mutual Information',
             'RFFeatSelection': 'Random Forest',
             'SPMFeatureSelector': 'Delta Confidence',
+            'TimeSeriesFeatureSelection': 'Delta Confidence',
             'ChurnDataloader': 'Churn',
             'MalwareDataloader': 'Malware',
             'DataLoader': 'Synthetic',
@@ -72,14 +73,16 @@ class FeatureSelection(BaseModel, BaseAnalyser):
         }
 
         g = sns.FacetGrid(df_to_plot, row=model_col_v, col=dataset_col_v, sharey=False, height=4, sharex=True, despine=False)
+
         g.map_dataframe(
             sns.lineplot, 
             x=n_features_col_v, 
-            y=metric_col_auc_v, 
-            hue=model_col_v, 
+            y=metric_col_f1_v, 
+            hue=feat_selector_col_v, 
             palette=grey_palette, 
-            style=feat_extractor_col_v,
-            markers=markers
+            style=feat_selector_col_v,
+            markers=markers,
+            dashes=False
         )
 
         # Here we're using only '{col_name}' to display just the value of the column variable
@@ -97,6 +100,7 @@ class FeatureSelection(BaseModel, BaseAnalyser):
         unique_labels = []
         unique_handles = []
         for handle, label in zip(handles, labels):
+
             if label not in unique_labels:
                 unique_labels.append(label)
                 unique_handles.append(handle)
@@ -111,4 +115,5 @@ class FeatureSelection(BaseModel, BaseAnalyser):
 
         for extension in ['png', 'pdf']:
             plt.savefig(Directory.FIGURES_DIR / f'feature_selection.{extension}', dpi=300, bbox_inches='tight', pad_inches=0.25)
-        plt.show()
+        
+        #plt.show()
