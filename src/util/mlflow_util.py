@@ -3,6 +3,7 @@ import os
 
 import pandas as pd
 
+from mlflow.entities import ViewType
 from mlflow import MlflowClient
 from pathlib import Path
 from urllib.parse import urlparse
