@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from src.util.constants import Directory
 from src.experiments.analysis.base import BaseAnalyser
 
+sns.set(font_scale=1.5)
 
 class FeatureSelection(BaseModel, BaseAnalyser):
 
@@ -22,7 +23,7 @@ class FeatureSelection(BaseModel, BaseAnalyser):
         feat_extractor_col, feat_extractor_col_v = 'params.preprocess.params.extractor.class_name', 'Feature Extractor'
         feat_selector_col, feat_selector_col_v = 'params.preprocess.params.selector.class_name', 'Feature Selector'
 
-        metric_col_auc, metric_col_auc_v = 'metrics.roc_auc_score', 'ROC AUC Score'
+        metric_col_auc, metric_col_auc_v = 'metrics.roc_auc_score', 'AUC'
         metric_col_f1, metric_col_f1_v = 'metrics.f1_score', 'F1 Score'
         metric_col = [metric_col_auc, metric_col_f1]
 
@@ -67,9 +68,9 @@ class FeatureSelection(BaseModel, BaseAnalyser):
         # Define markers for different categories in your hue column
         markers = {
             'mRMR': 'o', 
-            'Mutual Information': 'X',
+            'Mutual Information': 'D',
             'Random Forest': 's',  
-            'Delta Confidence': 'D' 
+            'Delta Confidence': 'X' 
         }
 
         g = sns.FacetGrid(df_to_plot, row=model_col_v, col=dataset_col_v, sharey=False, height=4, sharex=True, despine=False)
@@ -77,7 +78,7 @@ class FeatureSelection(BaseModel, BaseAnalyser):
         g.map_dataframe(
             sns.lineplot, 
             x=n_features_col_v, 
-            y=metric_col_f1_v, 
+            y=metric_col_auc_v, 
             hue=feat_selector_col_v, 
             palette=grey_palette, 
             style=feat_selector_col_v,

@@ -10,9 +10,6 @@ from src.util.constants import Directory
 from src.util.mlflow_util import uri_to_path
 
 
-sns.set_style('white')
-
-
 class Correlations(BaseModel, BaseAnalyser):
 
     def analyse(self, data: pd.DataFrame, **kwargs):
@@ -42,10 +39,13 @@ class Correlations(BaseModel, BaseAnalyser):
             # add to records
             records.append((exp_name, data, p_value, corr_value))
 
-        sns.set(font_scale=1.5)
+        sns.set(font_scale=2.5)
         sns.set_style('white')
 
         f, axes = plt.subplots(1, len(records), sharey=False, figsize=(24,6))
+        
+        # reorder records to match other experiments
+        records = records[2:] + records[:2]
 
         for idx, (exp_name, data, p_value, corr_value) in enumerate(records):
 
@@ -63,7 +63,7 @@ class Correlations(BaseModel, BaseAnalyser):
             corr_verbose = round(corr_value, 2)           
     
 
-            title = f"{exp_name.split('_')[-1].upper()}\n(ρ={corr_verbose}, {p_value_verbose})"
+            title = f"{exp_name.split('_')[-1].capitalize()}\n(ρ={corr_verbose}, {p_value_verbose})"
             
 
             ax_obj = axes if len(records) == 1 else axes[idx]
@@ -76,6 +76,6 @@ class Correlations(BaseModel, BaseAnalyser):
         plt.tick_params(axis='x', which='both', bottom=True, top=False, labelbottom=True)
         plt.tick_params(axis='y', which='both', left=True, right=False, labelleft=True)
 
-        plt.tight_layout()
+        plt.tight_layout(pad=1.5)
         plt.savefig(Directory.FIGURES_DIR / 'scatter_correlation.pdf', dpi=300)
-        plt.show()
+        #plt.show()

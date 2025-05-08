@@ -8,7 +8,7 @@ from src.experiments.analysis.base import BaseAnalyser
 from src.util.constants import Directory
 
 sns.set_style('white')
-
+plt.rcParams['font.size'] = 14
 
 class CostBenefit(BaseModel, BaseAnalyser):
 
@@ -57,16 +57,26 @@ class CostBenefit(BaseModel, BaseAnalyser):
 
         # add scenario column
         data_copy[scenario_col] = data_copy[feat_selector_col]
+        dataset_df = data_copy
+        dataset_df[scenario_col] = dataset_df[scenario_col].str.replace("FeatSelection", "")
+
+        dataset_df[scenario_col] = dataset_df[scenario_col].replace({
+                    'MutInfo': 'Mutual Information',
+                    'RF': 'Random Forest',
+                    'MRMR': 'mRMR',
+                    'TimeSeriesFeatureSelection': 'Delta Confidence'
+                })
 
         # Create a figure with 2 columns
         fig, axs = plt.subplots(nrows=len(data_copy[dataset_col].unique()), ncols=2, figsize=(12, 4*len(data_copy[dataset_col].unique())))
         axs = axs.reshape(1, -1)
 
-        plt.subplots_adjust(hspace=0.5)
+        plt.subplots_adjust(hspace=1)
+
+        #sns.set(font_scale=1.5)
 
         # Iterate over each dataset
         for i, dataset in enumerate(data_copy[dataset_col].unique()):
-            dataset_df = data_copy[data_copy[dataset_col] == dataset]
 
             # Adjust the number of grey tones based on the unique values in your hue column        
             grey_palette = sns.color_palette(['grey'] * data_copy[feat_extractor_col].nunique())  
@@ -86,29 +96,18 @@ class CostBenefit(BaseModel, BaseAnalyser):
                 
                 xlabel = 'Number of Samples'
 
-                dataset_df[scenario_col] = dataset_df[scenario_col].str.replace("FeatSelection", "")
-
-                dataset_df[scenario_col] = dataset_df[scenario_col].replace({
-                    'MutInfo': 'Mutual Information',
-                    'RF': 'Random Forest',
-                    'MRMR': 'mRMR',
-                    'TimeSeriesFeatureSelection': 'Delta Confidence'
-                })
+                
+                marker_styles = ['D', 's', 'o', 'X']
+                data2plot = dataset_df
                 
                 if j == 0:
-                    # Set marker styles manually
-                    marker_styles = ['D', 's', 'o', 'X']
-                    data2plot = dataset_df
+                    
                     ylabel = 'Duration (s)'
 
                 else:
-                    marker_styles = ['D', 'X']
-                    mask = dataset_df[[feat_extractor_col, n_samples_col]].drop_duplicates().index
-                    data2plot = dataset_df.loc[mask]
+                    
                     ylabel = 'Peak Memory (MB)'
-                    data2plot[scenario_col] = data2plot[scenario_col].replace({
-                        'Mutual Information': 'Prefix Based Methods'
-                    })
+                    
                 
                 # Create the plot without specifying dashes
                 plot = sns.lineplot(data=data2plot, x=n_samples_col, y=metric_col, hue=scenario_col, ax=axs[i, j], errorbar='sd', palette=grey_palette)
@@ -121,14 +120,15 @@ class CostBenefit(BaseModel, BaseAnalyser):
                     line.set_marker(marker_styles[idx % len(marker_styles)])
 
 
-                axs[i, j].set_title(title)
-                axs[i, j].legend().set_visible(True)
+                #axs[i, j].set_title(title)
+                axs[i, j].legend().set_visible(False)
                 axs[i, j].set_xlabel(xlabel)
                 axs[i, j].set_ylabel(ylabel)
 
         # Create a legend and center it above the plots
-        #legend_handles, _ = axs[0, 0].get_legend_handles_labels()
-        #fig.legend(legend_handles, data_copy[scenario_col].unique(), loc='upper center', ncol=len(data_copy[scenario_col].unique()))
-        plt.tight_layout()
-        plt.savefig(Directory.FIGURES_DIR / 'cost_benefit.pdf', dpi=300)
-        plt.show()
+        legend_handles, _ = axs[0, 0].get_legend_handles_labels()
+        fig.legend(legend_handles, data_copy[scenario_col].unique(), loc='upper center', ncol=len(data_copy[scenario_col].unique()), bbox_to_anchor=(0.5, 1.05))
+        #fig.tight_layout(rect=[0, 0, 1, 0.9])
+        plt.tight_layout(pad=2)
+        plt.savefig(Directory.FIGURES_DIR / 'cost_benefit.pdf', dpi=300, bbox_inches='tight')
+        #plt.show()
