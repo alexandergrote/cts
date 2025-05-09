@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 from typing import List, Optional, Union
 
 from src.preprocess.util.metrics import EntropyCalculator
@@ -50,6 +50,10 @@ class FrequentPatternWithConfidence(BaseModel):
             raise ValueError("Delta confidence calculation not possible.")
 
         return self.confidence_pos - self.confidence_neg
+
+    @property
+    def entropy(self) -> float:
+        return EntropyCalculator.calculate_entropy(probability=self.support_pos / self.support)
     
     @property
     def inverse_entropy(self) -> float:
@@ -104,4 +108,11 @@ class StackObject(BaseModel):
 
 class BootstrapRound(BaseModel):
     n_samples: int
+    n_samples_pos: int
+    n_samples_neg: int
     freq_patterns: List[FrequentPatternWithConfidence]
+
+    @model_validator(mode='after')
+    def check_n_samples(self):
+        if self.n_samples != (self.n_samples_pos + self.n_samples_neg):
+            raise ValueError(f'Number of samples must be equal to the sum of positive and negative samples')

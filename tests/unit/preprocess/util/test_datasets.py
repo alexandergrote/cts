@@ -14,6 +14,8 @@ class TestDatasetUniqueRules(unittest.TestCase):
             DatasetUniqueRulesSchema.delta_confidence: [[0.1], [0.3, 0.4]],
             DatasetUniqueRulesSchema.centered_inverse_entropy: [[0.5], [-0.7, 0.8]],
             DatasetUniqueRulesSchema.support: [[1/3], [3/7, 4/7]],
+            DatasetUniqueRulesSchema.entropy: [[0.1, 0.2], [0.3, 0.4]],
+            DatasetUniqueRulesSchema.chi_squared: [[1.0], [2.0, 3.0]],
         })
 
     def test_unique_rules(self):

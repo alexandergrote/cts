@@ -5,6 +5,7 @@ import pandera as pa
 from pydantic import BaseModel, ConfigDict
 from typing import Optional, List, Literal, Tuple
 from pandera.typing import DataFrame, Series
+from scipy.stats import chi2_contingency
 
 from src.util.datasets import DatasetSchema
 from src.preprocess.util.types import BootstrapRound
@@ -22,6 +23,19 @@ def is_list_of_strings(lst):
 @pa.extensions.register_check_method(statistics=[], check_type="element_wise")
 def is_list_of_floats(lst):
     return isinstance(lst, list) and all(isinstance(x, float) for x in lst)
+
+
+def compute_chi_square(rule_pos: int, rule_neg: int, non_rule_pos: int, non_rule_neg: int) -> Tuple[float, float]:
+    
+    contingency_matrix = np.array([[rule_pos, rule_neg], [non_rule_pos, non_rule_neg]])
+
+    try:
+        chi2, p, _, _ = chi2_contingency(contingency_matrix)
+    except ValueError:
+        chi2, p = float('nan'), float('nan')  # if any issue (e.g., division by zero)
+
+    return chi2, p
+
 
 class DatasetAggregatedSchema(pa.DataFrameModel):
     id_column: Series[str] = pa.Field(coerce=True)
@@ -86,6 +100,9 @@ class DatasetRulesSchema(pa.DataFrameModel):
 
     delta_confidence: Series[float]
     centered_inverse_entropy: Series[float]
+    chi_squared: Series[float]
+    entropy: Series[float]
+
     total_observations: Series[int]
 
 
@@ -100,18 +117,29 @@ class DatasetRules(BaseModel):
 
         records = []
 
-        for round in bootstrap_rounds:
+        for b_round in bootstrap_rounds:
 
-            total_observations = round.n_samples
+            total_observations = b_round.n_samples
+            total_observations_neg = b_round.n_samples_neg
+            total_observations_pos = b_round.n_samples_pos
 
-            for pattern in round.freq_patterns:
+            for pattern in b_round.freq_patterns:
+
+                chi2, p = compute_chi_square(
+                    rule_pos=pattern.support_pos,
+                    rule_neg=pattern.support_neg,
+                    non_rule_pos=total_observations_pos - pattern.support_pos,
+                    non_rule_neg=total_observations_neg - pattern.support_neg,
+                )
 
                 records.append({
                     **pattern.model_dump(),
                     **{
                         DatasetRulesSchema.total_observations: total_observations,
                         DatasetRulesSchema.delta_confidence: pattern.delta_confidence,
-                        DatasetRulesSchema.centered_inverse_entropy: pattern.centered_inverse_entropy
+                        DatasetRulesSchema.centered_inverse_entropy: pattern.centered_inverse_entropy,
+                        DatasetRulesSchema.entropy: pattern.entropy,
+                        DatasetRulesSchema.chi_squared: chi2,
                     }
                 })
 
@@ -124,6 +152,8 @@ class DatasetUniqueRulesSchema(pa.DataFrameModel):
     id_column: Series[str]
     delta_confidence: Series[object] = pa.Field(is_list_of_floats=pa.Check.is_list_of_floats)
     centered_inverse_entropy: Series[object] = pa.Field(is_list_of_floats=pa.Check.is_list_of_floats)
+    chi_squared: Series[object] = pa.Field(is_list_of_floats=pa.Check.is_list_of_floats)
+    entropy: Series[object] = pa.Field(is_list_of_floats=pa.Check.is_list_of_floats)
     support: Series[object] = pa.Field(is_between={"min_value": 0, "max_value": 1})
 
     class Config:
@@ -131,6 +161,7 @@ class DatasetUniqueRulesSchema(pa.DataFrameModel):
 
 
 class DatasetUniqueRules(BaseModel):
+    
     data: DataFrame[DatasetUniqueRulesSchema]
 
     model_config = ConfigDict(arbitrary_types_allowed=True)

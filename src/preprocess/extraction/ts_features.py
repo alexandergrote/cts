@@ -89,6 +89,8 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
             )
 
             sequences = prefix_df.get_sequences()
+            n_pos = prefix_df.get_number_positives()
+            n_neg = prefix_df.get_number_negatives()
 
             frequent_patterns = prefix.get_frequent_patterns(sequences)
 
@@ -99,6 +101,8 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
     
             predictions.append(BootstrapRound(
                 n_samples=len(data_sub),
+                n_samples_pos=n_pos,
+                n_samples_neg=n_neg,
                 freq_patterns=prediction
             ))
 
@@ -125,7 +129,9 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
         # columns with multiple values given as a list
         columns_with_lists = [
             DatasetRulesSchema.delta_confidence, 
-            DatasetRulesSchema.centered_inverse_entropy, 
+            DatasetRulesSchema.centered_inverse_entropy,
+            DatasetRulesSchema.entropy,
+            DatasetRulesSchema.chi_squared,
             DatasetRulesSchema.support
         ]
 
