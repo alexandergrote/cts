@@ -1,4 +1,5 @@
 import mlflow
+import os
 from argparse import ArgumentParser
 from pathlib import Path
 import re
@@ -43,6 +44,10 @@ def delete_experiments(pattern: str):
         exp_id = experiment.experiment_id
         print(f"Deleting experiment ID: {exp_id}, Name: {experiment.name}")
         mlflow.delete_experiment(exp_id)
+
+        # apply garbage cleaner of mlflow to permanently delete experiment data
+        os.environ['MLFLOW_TRACKING_URI'] = str(get_tracking_uri())
+        os.system(f"mlflow gc --experiment-ids {exp_id}")
 
 if __name__ == "__main__":
     parser = ArgumentParser(description="Delete MLflow experiments matching the given pattern.")
