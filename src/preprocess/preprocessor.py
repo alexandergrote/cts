@@ -56,7 +56,13 @@ class FeatureMaker(BaseModel):
             rules = kwargs['rules'].data.copy(deep=True)
             rules['id_column'] = rules['id_column'].apply(lambda x: '_'.join(x))
             rules['avg_delta_confidence'] = rules['delta_confidence'].apply(lambda x: sum(x)/len(x))
+            rules['avg_chi_squared'] = rules['chi_squared'].apply(lambda x: sum(x)/len(x))
+            rules['avg_entropy'] = rules['entropy'].apply(lambda x: sum(x)/len(x))
+            
+
             delta_conf_mapping = dict(zip(rules['id_column'], rules['avg_delta_confidence']))
+            chi_quared_mapping = dict(zip(rules['id_column'], rules['avg_chi_squared']))
+            entropy_mapping = dict(zip(rules['id_column'], rules['avg_entropy']))
 
             y_train = kwargs['y_train'].copy(deep=True)
             x_train = kwargs['x_train'].copy(deep=True)
@@ -67,11 +73,15 @@ class FeatureMaker(BaseModel):
 
                 avg_target = y_train[x_train[col]].mean()
                 delta_conf = delta_conf_mapping[col]
+                chi_squared = chi_quared_mapping[col]
+                entropy = entropy_mapping[col]
 
                 records.append({
                     'pattern': col,
                     'avg_target': avg_target,
                     'delta_conf': delta_conf,
+                    'chi_squared': chi_squared,
+                    'entropy': entropy
                 })
 
             data = pd.DataFrame(records)
