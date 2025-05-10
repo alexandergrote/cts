@@ -108,7 +108,10 @@ class ExperimentRunner(BaseModel):
             else:
 
                 for experiment in self.experiments:
-                    ExperimentRunner.run_process(experiment.command)
+                    try:
+                        ExperimentRunner.run_process(experiment.command)
+                    except Exception as e:
+                        print(f"Error running experiment {experiment.name}: {e}")
 
         if skip_visualization:
             return
