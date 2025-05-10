@@ -79,3 +79,40 @@ class Correlations(BaseModel, BaseAnalyser):
         plt.tight_layout(pad=1.5)
         plt.savefig(Directory.FIGURES_DIR / 'scatter_correlation.pdf', dpi=300)
         #plt.show()
+        plt.close()
+
+        # Define colors for consistency
+        colors = ['blue', 'green', 'purple']
+
+        # Create a 2x3 grid of subplots
+        fig, axes = plt.subplots(2, 3, figsize=(18, 15))
+
+        for i, (exp_name, data, _, _) in enumerate(records):
+            for j, y_var in enumerate(['chi_squared', 'entropy']):
+                
+                order = 2
+                lowess = False
+                
+                # Create regression plot
+                sns.regplot(
+                    x='Confidence Delta', 
+                    y=y_var, 
+                    data=data, 
+                    scatter_kws={'alpha': 0.5, 'color': colors[j]},
+                    line_kws={'color': colors[j]},
+                    order=order,
+                    lowess=lowess,
+                    ax=axes[j, i]
+                )
+
+                title = f"{exp_name.split('_')[-1].capitalize()}_{y_var}"
+                
+                # Set title and labels
+                axes[j, i].set_title(title, fontsize=12)
+                axes[j, i].set_xlabel('Confidence Delta', fontsize=10)
+                axes[j, i].set_ylabel(f'{y_var}', fontsize=10)
+
+        # Adjust layout
+        plt.tight_layout()
+        plt.savefig(Directory.FIGURES_DIR / f'metrics_comparison.pdf')
+        #plt.show()
