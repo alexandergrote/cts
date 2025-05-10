@@ -19,9 +19,15 @@ Broadly speaking, the repository contains two pipelines that serve different pur
 
 You can run both pipelines together or indepently:
 
-- Only Machine Learning Experiment: `python src\experiments\cli.py <>`
-- Only Visualization: `python src\experiments\cli.py`
+- Only Machine Learning Experiment: `python src\experiments\cli.py <pipeline_name> --skip-visualization`  
+- Only Visualization: `python src\experiments\cli.py --skip-execution`
 - Both: `python src\experiments\cli.py`
+
+To reproduce all runs, you need to execute these function calls:
+- python src/experiments/cli.py corr
+- python src/experiments/cli.py feat --filter-name "spm.*" --skip-execution
+- python src/experiments/cli.py feat --filter-name "oh.*" --skip-execution
+- python src/experiments/cli.py cost
 
 ## Additional Remarks for Source Code Usage
 
