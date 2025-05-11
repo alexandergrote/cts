@@ -87,7 +87,7 @@ class SupportThresholdImpactPlot(BaseModel):
         return [data.to_df() for data in self.data_list]
     
     def plot_multiple(self, 
-                     titles: List[str] = None,
+                     titles: List[str],
                      save_path: str = "sensitivity_plots.pdf",
                      figsize: Tuple[int, int] = (18, 6), 
                      style: str = "whitegrid",
@@ -110,15 +110,6 @@ class SupportThresholdImpactPlot(BaseModel):
         # Check if we have enough data
         if len(self.data_list) < 1:
             raise ValueError("At least one dataset must be provided")
-        
-        # Set default titles if not provided
-        if titles is None:
-            titles = [f"Impact of Minimum Support Threshold (Dataset {i+1})" 
-                     for i in range(len(self.data_list))]
-        elif len(titles) < len(self.data_list):
-            # Extend with default titles if not enough provided
-            titles.extend([f"Impact of Minimum Support Threshold (Dataset {i+1})" 
-                         for i in range(len(titles), len(self.data_list))])
         
         # Convert to DataFrames and validate
         dfs = self.to_df()
@@ -171,7 +162,7 @@ class SupportThresholdImpactPlot(BaseModel):
         fig.tight_layout(rect=[0, 0.05, 1, 0.95])
         
         # Save if path is provided
-        plt.savefig(Directory.OUTPUT_DIR / save_path, dpi=300, bbox_inches="tight")
+        plt.savefig(Directory.FIGURES_DIR / save_path, dpi=300, bbox_inches="tight")
         
 
 class Sensitivity(BaseModel, BaseAnalyser):
@@ -206,6 +197,7 @@ class Sensitivity(BaseModel, BaseAnalyser):
         data_copy.rename(columns=mapping, inplace=True)
 
         datasets = []
+        titles = []
 
         for dataset in data_copy[dataset_col].unique():
 
@@ -214,16 +206,22 @@ class Sensitivity(BaseModel, BaseAnalyser):
             support_impact_data = SupportThresholdImpactData(
                 min_support=data_copy_sub[rel_support],
                 runtime=data_copy_sub[metric_duration],
-                accuracy=data_copy_sub[metric_col_auc_v]
+                accuracy=data_copy_sub[metric_col_f1_v]
             )
 
+            title = f"{dataset.split('.')[2].capitalize()}"
+                
+
             datasets.append(support_impact_data)
+            titles.append(title)
 
         plotter = SupportThresholdImpactPlot(
             data_list=datasets
         )
 
-        plotter.plot_multiple()
+        plotter.plot_multiple(
+            titles=titles
+        )
 
 if __name__ == '__main__':
 
