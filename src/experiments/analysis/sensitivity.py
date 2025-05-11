@@ -182,12 +182,12 @@ class SupportThresholdImpactPlot(BaseModel):
         
         # Create a common legend for all subplots
         fig.legend(legend_handles, legend_labels, loc='upper center', 
-                   ncol=len(legend_labels), bbox_to_anchor=(0.5, 1.05),
+                   ncol=len(legend_labels), bbox_to_anchor=(0.5, 0.98),
                    frameon=True, facecolor='white', edgecolor='black',
                    handlelength=3)
         
         # Tight layout with space for the legend
-        fig.tight_layout(rect=[0, 0, 1, 0.90])
+        fig.tight_layout(rect=[0, 0, 1, 0.93])
         
         # Save if path is provided
         plt.savefig(Directory.FIGURES_DIR / save_path, dpi=300, bbox_inches="tight")
