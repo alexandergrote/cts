@@ -148,6 +148,9 @@ class SupportThresholdImpactPlot(BaseModel):
                          color=color_accuracy, ax=ax2, label="Accuracy")
             ax2.tick_params(axis="y", labelcolor=color_accuracy)
             
+            # Format y-ticks to show 2 decimal places
+            ax2.yaxis.set_major_formatter(plt.FormatStrFormatter('%.2f'))
+            
             # Title
             ax1.set_title(title)
             
