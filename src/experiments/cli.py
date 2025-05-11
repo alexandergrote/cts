@@ -89,9 +89,17 @@ class ExperimentRunner(BaseModel):
     @environ_pickle_cache()
     def get_experiment_data_from_mlflow(experiments: List[str]):
 
-        data = pd.concat(
-            [mlflow_engine.get_results_of_single_experiment(experiment_name=el, n=100) for el in experiments]
-        )
+        dfs = []
+
+        for el in experiments:
+
+            try:
+                exp = mlflow_engine.get_results_of_single_experiment(experiment_name=el, n=100)
+                dfs.append(exp)
+            except Exception as e:
+                print(f"Error: {e}")
+
+        data = pd.concat(dfs)
 
         return data
 
