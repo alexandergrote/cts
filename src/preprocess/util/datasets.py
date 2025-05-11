@@ -87,8 +87,10 @@ class DatasetAggregated(BaseModel):
         classes = data_copy_grouped[DatasetSchema.class_column].apply(list)
         
         # check if all class values are identical for a its sequence
-        if (data_copy_grouped[DatasetSchema.class_column].nunique() > 1).any():
-            raise ValueError(f"class values for sequence {index} are not identical")
+        sequences_with_multiple_classes = data_copy_grouped[DatasetSchema.class_column].nunique() > 1
+        if sequences_with_multiple_classes.any():
+            problematic_sequences = sequences_with_multiple_classes[sequences_with_multiple_classes].index.tolist()
+            raise ValueError(f"class values for sequences {problematic_sequences} are not identical")
 
         annotated_sequence_records = []
 
