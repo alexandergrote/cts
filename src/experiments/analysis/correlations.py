@@ -88,39 +88,36 @@ class Correlations(BaseModel, BaseAnalyser):
         synthetic_records = [(exp_name, data, p_value, corr_value) for exp_name, data, p_value, corr_value in records if "synthetic" in exp_name]
         
         if synthetic_records:
-            # Create a grid of subplots based on the number of synthetic datasets
-            num_synthetic = len(synthetic_records)
-            fig, axes = plt.subplots(3, num_synthetic, figsize=(6*num_synthetic, 15))
+            # Create a single row of subplots for all metrics
+            metrics = ['chi_squared', 'entropy', "fisher"]
+            num_plots = len(metrics)
+            fig, axes = plt.subplots(1, num_plots, figsize=(6*num_plots, 5))
             
-            for j, y_var in enumerate(['chi_squared', 'entropy', "fisher"]):
-                for i, (exp_name, data, _, _) in enumerate(synthetic_records):
-                    
-                    order = 2
-                    lowess = False
-                    
-                    # Create regression plot
-                    sns.regplot(
-                        x='Confidence Delta', 
-                        y=y_var, 
-                        data=data, 
-                        scatter_kws={'alpha': 0.5, 'color': colors[j]},
-                        line_kws={'color': colors[j]},
-                        order=order,
-                        lowess=lowess,
-                        ax=axes[j, i] if num_synthetic > 1 else axes[j]
-                    )
-                    
-                    title = f"{exp_name.split('_')[-1].capitalize()}_{y_var}"
-                    
-                    # Set title and labels
-                    if num_synthetic > 1:
-                        axes[j, i].set_title(title, fontsize=12)
-                        axes[j, i].set_xlabel('Confidence Delta', fontsize=10)
-                        axes[j, i].set_ylabel(f'{y_var}', fontsize=10)
-                    else:
-                        axes[j].set_title(title, fontsize=12)
-                        axes[j].set_xlabel('Confidence Delta', fontsize=10)
-                        axes[j].set_ylabel(f'{y_var}', fontsize=10)
+            # Use only the first synthetic dataset
+            exp_name, data, _, _ = synthetic_records[0]
+            
+            for j, y_var in enumerate(metrics):
+                order = 2
+                lowess = False
+                
+                # Create regression plot
+                sns.regplot(
+                    x='Confidence Delta', 
+                    y=y_var, 
+                    data=data, 
+                    scatter_kws={'alpha': 0.5, 'color': colors[j]},
+                    line_kws={'color': colors[j]},
+                    order=order,
+                    lowess=lowess,
+                    ax=axes[j]
+                )
+                
+                title = f"{exp_name.split('_')[-1].capitalize()}_{y_var}"
+                
+                # Set title and labels
+                axes[j].set_title(title, fontsize=12)
+                axes[j].set_xlabel('Confidence Delta', fontsize=10)
+                axes[j].set_ylabel(f'{y_var}', fontsize=10)
 
             # Adjust layout
             plt.tight_layout()
