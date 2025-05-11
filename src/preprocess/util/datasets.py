@@ -81,7 +81,7 @@ class DatasetAggregated(BaseModel):
 
         # since this column is optional, we add it here and set it to None as its default value
         if DatasetSchema.class_column not in data_copy.columns:
-            data_copy[DatasetSchema.class_column] = None
+            data_copy[DatasetSchema.class_conlumn] = None
 
         sequences = data_copy_grouped[DatasetSchema.event_column].apply(list)    
         classes = data_copy_grouped[DatasetSchema.class_column].apply(list)
@@ -127,7 +127,6 @@ class DatasetRulesSchema(pa.DataFrameModel):
     centered_inverse_entropy: Series[float]
     chi_squared: Series[float]
     fisher_odds_ratio: Series[float]
-    fisher_p_value: Series[float]
     entropy: Series[float]
 
     total_observations: Series[int]
@@ -175,7 +174,6 @@ class DatasetRules(BaseModel):
                         DatasetRulesSchema.entropy: pattern.entropy,
                         DatasetRulesSchema.chi_squared: chi2,
                         DatasetRulesSchema.fisher_odds_ratio: fisher_odds,
-                        DatasetRulesSchema.fisher_p_value: fisher_p,
                     }
                 })
 
@@ -190,7 +188,6 @@ class DatasetUniqueRulesSchema(pa.DataFrameModel):
     centered_inverse_entropy: Series[object] = pa.Field(is_list_of_floats=pa.Check.is_list_of_floats)
     chi_squared: Series[object] = pa.Field(is_list_of_floats=pa.Check.is_list_of_floats)
     fisher_odds_ratio: Series[object] = pa.Field(is_list_of_floats=pa.Check.is_list_of_floats)
-    fisher_p_value: Series[object] = pa.Field(is_list_of_floats=pa.Check.is_list_of_floats)
     entropy: Series[object] = pa.Field(is_list_of_floats=pa.Check.is_list_of_floats)
     support: Series[object] = pa.Field(is_between={"min_value": 0, "max_value": 1})
 
@@ -204,7 +201,7 @@ class DatasetUniqueRules(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    def rank_rules(self, criterion: Literal[DatasetRulesSchema.delta_confidence, DatasetRulesSchema.centered_inverse_entropy, DatasetRulesSchema.fisher_odds_ratio, DatasetRulesSchema.fisher_p_value], ascending: bool = False, weighted_by_support: bool = False) -> List[Tuple[str, float]]:
+    def rank_rules(self, criterion: Literal[DatasetRulesSchema.delta_confidence, DatasetRulesSchema.centered_inverse_entropy, DatasetRulesSchema.fisher_odds_ratio], ascending: bool = False, weighted_by_support: bool = False) -> List[Tuple[str, float]]:
 
         # collect ids and values
         ids, values = [], []

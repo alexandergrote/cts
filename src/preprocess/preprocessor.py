@@ -58,11 +58,13 @@ class FeatureMaker(BaseModel):
             rules['avg_delta_confidence'] = rules['delta_confidence'].apply(lambda x: sum(x)/len(x))
             rules['avg_chi_squared'] = rules['chi_squared'].apply(lambda x: sum(x)/len(x))
             rules['avg_entropy'] = rules['entropy'].apply(lambda x: sum(x)/len(x))
+            rules['avg_fisher'] = rules['fisher_odds_ratio'].apply(lambda x: sum(x)/len(x))
             
 
             delta_conf_mapping = dict(zip(rules['id_column'], rules['avg_delta_confidence']))
             chi_quared_mapping = dict(zip(rules['id_column'], rules['avg_chi_squared']))
             entropy_mapping = dict(zip(rules['id_column'], rules['avg_entropy']))
+            fisher_mapping = dict(zip(rules['id_column'], rules['avg_fisher']))
 
             y_train = kwargs['y_train'].copy(deep=True)
             x_train = kwargs['x_train'].copy(deep=True)
@@ -81,7 +83,8 @@ class FeatureMaker(BaseModel):
                     'avg_target': avg_target,
                     'delta_conf': delta_conf,
                     'chi_squared': chi_squared,
-                    'entropy': entropy
+                    'entropy': entropy,
+                    'fisher': fisher_mapping[col]
                 })
 
             data = pd.DataFrame(records)
