@@ -41,6 +41,7 @@ class Correlations(BaseModel, BaseAnalyser):
 
         sns.set(font_scale=2.5)
         sns.set_style('white')
+        plt.rcParams['axes.prop_cycle'] = plt.cycler(color=['black', 'black'])
 
         f, axes = plt.subplots(1, len(records), sharey=False, figsize=(24,6))
         
@@ -69,7 +70,7 @@ class Correlations(BaseModel, BaseAnalyser):
             ax_obj = axes if len(records) == 1 else axes[idx]
 
             ax_obj.title.set_text(title)
-            sns.regplot(data=data, x='Confidence Delta', y='Average Target Value', color='grey', ax=ax_obj)
+            sns.regplot(data=data, x='Confidence Delta', y='Average Target Value', color='black', ax=ax_obj)
             ax_obj.set_ylim(0, 1)
             
 
@@ -81,8 +82,8 @@ class Correlations(BaseModel, BaseAnalyser):
         #plt.show()
         plt.close()
 
-        # Define colors for consistency
-        colors = ['blue', 'green', 'purple']
+        # Define colors for consistency in black and white
+        colors = ['black', 'black', 'black']
 
         # Filter only synthetic datasets
         synthetic_records = [(exp_name, data, p_value, corr_value) for exp_name, data, p_value, corr_value in records if "synthetic" in exp_name]
@@ -100,13 +101,16 @@ class Correlations(BaseModel, BaseAnalyser):
                 order = 2
                 lowess = False
                 
-                # Create regression plot
+                # Create regression plot with different line styles for black and white
+                line_styles = ['-', '--', '-.']
+                marker_styles = ['o', 's', '^']
+                
                 sns.regplot(
                     x='Confidence Delta', 
                     y=y_var, 
                     data=data, 
-                    scatter_kws={'alpha': 0.5, 'color': colors[j]},
-                    line_kws={'color': colors[j]},
+                    scatter_kws={'alpha': 0.5, 'color': 'black', 'marker': marker_styles[j]},
+                    line_kws={'color': 'black', 'linestyle': line_styles[j]},
                     order=order,
                     lowess=lowess,
                     ax=axes[j]
