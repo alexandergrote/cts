@@ -233,7 +233,7 @@ class Sensitivity(BaseModel, BaseAnalyser):
                 accuracy=data_copy_sub[metric_col_auc_v]
             )
 
-            title = f"{dataset.split('.')[2].capitalize()}"
+            title = f"{dataset.split('.')[2].unique()}"
                 
 
             datasets.append(support_impact_data)
