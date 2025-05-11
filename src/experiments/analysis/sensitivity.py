@@ -152,7 +152,7 @@ class SupportThresholdImpactPlot(BaseModel):
             ax2 = ax1.twinx()
             ax2.set_ylabel("AUC", color=color_accuracy)
             sns.lineplot(x="min_support", y="accuracy", data=df, marker="s", 
-                         color=color_accuracy, ax=ax2, label="Accuracy", 
+                         color=color_accuracy, ax=ax2, label="AUC", 
                          linestyle="--", linewidth=2)
             ax2.tick_params(axis="y", labelcolor=color_accuracy)
             
