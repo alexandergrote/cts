@@ -137,6 +137,10 @@ class SupportThresholdImpactPlot(BaseModel):
                          color=color_runtime, ax=ax1, label="Runtime")
             ax1.tick_params(axis="y", labelcolor=color_runtime)
             
+            # Set x-ticks to 0.05 intervals
+            ax1.set_xticks(np.arange(0, 1.05, 0.05))
+            ax1.set_xticklabels([f"{x:.2f}" for x in np.arange(0, 1.05, 0.05)])
+            
             # Second axis (accuracy)
             ax2 = ax1.twinx()
             ax2.set_ylabel("Classification Accuracy", color=color_accuracy)
