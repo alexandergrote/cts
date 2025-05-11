@@ -117,7 +117,7 @@ class Correlations(BaseModel, BaseAnalyser):
                     y=y_var, 
                     data=data, 
                     scatter_kws={'alpha': 0.5, 'color': 'black', 'marker': marker_styles[j]},
-                    line_kws={'color': 'grey', 'linestyle': line_styles[j]},
+                    line_kws={'color': 'black', 'linestyle': line_styles[j], 'linewidth': 2},
                     order=order,
                     lowess=lowess,
                     ax=axes[j]
