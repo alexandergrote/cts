@@ -166,9 +166,14 @@ class SupportThresholdImpactPlot(BaseModel):
             y_min = max(0, y_min - buffer)
             y_max = min(1, y_max + buffer)
             
-            # Set custom ticks with 2 decimal places
+            # Set y-axis limits
+            ax2.set_ylim(y_min, y_max)
+            
+            # Get unique accuracy values and create custom ticks
             import matplotlib.ticker as ticker
-            ax2.yaxis.set_major_locator(ticker.MaxNLocator(nbins=5, prune='both'))
+            
+            # Use fewer ticks to avoid duplicates
+            ax2.yaxis.set_major_locator(ticker.LinearLocator(4))
             
             # Title
             ax1.set_title(title)
