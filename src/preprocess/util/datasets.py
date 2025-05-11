@@ -5,7 +5,7 @@ import pandera as pa
 from pydantic import BaseModel, ConfigDict
 from typing import Optional, List, Literal, Tuple
 from pandera.typing import DataFrame, Series
-from scipy.stats import chi2_contingency
+from scipy.stats import chi2_contingency, fisher_exact
 
 from src.util.datasets import DatasetSchema
 from src.preprocess.util.types import BootstrapRound
@@ -35,6 +35,29 @@ def compute_chi_square(rule_pos: int, rule_neg: int, non_rule_pos: int, non_rule
         chi2, p = float('nan'), float('nan')  # if any issue (e.g., division by zero)
 
     return chi2, p
+
+
+def compute_fisher(rule_pos: int, rule_neg: int, non_rule_pos: int, non_rule_neg: int) -> Tuple[float, float]:
+    """
+    Compute Fisher's exact test for a 2x2 contingency table.
+    
+    Args:
+        rule_pos: Number of positive cases where the rule applies
+        rule_neg: Number of negative cases where the rule applies
+        non_rule_pos: Number of positive cases where the rule does not apply
+        non_rule_neg: Number of negative cases where the rule does not apply
+        
+    Returns:
+        Tuple containing the odds ratio and p-value
+    """
+    contingency_matrix = np.array([[rule_pos, rule_neg], [non_rule_pos, non_rule_neg]])
+    
+    try:
+        odds_ratio, p_value = fisher_exact(contingency_matrix)
+    except ValueError:
+        odds_ratio, p_value = float('nan'), float('nan')  # if any issue occurs
+        
+    return odds_ratio, p_value
 
 
 class DatasetAggregatedSchema(pa.DataFrameModel):
@@ -101,6 +124,8 @@ class DatasetRulesSchema(pa.DataFrameModel):
     delta_confidence: Series[float]
     centered_inverse_entropy: Series[float]
     chi_squared: Series[float]
+    fisher_odds_ratio: Series[float]
+    fisher_p_value: Series[float]
     entropy: Series[float]
 
     total_observations: Series[int]
@@ -131,6 +156,13 @@ class DatasetRules(BaseModel):
                     non_rule_pos=total_observations_pos - pattern.support_pos,
                     non_rule_neg=total_observations_neg - pattern.support_neg,
                 )
+                
+                fisher_odds, fisher_p = compute_fisher(
+                    rule_pos=pattern.support_pos,
+                    rule_neg=pattern.support_neg,
+                    non_rule_pos=total_observations_pos - pattern.support_pos,
+                    non_rule_neg=total_observations_neg - pattern.support_neg,
+                )
 
                 records.append({
                     **pattern.model_dump(),
@@ -140,6 +172,8 @@ class DatasetRules(BaseModel):
                         DatasetRulesSchema.centered_inverse_entropy: pattern.centered_inverse_entropy,
                         DatasetRulesSchema.entropy: pattern.entropy,
                         DatasetRulesSchema.chi_squared: chi2,
+                        DatasetRulesSchema.fisher_odds_ratio: fisher_odds,
+                        DatasetRulesSchema.fisher_p_value: fisher_p,
                     }
                 })
 
@@ -153,6 +187,8 @@ class DatasetUniqueRulesSchema(pa.DataFrameModel):
     delta_confidence: Series[object] = pa.Field(is_list_of_floats=pa.Check.is_list_of_floats)
     centered_inverse_entropy: Series[object] = pa.Field(is_list_of_floats=pa.Check.is_list_of_floats)
     chi_squared: Series[object] = pa.Field(is_list_of_floats=pa.Check.is_list_of_floats)
+    fisher_odds_ratio: Series[object] = pa.Field(is_list_of_floats=pa.Check.is_list_of_floats)
+    fisher_p_value: Series[object] = pa.Field(is_list_of_floats=pa.Check.is_list_of_floats)
     entropy: Series[object] = pa.Field(is_list_of_floats=pa.Check.is_list_of_floats)
     support: Series[object] = pa.Field(is_between={"min_value": 0, "max_value": 1})
 
@@ -166,7 +202,7 @@ class DatasetUniqueRules(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    def rank_rules(self, criterion: Literal[DatasetRulesSchema.delta_confidence, DatasetRulesSchema.centered_inverse_entropy], ascending: bool = False, weighted_by_support: bool = False) -> List[Tuple[str, float]]:
+    def rank_rules(self, criterion: Literal[DatasetRulesSchema.delta_confidence, DatasetRulesSchema.centered_inverse_entropy, DatasetRulesSchema.fisher_odds_ratio, DatasetRulesSchema.fisher_p_value], ascending: bool = False, weighted_by_support: bool = False) -> List[Tuple[str, float]]:
 
         # collect ids and values
         ids, values = [], []
