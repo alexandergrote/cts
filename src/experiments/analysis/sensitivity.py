@@ -187,7 +187,7 @@ class SupportThresholdImpactPlot(BaseModel):
                    handlelength=3)
         
         # Tight layout with space for the legend
-        fig.tight_layout(rect=[0, 0, 1, 0.93])
+        fig.tight_layout(rect=[0, 0, 1, 0.90])
         
         # Save if path is provided
         plt.savefig(Directory.FIGURES_DIR / save_path, dpi=300, bbox_inches="tight")
