@@ -94,6 +94,9 @@ class Correlations(BaseModel, BaseAnalyser):
             num_plots = len(metrics)
             fig, axes = plt.subplots(1, num_plots, figsize=(6*num_plots, 5))
             
+            # Increase font size for the second plot
+            plt.rcParams.update({'font.size': 14})
+            
             # Use only the first synthetic dataset
             exp_name, data, _, _ = synthetic_records[0]
             
@@ -122,10 +125,11 @@ class Correlations(BaseModel, BaseAnalyser):
                 
                 title = f"{exp_name.split('_')[-1].capitalize()}_{y_var}"
                 
-                # Set title and labels
-                axes[j].set_title(title, fontsize=12)
-                axes[j].set_xlabel('Confidence Delta', fontsize=10)
-                axes[j].set_ylabel(f'{y_var}', fontsize=10)
+                # Set title and labels with increased font size
+                axes[j].set_title(title, fontsize=16)
+                axes[j].set_xlabel('Confidence Delta', fontsize=14)
+                axes[j].set_ylabel(f'{y_var}', fontsize=14)
+                axes[j].tick_params(axis='both', which='major', labelsize=12)
 
             # Adjust layout
             plt.tight_layout()
