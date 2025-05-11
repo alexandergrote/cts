@@ -169,15 +169,21 @@ class SupportThresholdImpactPlot(BaseModel):
             # Add grid for better readability
             ax1.grid(True, alpha=0.3)
             
-            # Add a legend that distinguishes between the two lines
-            lines1, labels1 = ax1.get_legend_handles_labels()
-            lines2, labels2 = ax2.get_legend_handles_labels()
-            ax1.legend(lines1 + lines2, labels1 + labels2, loc='best', 
-                       frameon=True, facecolor='white', edgecolor='black',
-                       handlelength=3)
+            # Store handles and labels for the common legend
+            if i == 0:  # Only need to get these once
+                lines1, labels1 = ax1.get_legend_handles_labels()
+                lines2, labels2 = ax2.get_legend_handles_labels()
+                legend_handles = lines1 + lines2
+                legend_labels = labels1 + labels2
+        
+        # Create a common legend for all subplots
+        fig.legend(legend_handles, legend_labels, loc='upper center', 
+                   ncol=len(legend_labels), bbox_to_anchor=(0.5, 0.98),
+                   frameon=True, facecolor='white', edgecolor='black',
+                   handlelength=3)
         
         # Tight layout with space for the legend
-        fig.tight_layout(rect=[0, 0.05, 1, 0.95])
+        fig.tight_layout(rect=[0, 0, 1, 0.93])
         
         # Save if path is provided
         plt.savefig(Directory.FIGURES_DIR / save_path, dpi=300, bbox_inches="tight")
