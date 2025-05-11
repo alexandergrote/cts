@@ -85,10 +85,13 @@ class Correlations(BaseModel, BaseAnalyser):
         colors = ['blue', 'green', 'purple']
 
         # Create a 2x3 grid of subplots
-        fig, axes = plt.subplots(2, 3, figsize=(18, 15))
+        fig, axes = plt.subplots(3, 3, figsize=(18, 15))
 
-        for i, (exp_name, data, _, _) in enumerate(records):
-            for j, y_var in enumerate(['chi_squared', 'entropy']):
+        for j, y_var in enumerate(['chi_squared', 'entropy', "fisher"]):
+            for i, (exp_name, data, _, _) in enumerate(records):
+
+                if "synthetic" not in exp_name:
+                    continue
                 
                 order = 2
                 lowess = False
