@@ -143,13 +143,13 @@ class SupportThresholdImpactPlot(BaseModel):
             
             # Second axis (accuracy)
             ax2 = ax1.twinx()
-            ax2.set_ylabel("Classification Accuracy", color=color_accuracy)
+            ax2.set_ylabel("AUC", color=color_accuracy)
             sns.lineplot(x="min_support", y="accuracy", data=df, marker="s", 
                          color=color_accuracy, ax=ax2, label="Accuracy")
             ax2.tick_params(axis="y", labelcolor=color_accuracy)
             
             # Format y-ticks to show 2 decimal places
-            ax2.yaxis.set_major_formatter(plt.FormatStrFormatter('%.2f'))
+            #ax2.yaxis.set_major_formatter(plt.FormatStrFormatter('%.2f'))
             
             # Title
             ax1.set_title(title)
@@ -213,7 +213,7 @@ class Sensitivity(BaseModel, BaseAnalyser):
             support_impact_data = SupportThresholdImpactData(
                 min_support=data_copy_sub[rel_support],
                 runtime=data_copy_sub[metric_duration],
-                accuracy=data_copy_sub[metric_col_f1_v]
+                accuracy=data_copy_sub[metric_col_auc_v]
             )
 
             title = f"{dataset.split('.')[2].capitalize()}"
