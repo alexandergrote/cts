@@ -144,6 +144,10 @@ class SupportThresholdImpactPlot(BaseModel):
             ax1.set_xticks(np.arange(0, 1.05, 0.05))
             ax1.set_xticklabels([f"{x:.2f}" for x in np.arange(0, 1.05, 0.05)])
             
+            # Set y1-ticks to integer values only
+            from matplotlib.ticker import MaxNLocator
+            ax1.yaxis.set_major_locator(MaxNLocator(integer=True))
+            
             # Second axis (accuracy)
             ax2 = ax1.twinx()
             ax2.set_ylabel("AUC", color=color_accuracy)
