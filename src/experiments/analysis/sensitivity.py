@@ -9,8 +9,10 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from src.experiments.analysis.base import BaseAnalyser
 from src.util.constants import Directory
 
+# Set black and white style
 sns.set_style('white')
 plt.rcParams['font.size'] = 14
+plt.rcParams['axes.prop_cycle'] = plt.cycler(color=['black', 'black'])
 
 
 class SupportThresholdImpactData(BaseModel):
@@ -91,8 +93,8 @@ class SupportThresholdImpactPlot(BaseModel):
                      save_path: str = "sensitivity_plots.pdf",
                      figsize: Tuple[int, int] = (18, 6), 
                      style: str = "whitegrid",
-                     color_runtime: str = "tab:blue",
-                     color_accuracy: str = "tab:red") -> Dict[str, Any]:
+                     color_runtime: str = "black",
+                     color_accuracy: str = "black") -> Dict[str, Any]:
         """
         Plot three support threshold impact plots in a row
         
@@ -134,7 +136,8 @@ class SupportThresholdImpactPlot(BaseModel):
             ax1.set_xlabel("Minimum Support Threshold")
             ax1.set_ylabel("Runtime (seconds)", color=color_runtime)
             sns.lineplot(x="min_support", y="runtime", data=df, marker="o", 
-                         color=color_runtime, ax=ax1, label="Runtime")
+                         color=color_runtime, ax=ax1, label="Runtime", 
+                         linestyle="-", linewidth=2)
             ax1.tick_params(axis="y", labelcolor=color_runtime)
             
             # Set x-ticks to 0.05 intervals
@@ -145,7 +148,8 @@ class SupportThresholdImpactPlot(BaseModel):
             ax2 = ax1.twinx()
             ax2.set_ylabel("AUC", color=color_accuracy)
             sns.lineplot(x="min_support", y="accuracy", data=df, marker="s", 
-                         color=color_accuracy, ax=ax2, label="Accuracy")
+                         color=color_accuracy, ax=ax2, label="Accuracy", 
+                         linestyle="--", linewidth=2)
             ax2.tick_params(axis="y", labelcolor=color_accuracy)
             
             # Format y-ticks to show 2 decimal places
@@ -164,6 +168,13 @@ class SupportThresholdImpactPlot(BaseModel):
             
             # Add grid for better readability
             ax1.grid(True, alpha=0.3)
+            
+            # Add a legend that distinguishes between the two lines
+            lines1, labels1 = ax1.get_legend_handles_labels()
+            lines2, labels2 = ax2.get_legend_handles_labels()
+            ax1.legend(lines1 + lines2, labels1 + labels2, loc='best', 
+                       frameon=True, facecolor='white', edgecolor='black',
+                       handlelength=3)
         
         # Tight layout with space for the legend
         fig.tight_layout(rect=[0, 0.05, 1, 0.95])
