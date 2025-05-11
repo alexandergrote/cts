@@ -156,8 +156,19 @@ class SupportThresholdImpactPlot(BaseModel):
                          linestyle="--", linewidth=2)
             ax2.tick_params(axis="y", labelcolor=color_accuracy)
             
-            # Format y-ticks to show 2 decimal places
-            #ax2.yaxis.set_major_formatter(plt.FormatStrFormatter('%.2f'))
+            # Format y-ticks to show 2 decimal places and only unique values
+            ax2.yaxis.set_major_formatter(plt.FormatStrFormatter('%.2f'))
+            
+            # Get the range of accuracy values
+            y_min, y_max = df['accuracy'].min(), df['accuracy'].max()
+            # Add a small buffer to ensure all points are visible
+            buffer = 0.02
+            y_min = max(0, y_min - buffer)
+            y_max = min(1, y_max + buffer)
+            
+            # Set custom ticks with 2 decimal places
+            import matplotlib.ticker as ticker
+            ax2.yaxis.set_major_locator(ticker.MaxNLocator(nbins=5, prune='both'))
             
             # Title
             ax1.set_title(title)
