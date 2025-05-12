@@ -15,6 +15,150 @@ plt.rcParams['font.size'] = 14
 plt.rcParams['axes.prop_cycle'] = plt.cycler(color=['black', 'black'])
 
 
+class MultiTestingImpactData(BaseModel):
+    multitesting: List[bool] = Field(description="Boolean indication of whether multitesting was applied or not")
+    accuracy: List[float] = Field(description="Classification accuracy for each threshold")
+    number_of_features: List[int] = Field(description="Number of features selected for each threshold")
+
+    def to_df(self) -> pd.DataFrame:
+        """Convert the data to a DataFrame with validation"""
+        df = pd.DataFrame({
+            'multitesting': self.multitesting,
+            'number_of_features': self.number_of_features,
+            'accuracy': self.accuracy
+        })
+        return df
+
+
+class MultiTestingImpactPlot(BaseModel):
+
+    data_list: List[MultiTestingImpactData]
+    
+    def to_df(self) -> List[pd.DataFrame]:
+        """Convert all data instances to DataFrames with validation"""
+        return [data.to_df() for data in self.data_list]
+    
+    def plot_multiple(self, 
+                     titles: List[str],
+                     save_path: str = "sensitivity_multitesting_plots.pdf",
+                     figsize: Tuple[int, int] = (18, 6), 
+                     style: str = "whitegrid",
+                     color_runtime: str = "black",
+                     color_accuracy: str = "black") -> Dict[str, Any]:
+        """
+        Plot three support threshold impact plots in a row
+        
+        Args:
+            titles: List of titles for each plot (if None, default titles are used)
+            figsize: Figure size (width, height) in inches
+            save_path: Path to save the figure, if None, the figure is not saved
+            style: Seaborn style to use
+            color_runtime: Color for runtime line
+            color_accuracy: Color for accuracy line
+            
+        Returns:
+            Dictionary containing figure and axes objects
+        """
+        # Check if we have enough data
+        if len(self.data_list) < 1:
+            raise ValueError("At least one dataset must be provided")
+        
+        # Convert to DataFrames and validate
+        dfs = self.to_df()
+        
+        # Set seaborn style
+        sns.set_style(style)
+        
+        # Create figure and axes
+        fig, axes = plt.subplots(1, len(self.data_list), figsize=figsize)
+
+        plt.subplots_adjust(wspace=2)
+        
+        # Handle the case where there's only one plot
+        if len(self.data_list) == 1:
+            axes = [axes]
+        
+        # Plot each dataset
+        for i, (df, ax, title) in enumerate(zip(dfs, axes, titles)):
+            
+            # First axis (runtime)
+            ax1 = ax
+            ax1.set_xlabel("Multitesting Correction")
+            ax1.set_ylabel("Number of Features", color=color_runtime)
+            sns.lineplot(x="multitesting", y="number_of_features", data=df, marker="o", 
+                         color=color_runtime, ax=ax1, label="Number of Features", 
+                         linestyle="-", linewidth=2)
+            ax1.tick_params(axis="y", labelcolor=color_runtime)
+            
+            # Set x-ticks to 0.05 intervals
+            ax1.set_xticks(np.arange(0, 1.05, 0.05))
+            ax1.set_xticklabels([f"{x:.2f}" for x in np.arange(0, 1.05, 0.05)])
+            
+            # Set y1-ticks to integer values only
+            from matplotlib.ticker import MaxNLocator
+            ax1.yaxis.set_major_locator(MaxNLocator(integer=True))
+            
+            # Second axis (accuracy)
+            ax2 = ax1.twinx()
+            ax2.set_ylabel("AUC", color=color_accuracy)
+            sns.lineplot(x="multitesting", y="accuracy", data=df, marker="s", 
+                         color=color_accuracy, ax=ax2, label="AUC", 
+                         linestyle="--", linewidth=2)
+            ax2.tick_params(axis="y", labelcolor=color_accuracy)
+            
+            # Format y-ticks to show 2 decimal places and only unique values
+            ax2.yaxis.set_major_formatter(plt.FormatStrFormatter('%.2f'))
+            
+            # Get the range of accuracy values
+            y_min, y_max = df['accuracy'].min(), df['accuracy'].max()
+            # Add a small buffer to ensure all points are visible
+            buffer = 0.02
+            y_min = max(0, y_min - buffer)
+            y_max = min(1, y_max + buffer)
+            
+            # Set y-axis limits
+            ax2.set_ylim(y_min, y_max)
+            
+            # Get unique accuracy values and create custom ticks
+            import matplotlib.ticker as ticker
+            
+            # Use fewer ticks to avoid duplicates
+            ax2.yaxis.set_major_locator(ticker.LinearLocator(4))
+            
+            # Title
+            ax1.set_title(title)
+            
+            # Create custom legend
+
+            # Remove default legends created by seaborn
+            if ax1.get_legend():
+                ax1.get_legend().remove()
+            if ax2.get_legend():
+                ax2.get_legend().remove()
+            
+            # Add grid for better readability
+            ax1.grid(True, alpha=0.3)
+            
+            # Store handles and labels for the common legend
+            if i == 0:  # Only need to get these once
+                lines1, labels1 = ax1.get_legend_handles_labels()
+                lines2, labels2 = ax2.get_legend_handles_labels()
+                legend_handles = lines1 + lines2
+                legend_labels = labels1 + labels2
+        
+        # Create a common legend for all subplots
+        fig.legend(legend_handles, legend_labels, loc='upper center', 
+                   ncol=len(legend_labels), bbox_to_anchor=(0.5, 0.98),
+                   frameon=True, facecolor='white', edgecolor='black',
+                   handlelength=3)
+        
+        # Tight layout with space for the legend
+        fig.tight_layout(rect=[0, 0, 1, 0.90])
+        
+        # Save if path is provided
+        plt.savefig(Directory.FIGURES_DIR / save_path, dpi=300, bbox_inches="tight")
+        
+
 class SupportThresholdImpactData(BaseModel):
     min_support: List[float] = Field(description="Minimum support threshold values")
     runtime: List[float] = Field(description="Runtime in seconds for each threshold")
@@ -227,6 +371,7 @@ class Sensitivity(BaseModel, BaseAnalyser):
         metric_col_auc, metric_col_auc_v = 'metrics.roc_auc_score', 'AUC'
         metric_col_f1, metric_col_f1_v = 'metrics.f1_score', 'F1 Score'
         rel_support = 'min_support_rel'
+        n_features_selected = 'metrics.n_features_selected'
         
         # create mapping for renaming
         mapping = {
@@ -236,16 +381,22 @@ class Sensitivity(BaseModel, BaseAnalyser):
             'params.preprocess.params.extractor.params.prefixspan_config.params.min_support_rel': rel_support,
             metric_col_auc: metric_col_auc_v,
             metric_col_f1: metric_col_f1_v,
+            n_features_selected: 'N Features Selected',
         }
 
         data_copy.rename(columns=mapping, inplace=True)
 
+        ## min support params
+        exp_names = data_copy['params.export.params.experiment_name']
+        mask = exp_names.str.contains('min_support', na=False)
+        data_copy_support = data_copy[mask]
+
         datasets = []
         titles = []
 
-        for dataset in data_copy[dataset_col].unique():
+        for dataset in data_copy_support[dataset_col].unique():
 
-            data_copy_sub = data_copy[data_copy[dataset_col] == dataset]
+            data_copy_sub = data_copy_support[data_copy_support[dataset_col] == dataset]
 
             support_impact_data = SupportThresholdImpactData(
                 min_support=data_copy_sub[rel_support],
@@ -259,13 +410,47 @@ class Sensitivity(BaseModel, BaseAnalyser):
             datasets.append(support_impact_data)
             titles.append(title)
 
-        plotter = SupportThresholdImpactPlot(
-            data_list=datasets
-        )
+        if len(datasets) > 0:
 
-        plotter.plot_multiple(
-            titles=titles
-        )
+            plotter = SupportThresholdImpactPlot(
+                data_list=datasets
+            )
+
+            plotter.plot_multiple(
+                titles=titles
+            )
+
+        mask = exp_names.str.contains('multitest', na=False)
+        data_copy_multitest = data_copy[mask]
+
+        datasets = []
+        titles = []
+
+        for dataset in data_copy_multitest[dataset_col].unique():
+
+            data_copy_sub = data_copy_multitest[data_copy_multitest[dataset_col] == dataset]
+
+            multitesting_data = MultiTestingImpactData(
+                multitesting=data_copy_sub['params.export.params.experiment_name'].str.contains('True', na=False),
+                number_of_features=data_copy_sub['N Features Selected'],
+                accuracy=data_copy_sub[metric_col_auc_v]
+            )
+
+            title = f"{dataset.split('.')[2].upper()}"
+                
+
+            datasets.append(multitesting_data)
+            titles.append(title)
+
+        if len(datasets) > 0:
+
+            plotter = MultiTestingImpactPlot(
+                data_list=datasets
+            )
+
+            plotter.plot_multiple(
+                titles=titles
+            )
 
 if __name__ == '__main__':
 
