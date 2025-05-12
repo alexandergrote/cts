@@ -85,14 +85,15 @@ class MultiTestingImpactPlot(BaseModel):
             ax1 = ax
             ax1.set_xlabel("Multitesting Correction")
             ax1.set_ylabel("Number of Features", color=color_runtime)
-            sns.lineplot(x="multitesting", y="number_of_features", data=df, marker="o", 
+            
+            # Convert boolean to categorical labels
+            df['multitesting_label'] = df['multitesting'].apply(lambda x: "With Correction" if x else "No Correction")
+            
+            # Use categorical x-axis
+            sns.lineplot(x="multitesting_label", y="number_of_features", data=df, marker="o", 
                          color=color_runtime, ax=ax1, label="Number of Features", 
                          linestyle="-", linewidth=2)
             ax1.tick_params(axis="y", labelcolor=color_runtime)
-            
-            # Set x-ticks to 0.05 intervals
-            ax1.set_xticks(np.arange(0, 1.05, 0.05))
-            ax1.set_xticklabels([f"{x:.2f}" for x in np.arange(0, 1.05, 0.05)])
             
             # Set y1-ticks to integer values only
             from matplotlib.ticker import MaxNLocator
@@ -101,7 +102,7 @@ class MultiTestingImpactPlot(BaseModel):
             # Second axis (accuracy)
             ax2 = ax1.twinx()
             ax2.set_ylabel("AUC", color=color_accuracy)
-            sns.lineplot(x="multitesting", y="accuracy", data=df, marker="s", 
+            sns.lineplot(x="multitesting_label", y="accuracy", data=df, marker="s", 
                          color=color_accuracy, ax=ax2, label="AUC", 
                          linestyle="--", linewidth=2)
             ax2.tick_params(axis="y", labelcolor=color_accuracy)
