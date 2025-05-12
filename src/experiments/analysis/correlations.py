@@ -86,7 +86,7 @@ class Correlations(BaseModel, BaseAnalyser):
         colors = ['grey', 'grey', 'grey']
 
         # Filter only synthetic datasets
-        synthetic_records = [(exp_name, data, p_value, corr_value) for exp_name, data, p_value, corr_value in records if "synthetic" in exp_name]
+        synthetic_records = [(exp_name, data, p_value, corr_value) for exp_name, data, p_value, corr_value in records if "malwa" in exp_name]
         
         if synthetic_records:
             # Create a single row of subplots for all metrics
@@ -104,14 +104,10 @@ class Correlations(BaseModel, BaseAnalyser):
                 order = 2
                 lowess = False
 
-                if y_var == "fisher":
-                    order = 1
-                    lowess = False
-                
                 # Create regression plot with different line styles for black and white
                 line_styles = ['-', '--', '-.']
                 marker_styles = ['o', 's', '^']
-                
+
                 sns.regplot(
                     x='Confidence Delta', 
                     y=y_var, 
@@ -122,8 +118,16 @@ class Correlations(BaseModel, BaseAnalyser):
                     lowess=lowess,
                     ax=axes[j]
                 )
+
+                y_var_mapping = {
+                    'chi_squared': 'Chi-Squared',
+                    'entropy': 'Entropy',
+                    'fisher': 'Fisher Odds Ratio'
+                }
+
+                y_var = y_var_mapping.get(y_var, y_var)
                 
-                title = f"{exp_name.split('_')[-1].capitalize()}_{y_var}"
+                title = f"{y_var}"
                 
                 # Set title and labels with increased font size
                 axes[j].set_title(title, fontsize=16)
