@@ -210,6 +210,7 @@ class DatasetUniqueRulesSchema(pa.DataFrameModel):
     centered_inverse_entropy: Series[object] = pa.Field(is_list_of_floats=pa.Check.is_list_of_floats)
     chi_squared: Series[object] = pa.Field(is_list_of_floats=pa.Check.is_list_of_floats)
     entropy: Series[object] = pa.Field(is_list_of_floats=pa.Check.is_list_of_floats)
+    phi: Series[object] = pa.Field(is_list_of_floats=pa.Check.is_list_of_floats)
     support: Series[object] = pa.Field(is_between={"min_value": 0, "max_value": 1})
 
     class Config:

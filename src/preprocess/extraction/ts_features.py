@@ -132,7 +132,8 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
             DatasetRulesSchema.centered_inverse_entropy,
             DatasetRulesSchema.entropy,
             DatasetRulesSchema.chi_squared,
-            DatasetRulesSchema.support
+            DatasetRulesSchema.phi,
+            DatasetRulesSchema.support,
         ]
 
         predictions_grouped = patterns_df.groupby([DatasetSchema.id_column]) \

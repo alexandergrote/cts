@@ -16,6 +16,7 @@ class TestDatasetUniqueRules(unittest.TestCase):
             DatasetUniqueRulesSchema.support: [[1/3], [3/7, 4/7]],
             DatasetUniqueRulesSchema.entropy: [[0.1, 0.2], [0.3, 0.4]],
             DatasetUniqueRulesSchema.chi_squared: [[1.0], [2.0, 3.0]],
+            DatasetUniqueRulesSchema.phi: [[1.0], [2.0, 3.0]],
         })
 
     def test_unique_rules(self):
