@@ -1,5 +1,6 @@
 import os
 from pydantic import BaseModel
+from typing import List
 
 from src.util.constants import EnvMode
 
@@ -7,7 +8,7 @@ from src.util.constants import EnvMode
 class PydanticEnvironment(BaseModel):
 
     mode: EnvMode
-    cached_functions: list[str] = []
+    cached_functions: List[str] = []
 
     class Config:
         extra = 'forbid'
