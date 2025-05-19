@@ -37,6 +37,53 @@ def compute_chi_square(rule_pos: int, rule_neg: int, non_rule_pos: int, non_rule
     return chi2, p
 
 
+def compute_phi_coefficient(rule_pos: int, rule_neg: int, non_rule_pos: int, non_rule_neg: int) -> float:
+    """
+    Compute the phi coefficient (correlation coefficient for binary variables) from a 2x2 contingency table.
+    
+    Parameters:
+    ----------
+    rule_pos : int
+        Count of positive instances covered by the rule
+    rule_neg : int
+        Count of negative instances covered by the rule
+    non_rule_pos : int
+        Count of positive instances not covered by the rule
+    non_rule_neg : int
+        Count of negative instances not covered by the rule
+    
+    Returns:
+    -------
+    float
+        The phi coefficient value
+    """
+    
+    # Calculate each term in the phi coefficient formula
+    n = rule_pos + rule_neg + non_rule_pos + non_rule_neg
+    
+    # Prevent division by zero
+    if n == 0:
+        return float('nan')
+    
+    # Calculate row and column sums
+    row1_sum = rule_pos + rule_neg
+    row2_sum = non_rule_pos + non_rule_neg
+    col1_sum = rule_pos + non_rule_pos
+    col2_sum = rule_neg + non_rule_neg
+    
+    # Check for zero denominators to avoid division by zero
+    if row1_sum == 0 or row2_sum == 0 or col1_sum == 0 or col2_sum == 0:
+        return float('nan')
+    
+    # Compute phi coefficient: (ad - bc) / sqrt((a+b)(c+d)(a+c)(b+d))
+    numerator = (rule_pos * non_rule_neg) - (rule_neg * non_rule_pos)
+    denominator = np.sqrt(row1_sum * row2_sum * col1_sum * col2_sum)
+    
+    phi = numerator / denominator
+    
+    return phi
+
+
 class DatasetAggregatedSchema(pa.DataFrameModel):
     id_column: Series[str] = pa.Field(coerce=True)
     sequence_values: Series[object] = pa.Field(is_list_of_strings=pa.Check.is_list_of_strings)
@@ -102,6 +149,7 @@ class DatasetRulesSchema(pa.DataFrameModel):
     centered_inverse_entropy: Series[float]
     chi_squared: Series[float]
     entropy: Series[float]
+    phi: Series[float]
 
     total_observations: Series[int]
 
@@ -132,6 +180,13 @@ class DatasetRules(BaseModel):
                     non_rule_neg=total_observations_neg - pattern.support_neg,
                 )
 
+                phi = compute_phi_coefficient(
+                    rule_pos=pattern.support_pos,
+                    rule_neg=pattern.support_neg,
+                    non_rule_pos=total_observations_pos - pattern.support_pos,
+                    non_rule_neg=total_observations_neg - pattern.support_neg,
+                )
+
                 records.append({
                     **pattern.model_dump(),
                     **{
@@ -140,6 +195,7 @@ class DatasetRules(BaseModel):
                         DatasetRulesSchema.centered_inverse_entropy: pattern.centered_inverse_entropy,
                         DatasetRulesSchema.entropy: pattern.entropy,
                         DatasetRulesSchema.chi_squared: chi2,
+                        DatasetRulesSchema.phi: phi
                     }
                 })
 
