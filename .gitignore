@@ -1,4 +1,5 @@
 venv
+.venv
 mlruns
 .ipynb_checkpoints
 notebooks/*
