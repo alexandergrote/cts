@@ -107,9 +107,15 @@ class MultiTestingImpactPlot(BaseModel):
             # Second axis (accuracy)
             ax2 = ax1.twinx()
             ax2.set_ylabel("AUC", color=color_accuracy)
+            
+            # Add lines connecting the points for better visualization
             sns.lineplot(x="multitesting_label", y="accuracy", data=df, marker="s", 
                          color=color_accuracy, ax=ax2, label="AUC", 
                          linestyle="--", linewidth=2)
+                         
+            # Add individual points with larger markers for emphasis
+            sns.scatterplot(x="multitesting_label", y="accuracy", data=df, 
+                           color=color_accuracy, ax=ax2, s=100, zorder=3)
             ax2.tick_params(axis="y", labelcolor=color_accuracy)
             
             # Format y-ticks to show 2 decimal places and only unique values
