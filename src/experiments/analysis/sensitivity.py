@@ -99,6 +99,11 @@ class MultiTestingImpactPlot(BaseModel):
             from matplotlib.ticker import MaxNLocator
             ax1.yaxis.set_major_locator(MaxNLocator(integer=True))
             
+            # Adjust y-axis to not start at zero
+            y_min = df['number_of_features'].min() * 0.9  # Start a bit below the minimum value
+            y_max = df['number_of_features'].max() * 1.1  # End a bit above the maximum value
+            ax1.set_ylim(y_min, y_max)
+            
             # Second axis (accuracy)
             ax2 = ax1.twinx()
             ax2.set_ylabel("AUC", color=color_accuracy)
