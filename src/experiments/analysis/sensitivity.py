@@ -81,7 +81,7 @@ class MultiTestingImpactPlot(BaseModel):
         # Plot each dataset
         for i, (df, ax, title) in enumerate(zip(dfs, axes, titles)):
             
-            # First axis (runtime)
+            # First axis (number of features as bars)
             ax1 = ax
             ax1.set_xlabel("Multitesting Correction")
             ax1.set_ylabel("Number of Features", color=color_runtime)
@@ -89,10 +89,10 @@ class MultiTestingImpactPlot(BaseModel):
             # Convert boolean to categorical labels
             df['multitesting_label'] = df['multitesting'].apply(lambda x: "With Correction" if x else "No Correction")
             
-            # Use categorical x-axis
-            sns.lineplot(x="multitesting_label", y="number_of_features", data=df, marker="o", 
-                         color=color_runtime, ax=ax1, label="Number of Features", 
-                         linestyle="-", linewidth=2)
+            # Use categorical x-axis with barplot instead of lineplot
+            sns.barplot(x="multitesting_label", y="number_of_features", data=df,
+                        color=color_runtime, ax=ax1, label="Number of Features", 
+                        alpha=0.7, edgecolor="black")
             ax1.tick_params(axis="y", labelcolor=color_runtime)
             
             # Set y1-ticks to integer values only
