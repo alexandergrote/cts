@@ -70,7 +70,7 @@ class Correlations(BaseModel, BaseAnalyser):
             ax_obj = axes if len(records) == 1 else axes[idx]
 
             ax_obj.title.set_text(title)
-            sns.regplot(data=data, x='Confidence Delta', y='Average Target Value', color='grey', ax=ax_obj)
+            sns.regplot(data=data, x='Confidence Delta', y='Average Target Value', color='grey', ax=ax_obj, scatter_kws={'rasterized': True})
             ax_obj.set_ylim(0, 1)
             
 
@@ -112,11 +112,11 @@ class Correlations(BaseModel, BaseAnalyser):
                     x='Confidence Delta', 
                     y=y_var, 
                     data=data, 
-                    scatter_kws={'alpha': 0.5, 'color': 'black', 'marker': marker_styles[j]},
+                    scatter_kws={'alpha': 0.5, 'color': 'black', 'marker': marker_styles[j], 'rasterized': True},
                     line_kws={'color': 'black', 'linestyle': line_styles[j], 'linewidth': 2},
                     order=order,
                     lowess=lowess,
-                    ax=axes[j]
+                    ax=axes[j],
                 )
 
                 y_var_mapping = {

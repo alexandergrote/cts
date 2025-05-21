@@ -115,7 +115,7 @@ class ExperimentFactory(BaseModel):
 
     @classmethod
     def create_parameter_experiments(cls) -> List[Experiment]:
-        
+
         experiments = []
         
         min_rel_supports = [0, 0.05, 0.1, 0.15, 0.2, 0.25]
@@ -161,6 +161,8 @@ class ExperimentFactory(BaseModel):
 
                 if not multitesting:
                     overrides.append(f'preprocess.params.extractor.params.multitesting=null')
+                else:
+                    overrides.append(f'preprocess.params.extractor.params.multitesting.alpha=0.00001')
 
                 experiments.append(Experiment(name=exp_name, overrides=overrides))
 
