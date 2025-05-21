@@ -91,8 +91,8 @@ class MultiTestingImpactPlot(BaseModel):
             
             # Use categorical x-axis with barplot instead of lineplot
             sns.barplot(x="multitesting_label", y="number_of_features", data=df,
-                        color=color_runtime, ax=ax1, label="Number of Features", 
-                        alpha=0.7, edgecolor="black")
+                        color="white", ax=ax1, label="Number of Features", 
+                        edgecolor="black", linewidth=1.5)
             ax1.tick_params(axis="y", labelcolor=color_runtime)
             
             # Set y1-ticks to integer values only
