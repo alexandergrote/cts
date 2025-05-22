@@ -611,7 +611,7 @@ class Sensitivity(BaseModel, BaseAnalyser):
 
 if __name__ == '__main__':
 
-    # Create three datasets
+    # Create three datasets for SupportThresholdImpactPlot
     data1 = SupportThresholdImpactData(
         min_support=[0.1, 0.2, 0.3, 0.4, 0.5],
         runtime=[10.2, 8.5, 6.3, 4.1, 2.8],
@@ -638,4 +638,21 @@ if __name__ == '__main__':
         titles=["Dataset A", "Dataset B", "Dataset C"],
         figsize=(18, 6),
         save_path="sensitivity_plots_tmp.pdf"
+    )
+
+    # Create a dataset for BufferImpactPlot
+    buffer_data = BufferImpactData(
+        buffer=[0.05, 0.1, 0.15, 0.2],
+        accuracy=[0.78, 0.82, 0.84, 0.86],
+        number_of_features=[10, 15, 20, 25]
+    )
+    
+    # Create the plotter with one dataset
+    buffer_plotter = BufferImpactPlot(data_list=[buffer_data])
+    
+    # Plot with custom title
+    buffer_plotter.plot_multiple(
+        titles=["Buffer Impact"],
+        figsize=(18, 6),
+        save_path="buffer_impact_plot_tmp.pdf"
     )
