@@ -373,7 +373,7 @@ class BufferImpactData(BaseModel):
     def to_df(self) -> pd.DataFrame:
         """Convert the data to a DataFrame with validation"""
         df = pd.DataFrame({
-            'buffer': self.criterion_buffer,
+            'buffer': self.buffer,
             'number_of_features': self.number_of_features,
             'accuracy': self.accuracy
         })
@@ -436,8 +436,8 @@ class BufferImpactPlot(BaseModel):
             ax1 = ax
             ax1.set_xlabel("Buffer Threshold")
             ax1.set_ylabel("Number of Features", color=color_runtime)
-            sns.lineplot(x="min_support", y="buffer", data=df, marker="o", 
-                         color=color_runtime, ax=ax1, label="Runtime", 
+            sns.lineplot(x="buffer", y="number_of_features", data=df, marker="o", 
+                         color=color_runtime, ax=ax1, label="Number of Features", 
                          linestyle="-", linewidth=2)
             ax1.tick_params(axis="y", labelcolor=color_runtime)
             
@@ -529,6 +529,7 @@ class Sensitivity(BaseModel, BaseAnalyser):
         metric_col_f1, metric_col_f1_v = 'metrics.f1_score', 'F1 Score'
         rel_support = 'min_support_rel'
         n_features_selected = 'metrics.n_features_selected'
+        criterion_buffer = 'criterion_buffer'
         
         # create mapping for renaming
         mapping = {
@@ -536,6 +537,7 @@ class Sensitivity(BaseModel, BaseAnalyser):
             'metrics.feature_selection_duration': metric_duration,
             'metrics.feature_selection_max_memory': metric_memory,
             'params.preprocess.params.extractor.params.prefixspan_config.params.min_support_rel': rel_support,
+            'params.preprocess.params.extractor.params.criterion_buffer': 'criterion_buffer',
             metric_col_auc: metric_col_auc_v,
             metric_col_f1: metric_col_f1_v,
             n_features_selected: 'N Features Selected',
@@ -602,6 +604,38 @@ class Sensitivity(BaseModel, BaseAnalyser):
         if len(datasets) > 0:
 
             plotter = MultiTestingImpactPlot(
+                data_list=datasets
+            )
+
+            plotter.plot_multiple(
+                titles=titles
+            )
+
+        mask = exp_names.str.contains('buffer', na=False)
+        data_copy_buffer = data_copy[mask]
+
+        datasets = []
+        titles = []
+
+        for dataset in data_copy_buffer[dataset_col].unique():
+
+            data_copy_sub = data_copy_buffer[data_copy_buffer[dataset_col] == dataset]
+
+            buffer_data = BufferImpactData(
+                buffer=data_copy_sub['criterion_buffer'],
+                number_of_features=data_copy_sub['N Features Selected'],
+                accuracy=data_copy_sub[metric_col_auc_v]
+            )
+
+            title = f"{dataset.split('.')[2].upper()}"
+                
+
+            datasets.append(buffer_data)
+            titles.append(title)
+
+        if len(datasets) > 0:
+
+            plotter = BufferImpactPlot(
                 data_list=datasets
             )
 

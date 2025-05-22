@@ -119,7 +119,7 @@ class ExperimentFactory(BaseModel):
         experiments = []
         
         min_rel_supports = [0, 0.05, 0.1, 0.15, 0.2, 0.25]
-        multittesting_methods = [True, False]
+        multitesting_methods = [True, False]
         buffers = [0, 0.05, 0.1, 0.15]
         
         
