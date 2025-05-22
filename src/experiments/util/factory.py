@@ -119,6 +119,9 @@ class ExperimentFactory(BaseModel):
         experiments = []
         
         min_rel_supports = [0, 0.05, 0.1, 0.15, 0.2, 0.25]
+        multittesting_methods = [True, False]
+        buffers = [0, 0.05, 0.1, 0.15]
+        
         
         for dataset in ["synthetic", "malware", "churn"]:
         
@@ -142,7 +145,7 @@ class ExperimentFactory(BaseModel):
 
                 experiments.append(Experiment(name=exp_name, overrides=overrides))
 
-            for multitesting in [True, False]:
+            for multitesting in multitesting_methods:
 
                 exp_name = f'sensitivity_{dataset}_multitesting_{multitesting}'
 
@@ -161,11 +164,28 @@ class ExperimentFactory(BaseModel):
 
                 if not multitesting:
                     overrides.append(f'preprocess.params.extractor.params.multitesting=null')
-                else:
-                    overrides.append(f'preprocess.params.extractor.params.multitesting.alpha=0.00001')
 
                 experiments.append(Experiment(name=exp_name, overrides=overrides))
 
+            for buffer in buffers:
+
+                exp_name = f'sensitivity_{dataset}_buffer_{buffer}'
+
+                overrides = [
+                    f'fetch_data={dataset}',
+                    f'preprocess=self_spm',
+                    f'preprocess.params.extractor.params.prefixspan_config.params.min_support_abs=100',
+                    f'preprocess.params.extractor.params.prefixspan_config.params.min_support_rel=0.05',
+                    f'preprocess.params.extractor.params.criterion_buffer={buffer}',
+                    f'train_test_split=stratified',
+                    f'train_test_split.params.random_state=0',
+                    f'model=xgb',
+                    f'evaluation=ml',
+                    f'export=mlflow',
+                    f'export.params.experiment_name={exp_name}'
+                ]
+
+                experiments.append(Experiment(name=exp_name, overrides=overrides))
 
         return experiments
 

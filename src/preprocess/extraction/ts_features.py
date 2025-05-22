@@ -7,7 +7,7 @@ from typing import List, Literal, Optional
 from pandera.typing import DataFrame
 from tqdm import tqdm
 from sklearn.model_selection import StratifiedShuffleSplit
-from scipy.stats import mannwhitneyu
+from scipy.stats import mannwhitneyu, ttest_1samp, wilcoxon
 from statsmodels.stats.multitest import multipletests
 
 from src.util.dynamic_import import DynamicImport
@@ -186,6 +186,7 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
         # keep track of p values
         p_values = []
 
+        
         for _, row in data_copy.iterrows():
 
             # get observations
@@ -193,6 +194,8 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
             values = np.zeros_like(obs) + self.criterion_buffer
                 
             test = mannwhitneyu(obs, values, alternative='greater')
+            #test = ttest_1samp(obs, self.criterion_buffer)
+            #test = wilcoxon(obs - self.criterion_buffer, alternative='greater')
             p_values.append(test.pvalue)
 
         p_values_array = np.array(p_values)
