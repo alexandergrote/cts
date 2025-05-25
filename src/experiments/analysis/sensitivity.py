@@ -246,7 +246,7 @@ class SupportThresholdImpactPlot(BaseModel):
     
     def plot_multiple(self, 
                      titles: List[str],
-                     save_path: str = "sensitivity_plots.pdf",
+                     save_path: str = "sensitivity_support_plots.pdf",
                      figsize: Tuple[int, int] = (18, 6), 
                      style: str = "whitegrid",
                      color_runtime: str = "black",
