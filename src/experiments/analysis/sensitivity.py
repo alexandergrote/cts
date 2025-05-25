@@ -586,6 +586,9 @@ class BootstrapRoundsPlot(BaseModel):
                          linestyle="-", linewidth=2)
             ax1.tick_params(axis="y", labelcolor=color_runtime)
             
+            # Set x-ticks to specific values: 1, 5, 10, 15, 20
+            ax1.set_xticks([1, 5, 10, 15, 20])
+            
             # Set y1-ticks to integer values only
             from matplotlib.ticker import MaxNLocator
             ax1.yaxis.set_major_locator(MaxNLocator(integer=True))
@@ -795,7 +798,7 @@ class Sensitivity(BaseModel, BaseAnalyser):
             data_copy_sub = data_copy_bootstrap[data_copy_bootstrap[dataset_col] == dataset]
 
             bootstrap_data = BootstrapRoundsData(
-                bootstrap_rounds=data_copy_sub['params.preprocess.params.extractor.params.bootstrap_repetitions'],
+                bootstrap_rounds=data_copy_sub['params.preprocess.params.extractor.params.bootstrap_rounds'],
                 number_of_features=data_copy_sub['N Features Selected'],
                 accuracy=data_copy_sub[metric_col_auc_v]
             )
@@ -865,7 +868,7 @@ if __name__ == '__main__':
     
     # Create a dataset for BootstrapRoundsPlot
     bootstrap_data = BootstrapRoundsData(
-        bootstrap_rounds=[10, 50, 100, 200, 500],
+        bootstrap_rounds=[1, 5, 10, 15, 20],
         accuracy=[0.75, 0.80, 0.83, 0.85, 0.86],
         number_of_features=[8, 12, 15, 18, 20]
     )
