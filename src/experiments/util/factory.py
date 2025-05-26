@@ -121,13 +121,15 @@ class ExperimentFactory(BaseModel):
         min_rel_supports = [0, 0.05, 0.1, 0.15, 0.2, 0.25]
         multitesting_methods = [True, False]
         buffers = [0, 0.05, 0.1, 0.15]
+        bootstrap_rounds = [1, 5, 10, 15, 20]
+        random_seeds = [0, 1, 2, 3, 4]
+        random_seed_str = ','.join([str(seed) for seed in random_seeds])
         
         
         for dataset in ["synthetic", "malware", "churn"]:
         
             for min_support_rel in min_rel_supports[::-1]:
 
-            
                 exp_name = f'sensitivity_{dataset}_min_support_rel_{min_support_rel}'
 
                 overrides = [
@@ -136,7 +138,7 @@ class ExperimentFactory(BaseModel):
                     f'preprocess.params.extractor.params.prefixspan_config.params.min_support_abs=0',
                     f'preprocess.params.extractor.params.prefixspan_config.params.min_support_rel={min_support_rel}',
                     f'train_test_split=stratified',
-                    f'train_test_split.params.random_state=0',
+                    f'train_test_split.params.random_state={random_seed_str}',
                     f'model=xgb',
                     f'evaluation=ml',
                     f'export=mlflow',
@@ -155,7 +157,7 @@ class ExperimentFactory(BaseModel):
                     f'preprocess.params.extractor.params.prefixspan_config.params.min_support_abs=100',
                     f'preprocess.params.extractor.params.prefixspan_config.params.min_support_rel=0.05',
                     f'train_test_split=stratified',
-                    f'train_test_split.params.random_state=0',
+                    f'train_test_split.params.random_state={random_seed_str}',
                     f'model=xgb',
                     f'evaluation=ml',
                     f'export=mlflow',
@@ -178,7 +180,27 @@ class ExperimentFactory(BaseModel):
                     f'preprocess.params.extractor.params.prefixspan_config.params.min_support_rel=0.05',
                     f'preprocess.params.extractor.params.criterion_buffer={buffer}',
                     f'train_test_split=stratified',
-                    f'train_test_split.params.random_state=0',
+                    f'train_test_split.params.random_state={random_seed_str}',
+                    f'model=xgb',
+                    f'evaluation=ml',
+                    f'export=mlflow',
+                    f'export.params.experiment_name={exp_name}'
+                ]
+
+                experiments.append(Experiment(name=exp_name, overrides=overrides))
+
+            for bootstrap_round in bootstrap_rounds:
+
+                exp_name = f'sensitivity_{dataset}_bootstrap_rounds_{bootstrap_round}'
+
+                overrides = [
+                    f'fetch_data={dataset}',
+                    f'preprocess=self_spm',
+                    f'preprocess.params.extractor.params.bootstrap_repetitions={bootstrap_round}',
+                    f'preprocess.params.extractor.params.prefixspan_config.params.min_support_abs=100',
+                    f'preprocess.params.extractor.params.prefixspan_config.params.min_support_rel=0.05',
+                    f'train_test_split=stratified',
+                    f'train_test_split.params.random_state={random_seed_str}',
                     f'model=xgb',
                     f'evaluation=ml',
                     f'export=mlflow',

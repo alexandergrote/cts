@@ -798,7 +798,7 @@ class Sensitivity(BaseModel, BaseAnalyser):
             data_copy_sub = data_copy_bootstrap[data_copy_bootstrap[dataset_col] == dataset]
 
             bootstrap_data = BootstrapRoundsData(
-                bootstrap_rounds=data_copy_sub['params.preprocess.params.extractor.params.bootstrap_rounds'],
+                bootstrap_rounds=data_copy_sub['params.preprocess.params.extractor.params.bootstrap_repetitions'],
                 number_of_features=data_copy_sub['N Features Selected'],
                 accuracy=data_copy_sub[metric_col_auc_v]
             )
