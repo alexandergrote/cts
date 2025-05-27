@@ -254,6 +254,17 @@ class SupportThresholdImpactData(BaseModel):
             'runtime': self.runtime,
             'accuracy': self.accuracy
         })
+        
+        # Calculate relative changes
+        # Use the data point with the smallest min_support as reference
+        min_idx = df['min_support'].idxmin()
+        ref_runtime = df.loc[min_idx, 'runtime']
+        ref_accuracy = df.loc[min_idx, 'accuracy']
+        
+        # Calculate relative changes in percent
+        df['rel_runtime'] = (df['runtime'] / ref_runtime - 1) * 100
+        df['rel_accuracy'] = (df['accuracy'] / ref_accuracy - 1) * 100
+        
         return self.validate_df(df)
 
 
@@ -308,11 +319,11 @@ class SupportThresholdImpactPlot(BaseModel):
         # Plot each dataset
         for i, (df, ax, title) in enumerate(zip(dfs, axes, titles)):
             
-            # First axis (runtime)
+            # First axis (runtime - relative change)
             ax1 = ax
             ax1.set_xlabel("Minimum Support Threshold")
-            ax1.set_ylabel("Runtime (seconds)", color=color_runtime)
-            sns.lineplot(x="min_support", y="runtime", data=df, marker="o", 
+            ax1.set_ylabel("Change in Runtime (%)", color=color_runtime)
+            sns.lineplot(x="min_support", y="rel_runtime", data=df, marker="o", 
                          color=color_runtime, ax=ax1, label="Runtime", 
                          linestyle="-", linewidth=2)
             ax1.tick_params(axis="y", labelcolor=color_runtime)
@@ -321,27 +332,34 @@ class SupportThresholdImpactPlot(BaseModel):
             ax1.set_xticks(np.arange(0, 1.05, 0.05))
             ax1.set_xticklabels([f"{x:.2f}" for x in np.arange(0, 1.05, 0.05)])
             
-            # Set y1-ticks to integer values only
-            from matplotlib.ticker import MaxNLocator
-            ax1.yaxis.set_major_locator(MaxNLocator(integer=True))
+            # Horizontal line at 0% (no change)
+            ax1.axhline(y=0, color='gray', linestyle='-', alpha=0.3)
             
-            # Second axis (accuracy)
+            # Adjust y-axis to show relative changes better
+            y_min = min(df['rel_runtime'].min() * 1.1, -5)  # At least -5% display
+            y_max = max(df['rel_runtime'].max() * 1.1, 5)   # At least +5% display
+            ax1.set_ylim(y_min, y_max)
+            
+            # Second axis (accuracy - relative change)
             ax2 = ax1.twinx()
-            ax2.set_ylabel("AUC", color=color_accuracy)
-            sns.lineplot(x="min_support", y="accuracy", data=df, marker="s", 
+            ax2.set_ylabel("Change in AUC (%)", color=color_accuracy)
+            sns.lineplot(x="min_support", y="rel_accuracy", data=df, marker="s", 
                          color=color_accuracy, ax=ax2, label="AUC", 
                          linestyle="--", linewidth=2)
             ax2.tick_params(axis="y", labelcolor=color_accuracy)
             
-            # Format y-ticks to show 2 decimal places and only unique values
-            ax2.yaxis.set_major_formatter(plt.FormatStrFormatter('%.2f'))
+            # Format y-ticks to show 1 decimal place
+            ax2.yaxis.set_major_formatter(plt.FormatStrFormatter('%.1f'))
             
-            # Get the range of accuracy values
-            y_min, y_max = df['accuracy'].min(), df['accuracy'].max()
-            # Add a small buffer to ensure all points are visible
-            buffer = 0.02
-            y_min = max(0, y_min - buffer)
-            y_max = min(1, y_max + buffer)
+            # Horizontal line at 0% (no change)
+            ax2.axhline(y=0, color='gray', linestyle='-', alpha=0.3)
+            
+            # Get the range of relative accuracy values
+            y_min, y_max = df['rel_accuracy'].min(), df['rel_accuracy'].max()
+            # Add a larger buffer to ensure all points are visible and separated
+            buffer = 2  # 2% buffer
+            y_min = min(y_min - buffer, -1)  # At least -1% display
+            y_max = max(y_max + buffer, 1)   # At least +1% display
             
             # Set y-axis limits
             ax2.set_ylim(y_min, y_max)
