@@ -185,7 +185,7 @@ class DatasetRules(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     
     @classmethod
-    def create_from_bootstrap_rounds(cls, bootstrap_rounds: List[BootstrapRound]) -> "DatasetRules":
+    def create_from_bootstrap_rounds(cls, bootstrap_rounds: List[BootstrapRound], skip_interesting_measures: bool = False) -> "DatasetRules":
 
         records = []
 
@@ -196,6 +196,24 @@ class DatasetRules(BaseModel):
             total_observations_pos = b_round.n_samples_pos
 
             for pattern in b_round.freq_patterns:
+
+                # calculation of other interesting measures takes time and is not strictly needed for cost-benefit analysis
+                if skip_interesting_measures:
+
+                    records.append({
+                        **pattern.model_dump(),
+                        **{
+                            DatasetRulesSchema.total_observations: total_observations,
+                            DatasetRulesSchema.delta_confidence: pattern.delta_confidence,
+                            DatasetRulesSchema.centered_inverse_entropy: pattern.centered_inverse_entropy,
+                            DatasetRulesSchema.entropy: pattern.entropy,
+                            DatasetRulesSchema.chi_squared: -999.0,
+                            DatasetRulesSchema.phi: -999.0,
+                            DatasetRulesSchema.fisher_odds_ratio: -999.0,
+                        }
+                    })
+
+                    continue
 
                 chi2, p = compute_chi_square(
                     rule_pos=pattern.support_pos,

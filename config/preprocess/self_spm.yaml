@@ -8,6 +8,7 @@ params:
       p_value_threshold: 0.01
       criterion_buffer: 0.05
       criterion: delta_confidence
+      skip_interesting_measures: False
       prefixspan_config:
         class_name: 'src.preprocess.extraction.ts_features.PrefixSpan'
         params:

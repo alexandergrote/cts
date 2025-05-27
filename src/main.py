@@ -108,10 +108,25 @@ def main(cfg: DictConfig) -> None:
     key_feat_sel_mem = 'feature_selection_max_memory'
     key_n_feat_selected = 'n_features_selected'
     key_delta_confidence = 'delta_confidence_duration'
-    output['metrics'][key_feat_sel] = output.get(key_feat_sel, -1)
-    output['metrics'][key_feat_sel_mem] = output.get(key_feat_sel_mem, -1)
+    key_delta_confidence_mem = 'delta_confidence_max_memory'
+
+    if (output.get(key_feat_sel) is None) and (output.get(key_delta_confidence) is None):
+        output['metrics'][key_feat_sel] = -1
+        output['metrics'][key_feat_sel_mem] = -1
+
+    elif (output.get(key_feat_sel) is not None) and (output.get(key_delta_confidence) is None):
+        output['metrics'][key_feat_sel] = output.get(key_feat_sel)
+        output['metrics'][key_feat_sel_mem] = output.get(key_feat_sel_mem)
+
+    elif (output.get(key_feat_sel) is None) and (output.get(key_delta_confidence) is not None):
+        output['metrics'][key_feat_sel] = output.get(key_delta_confidence)
+        output['metrics'][key_feat_sel_mem] = output.get(key_delta_confidence_mem)
+    
+    else:
+        raise ValueError('Invalid state: both feat_sel and delta_confidence are not None')
+
+    
     output['metrics'][key_n_feat_selected] = output['x_test'].shape[1]
-    output['metrics'][key_delta_confidence] = output.get(key_delta_confidence, -1)
     
     if env.mode == EnvMode.PROD:
         exporter.export(output_dir=output_dir, **output)

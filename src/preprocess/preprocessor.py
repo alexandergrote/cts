@@ -27,9 +27,26 @@ class FeatureMaker(BaseModel):
 
     def execute(self, **kwargs):
 
-        tracker = Tracker()
+        if not isinstance(self.extractor, SPMFeatureSelector):
 
-        with time_tracker(tracker=tracker), max_memory_tracker(tracker=tracker):
+            tracker = Tracker()
+
+            with time_tracker(tracker=tracker), max_memory_tracker(tracker=tracker):
+
+                console.log("Extracting features")
+                output = self.extractor.execute(**kwargs)
+
+                console.log("Selecting features")
+                output = self.selector.execute(**output)
+
+            # add output to kwargs
+            kwargs = {**kwargs, **output}
+
+            # add tracker metrics to kwargs, needed for paper analysis
+            kwargs['feature_selection_duration'] = tracker.time_taken_seconds
+            kwargs['feature_selection_max_memory'] = tracker.max_memory_mb
+
+        else:
 
             console.log("Extracting features")
             output = self.extractor.execute(**kwargs)
@@ -37,12 +54,9 @@ class FeatureMaker(BaseModel):
             console.log("Selecting features")
             output = self.selector.execute(**output)
 
-        # add output to kwargs
-        kwargs = {**kwargs, **output}
+            # add output to kwargs
+            kwargs = {**kwargs, **output}
 
-        # add tracker metrics to kwargs, needed for paper analysis
-        kwargs['feature_selection_duration'] = tracker.time_taken_seconds
-        kwargs['feature_selection_max_memory'] = tracker.max_memory_mb
 
         kwargs['x_train'], kwargs['y_train'] = self._get_x_y(output['data_train'])
         kwargs['x_test'], kwargs['y_test'] = self._get_x_y(output['data_test'])

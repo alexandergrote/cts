@@ -35,6 +35,7 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
     bootstrap_sampling_fraction: confloat(ge=0, le=1) = 0.8
 
     multitesting: Optional[dict] = None
+    skip_interesting_measures: bool = False
     p_value_threshold: confloat(ge=0, le=1) = 0.01
     criterion_buffer: confloat(ge=0, le=1) = 0
 
@@ -116,7 +117,8 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
         # 2) joining rules that are essentially the same based on the event order, but differ in their antecedent and consequent
 
         patterns_df = DatasetRules.create_from_bootstrap_rounds(
-            bootstrap_rounds=bootstrap_rounds
+            bootstrap_rounds=bootstrap_rounds,
+            skip_interesting_measures=self.skip_interesting_measures,
         ).data
 
         patterns_df[DatasetSchema.id_column] = \
@@ -232,7 +234,7 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
 
         tracker = Tracker()
 
-        with time_tracker(tracker=tracker):
+        with time_tracker(tracker=tracker), max_memory_tracker(tracker=tracker):
 
             # bootstrap rules
             console.log(f"{self.__class__.__name__}: Bootstrapped Rule Mining")
@@ -277,6 +279,7 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
 
         # add tracker metrics to kwargs, needed for paper analysis
         kwargs['delta_confidence_duration'] = tracker.time_taken_seconds
+        kwargs['delta_confidence_max_memory'] = tracker.max_memory
         
         return kwargs
     

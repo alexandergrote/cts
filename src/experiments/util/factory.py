@@ -80,6 +80,7 @@ class ExperimentFactory(BaseModel):
 
                 if selection_method == "self_spm":
                     overrides.append(f'preprocess.params.extractor.params.prefixspan_config.params.min_support_abs=100')
+                    overrides.append(f'preprocess.params.extractor.params.skip_interesting_measures=True')
                 else:
                     overrides.append(f'preprocess.params.extractor.params.min_support_abs=100')
 
