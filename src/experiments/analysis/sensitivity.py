@@ -448,6 +448,20 @@ class BootstrapRoundsData(BaseModel):
             'number_of_features': self.number_of_features,
             'accuracy': self.accuracy
         })
+        
+        # Calculate relative changes
+        # Use the mean of all data points with the smallest bootstrap_rounds as reference
+        min_rounds_value = df['bootstrap_rounds'].min()
+        min_rounds_mask = df['bootstrap_rounds'] == min_rounds_value
+        
+        # Calculate reference values (mean of all points with minimum bootstrap rounds)
+        ref_features = df.loc[min_rounds_mask, 'number_of_features'].mean()
+        ref_accuracy = df.loc[min_rounds_mask, 'accuracy'].mean()
+        
+        # Calculate relative changes in percent
+        df['rel_number_of_features'] = (df['number_of_features'] / ref_features - 1) * 100
+        df['rel_accuracy'] = (df['accuracy'] / ref_accuracy - 1) * 100
+        
         return df
         
 
@@ -640,11 +654,11 @@ class BootstrapRoundsPlot(BaseModel):
         # Plot each dataset
         for i, (df, ax, title) in enumerate(zip(dfs, axes, titles)):
             
-            # First axis (number of features)
+            # First axis (number of features - relative change)
             ax1 = ax
             ax1.set_xlabel("Bootstrap Rounds")
-            ax1.set_ylabel("Number of Features", color=color_runtime)
-            sns.lineplot(x="bootstrap_rounds", y="number_of_features", data=df, marker="o", 
+            ax1.set_ylabel("Change in Number of Features (%)", color=color_runtime)
+            sns.lineplot(x="bootstrap_rounds", y="rel_number_of_features", data=df, marker="o", 
                          color=color_runtime, ax=ax1, label="Number of Features", 
                          linestyle="-", linewidth=2)
             ax1.tick_params(axis="y", labelcolor=color_runtime)
@@ -652,27 +666,34 @@ class BootstrapRoundsPlot(BaseModel):
             # Set x-ticks to specific values: 1, 5, 10, 15, 20
             ax1.set_xticks([1, 5, 10, 15, 20])
             
-            # Set y1-ticks to integer values only
-            from matplotlib.ticker import MaxNLocator
-            ax1.yaxis.set_major_locator(MaxNLocator(integer=True))
+            # Horizontal line at 0% (no change)
+            ax1.axhline(y=0, color='gray', linestyle='-', alpha=0.3)
             
-            # Second axis (accuracy)
+            # Adjust y-axis to show relative changes better
+            y_min = min(df['rel_number_of_features'].min() * 1.1, -5)  # At least -5% display
+            y_max = max(df['rel_number_of_features'].max() * 1.1, 5)   # At least +5% display
+            ax1.set_ylim(y_min, y_max)
+            
+            # Second axis (accuracy - relative change)
             ax2 = ax1.twinx()
-            ax2.set_ylabel("AUC", color=color_accuracy)
-            sns.lineplot(x="bootstrap_rounds", y="accuracy", data=df, marker="s", 
+            ax2.set_ylabel("Change in AUC (%)", color=color_accuracy)
+            sns.lineplot(x="bootstrap_rounds", y="rel_accuracy", data=df, marker="s", 
                          color=color_accuracy, ax=ax2, label="AUC", 
                          linestyle="--", linewidth=2)
             ax2.tick_params(axis="y", labelcolor=color_accuracy)
             
-            # Format y-ticks to show 2 decimal places and only unique values
-            ax2.yaxis.set_major_formatter(plt.FormatStrFormatter('%.2f'))
+            # Format y-ticks to show 1 decimal place
+            ax2.yaxis.set_major_formatter(plt.FormatStrFormatter('%.1f'))
             
-            # Get the range of accuracy values
-            y_min, y_max = df['accuracy'].min(), df['accuracy'].max()
-            # Add a small buffer to ensure all points are visible
-            buffer = 0.02
-            y_min = max(0, y_min - buffer)
-            y_max = min(1, y_max + buffer)
+            # Horizontal line at 0% (no change)
+            ax2.axhline(y=0, color='gray', linestyle='-', alpha=0.3)
+            
+            # Get the range of relative accuracy values
+            y_min, y_max = df['rel_accuracy'].min(), df['rel_accuracy'].max()
+            # Add a larger buffer to ensure all points are visible and separated
+            buffer = 2  # 2% buffer
+            y_min = min(y_min - buffer, -1)  # At least -1% display
+            y_max = max(y_max + buffer, 1)   # At least +1% display
             
             # Set y-axis limits
             ax2.set_ylim(y_min, y_max)
