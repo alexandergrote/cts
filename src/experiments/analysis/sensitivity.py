@@ -256,10 +256,13 @@ class SupportThresholdImpactData(BaseModel):
         })
         
         # Calculate relative changes
-        # Use the data point with the smallest min_support as reference
-        min_idx = df['min_support'].idxmin()
-        ref_runtime = df.loc[min_idx, 'runtime']
-        ref_accuracy = df.loc[min_idx, 'accuracy']
+        # Use the mean of all data points with the smallest min_support as reference
+        min_support_value = df['min_support'].min()
+        min_support_mask = df['min_support'] == min_support_value
+        
+        # Calculate reference values (mean of all points with minimum support)
+        ref_runtime = df.loc[min_support_mask, 'runtime'].mean()
+        ref_accuracy = df.loc[min_support_mask, 'accuracy'].mean()
         
         # Calculate relative changes in percent
         df['rel_runtime'] = (df['runtime'] / ref_runtime - 1) * 100
