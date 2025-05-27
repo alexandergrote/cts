@@ -19,6 +19,7 @@ from src.util.datasets import Dataset, DatasetSchema
 from src.preprocess.util.datasets import DatasetRulesSchema, DatasetRules, DatasetUniqueRules, DatasetUniqueRulesSchema, DatasetAggregated, DatasetAggregatedSchema
 from src.preprocess.base import BaseFeatureEncoder
 from src.util.caching import environ_pickle_cache
+from src.util.profile import max_memory_tracker, time_tracker, Tracker
 
 
 class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
@@ -229,17 +230,21 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
         # work on copy
         data_copy = data.copy(deep=True)
 
-        # bootstrap rules
-        console.log(f"{self.__class__.__name__}: Bootstrapped Rule Mining")
-        bootsrap_rounds = self._bootstrap(data=data_copy)
+        tracker = Tracker()
 
-        # get unique rules
-        console.log(f"{self.__class__.__name__}: Obtaining unique rules")
-        unique_patterns = self._get_unique_patterns(bootstrap_rounds=bootsrap_rounds)
+        with time_tracker(tracker=tracker):
 
-        # select informative rules
-        console.log(f"{self.__class__.__name__}: Selecting rules")
-        selected_patterns = self._select_significant_greater_than_zero(data=unique_patterns)
+            # bootstrap rules
+            console.log(f"{self.__class__.__name__}: Bootstrapped Rule Mining")
+            bootsrap_rounds = self._bootstrap(data=data_copy)
+
+            # get unique rules
+            console.log(f"{self.__class__.__name__}: Obtaining unique rules")
+            unique_patterns = self._get_unique_patterns(bootstrap_rounds=bootsrap_rounds)
+
+            # select informative rules
+            console.log(f"{self.__class__.__name__}: Selecting rules")
+            selected_patterns = self._select_significant_greater_than_zero(data=unique_patterns)
 
         # encode rules as a binary feature
         console.log(f"{self.__class__.__name__}: Encoding rules")
@@ -270,6 +275,9 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
         kwargs['rules'] = selected_patterns
         kwargs['data'] = encoded_dataframe
 
+        # add tracker metrics to kwargs, needed for paper analysis
+        kwargs['delta_confidence_duration'] = tracker.time_taken_seconds
+        
         return kwargs
     
     @environ_pickle_cache()

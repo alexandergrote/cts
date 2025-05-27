@@ -22,6 +22,7 @@ class BaseFeatureEncoder(ABC):
 
         rules = result_train.get('rules', {})
         kwargs['rules'] = rules
+        kwargs['delta_confidence_duration'] = result_train.get('delta_confidence_duration', -1)
         
         result_test: dict = self._encode_test(data=data_test, **kwargs)
         data_test_processed = result_test['data']

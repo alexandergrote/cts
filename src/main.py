@@ -107,10 +107,12 @@ def main(cfg: DictConfig) -> None:
     key_feat_sel = 'feature_selection_duration'
     key_feat_sel_mem = 'feature_selection_max_memory'
     key_n_feat_selected = 'n_features_selected'
+    key_delta_confidence = 'delta_confidence_duration'
     output['metrics'][key_feat_sel] = output.get(key_feat_sel, -1)
     output['metrics'][key_feat_sel_mem] = output.get(key_feat_sel_mem, -1)
     output['metrics'][key_n_feat_selected] = output['x_test'].shape[1]
-
+    output['metrics'][key_delta_confidence] = output.get(key_delta_confidence, -1)
+    
     if env.mode == EnvMode.PROD:
         exporter.export(output_dir=output_dir, **output)
 
