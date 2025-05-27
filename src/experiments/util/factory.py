@@ -120,11 +120,21 @@ class ExperimentFactory(BaseModel):
         experiments = []
         
         min_rel_supports = [0, 0.05, 0.1, 0.15, 0.2, 0.25]
+        max_sequence_lengths = [2, 3, 4]
         multitesting_methods = [True, False]
         buffers = [0, 0.05, 0.1, 0.15]
         bootstrap_rounds = [1, 5, 10, 15, 20]
-        random_seeds = [0, 1, 2, 3, 4]
+        random_seeds = [5] #[0, 1, 2, 3, 4]
         random_seed_str = ','.join([str(seed) for seed in random_seeds])
+
+        cached_functions = [
+            'src.fetch_data.synthetic.py.DataLoader.get_data',
+            'src.fetch_data.churn.py.ChurnDataloader.get_data',
+            'src.fetch_data.malware.py.MalwareDataloader.get_data'
+        ]
+
+        cached_functions_str = "[" + ','.join(cached_functions) + "]" # without the square brackets, hydra does not recognize it as a list
+
         
         
         for dataset in ["synthetic", "malware", "churn"]:
@@ -143,7 +153,31 @@ class ExperimentFactory(BaseModel):
                     f'model=xgb',
                     f'evaluation=ml',
                     f'export=mlflow',
-                    f'export.params.experiment_name={exp_name}'
+                    f'export.params.experiment_name={exp_name}',
+                    f'env.cached_functions={cached_functions_str}',
+                    f'preprocess.params.extractor.params.skip_interesting_measures=True'
+                ]
+
+                experiments.append(Experiment(name=exp_name, overrides=overrides))
+
+            for max_sequence_length in max_sequence_lengths[::-1]:
+
+                exp_name = f'sensitivity_{dataset}_max_sequence_length_{max_sequence_length}'
+
+                overrides = [
+                    f'fetch_data={dataset}',
+                    f'preprocess=self_spm',
+                    f'preprocess.params.extractor.params.prefixspan_config.params.min_support_abs=0',
+                    f'preprocess.params.extractor.params.prefixspan_config.params.min_support_rel=0.1',
+                    f'preprocess.params.extractor.params.prefixspan_config.params.max_sequence_length={max_sequence_length}',
+                    f'train_test_split=stratified',
+                    f'train_test_split.params.random_state={random_seed_str}',
+                    f'model=xgb',
+                    f'evaluation=ml',
+                    f'export=mlflow',
+                    f'export.params.experiment_name={exp_name}',
+                    f'env.cached_functions={cached_functions_str}',
+                    f'preprocess.params.extractor.params.skip_interesting_measures=True'
                 ]
 
                 experiments.append(Experiment(name=exp_name, overrides=overrides))
@@ -162,7 +196,9 @@ class ExperimentFactory(BaseModel):
                     f'model=xgb',
                     f'evaluation=ml',
                     f'export=mlflow',
-                    f'export.params.experiment_name={exp_name}'
+                    f'export.params.experiment_name={exp_name}',
+                    f'env.cached_functions={cached_functions_str}',
+                    f'preprocess.params.extractor.params.skip_interesting_measures=True'
                 ]
 
                 if not multitesting:
@@ -185,7 +221,9 @@ class ExperimentFactory(BaseModel):
                     f'model=xgb',
                     f'evaluation=ml',
                     f'export=mlflow',
-                    f'export.params.experiment_name={exp_name}'
+                    f'export.params.experiment_name={exp_name}',
+                    f'env.cached_functions={cached_functions_str}',
+                    f'preprocess.params.extractor.params.skip_interesting_measures=True'
                 ]
 
                 experiments.append(Experiment(name=exp_name, overrides=overrides))
@@ -205,7 +243,9 @@ class ExperimentFactory(BaseModel):
                     f'model=xgb',
                     f'evaluation=ml',
                     f'export=mlflow',
-                    f'export.params.experiment_name={exp_name}'
+                    f'export.params.experiment_name={exp_name}',
+                    f'env.cached_functions={cached_functions_str}',
+                    f'preprocess.params.extractor.params.skip_interesting_measures=True'
                 ]
 
                 experiments.append(Experiment(name=exp_name, overrides=overrides))
