@@ -27,6 +27,19 @@ class MultiTestingImpactData(BaseModel):
             'number_of_features': self.number_of_features,
             'accuracy': self.accuracy
         })
+        
+        # Berechne relative Änderungen
+        # Finde den Referenzwert (ohne Multitesting-Korrektur)
+        no_correction_idx = df[df['multitesting'] == False].index[0] if False in df['multitesting'].values else 0
+        
+        # Referenzwerte
+        ref_features = df.loc[no_correction_idx, 'number_of_features']
+        ref_accuracy = df.loc[no_correction_idx, 'accuracy']
+        
+        # Berechne relative Änderungen in Prozent
+        df['rel_number_of_features'] = (df['number_of_features'] / ref_features - 1) * 100
+        df['rel_accuracy'] = (df['accuracy'] / ref_accuracy - 1) * 100
+        
         return df
 
 
@@ -81,56 +94,53 @@ class MultiTestingImpactPlot(BaseModel):
         # Plot each dataset
         for i, (df, ax, title) in enumerate(zip(dfs, axes, titles)):
             
-            # First axis (number of features)
+            # First axis (number of features - relative change)
             ax1 = ax
             ax1.set_xlabel("Multitesting Correction")
-            ax1.set_ylabel("Number of Features", color=color_runtime)
+            ax1.set_ylabel("Relative Änderung der Features (%)", color=color_runtime)
             
             # Convert boolean to categorical labels
             df['multitesting_label'] = df['multitesting'].apply(lambda x: "With Correction" if x else "No Correction")
             
-            # Use lineplot instead of barplot
-            sns.lineplot(x="multitesting_label", y="number_of_features", data=df, marker="o", 
-                         color=color_runtime, ax=ax1, label="Number of Features", 
+            # Use lineplot with relative values
+            sns.lineplot(x="multitesting_label", y="rel_number_of_features", data=df, marker="o", 
+                         color=color_runtime, ax=ax1, label="Relative Änderung der Features", 
                          linestyle="-", linewidth=2)
             ax1.tick_params(axis="y", labelcolor=color_runtime)
             
-            # Set y1-ticks to integer values only
-            from matplotlib.ticker import MaxNLocator
-            ax1.yaxis.set_major_locator(MaxNLocator(integer=True))
+            # Horizontale Linie bei 0% (keine Änderung)
+            ax1.axhline(y=0, color='gray', linestyle='-', alpha=0.3)
             
-            # Adjust y-axis to not start at zero
-            y_min = df['number_of_features'].min() * 0.9  # Start a bit below the minimum value
-            y_max = df['number_of_features'].max() * 1.1  # End a bit above the maximum value
+            # Adjust y-axis to show relative changes better
+            y_min = min(df['rel_number_of_features'].min() * 1.1, -5)  # Mindestens -5% anzeigen
+            y_max = max(df['rel_number_of_features'].max() * 1.1, 5)   # Mindestens +5% anzeigen
             ax1.set_ylim(y_min, y_max)
             
-            # Second axis (accuracy)
+            # Second axis (accuracy - relative change)
             ax2 = ax1.twinx()
-            ax2.set_ylabel("AUC", color=color_accuracy)
+            ax2.set_ylabel("Relative Änderung der AUC (%)", color=color_accuracy)
             
             # Add lines connecting the points for better visualization
-            sns.lineplot(x="multitesting_label", y="accuracy", data=df, marker="s", 
-                         color=color_accuracy, ax=ax2, label="AUC", 
+            sns.lineplot(x="multitesting_label", y="rel_accuracy", data=df, marker="s", 
+                         color=color_accuracy, ax=ax2, label="Relative Änderung der AUC", 
                          linestyle="--", linewidth=2)
             ax2.tick_params(axis="y", labelcolor=color_accuracy)
             
-            # Format y-ticks to show 2 decimal places and only unique values
-            ax2.yaxis.set_major_formatter(plt.FormatStrFormatter('%.2f'))
+            # Format y-ticks to show 1 decimal place
+            ax2.yaxis.set_major_formatter(plt.FormatStrFormatter('%.1f'))
             
-            # Get the range of accuracy values
-            y_min, y_max = df['accuracy'].min(), df['accuracy'].max()
+            # Horizontale Linie bei 0% (keine Änderung)
+            ax2.axhline(y=0, color='gray', linestyle='-', alpha=0.3)
+            
+            # Get the range of relative accuracy values
+            y_min, y_max = df['rel_accuracy'].min(), df['rel_accuracy'].max()
             # Add a larger buffer to ensure all points are visible and separated
-            buffer = 0.05
-            y_min = max(0, y_min - buffer)
-            y_max = min(1, y_max + buffer)
+            buffer = 2  # 2% buffer
+            y_min = min(y_min - buffer, -1)  # Mindestens -1% anzeigen
+            y_max = max(y_max + buffer, 1)   # Mindestens +1% anzeigen
             
             # Set y-axis limits
             ax2.set_ylim(y_min, y_max)
-            
-            # Adjust y-axis for number of features to ensure separation
-            feat_min, feat_max = df['number_of_features'].min(), df['number_of_features'].max()
-            feat_buffer = (feat_max - feat_min) * 0.15  # 15% buffer
-            ax1.set_ylim(max(0, feat_min - feat_buffer), feat_max + feat_buffer)
             
             # Get unique accuracy values and create custom ticks
             import matplotlib.ticker as ticker
@@ -734,6 +744,10 @@ class Sensitivity(BaseModel, BaseAnalyser):
 
             data_copy_sub = data_copy_multitest[data_copy_multitest[dataset_col] == dataset]
 
+            # Sortiere die Daten, um sicherzustellen, dass "No Correction" zuerst kommt (als Referenz)
+            data_copy_sub = data_copy_sub.sort_values(by='params.export.params.experiment_name', 
+                                                     key=lambda x: x.str.contains('True', na=False))
+            
             multitesting_data = MultiTestingImpactData(
                 multitesting=data_copy_sub['params.export.params.experiment_name'].str.contains('True', na=False),
                 number_of_features=data_copy_sub['N Features Selected'],
