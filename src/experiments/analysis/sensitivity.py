@@ -2,7 +2,10 @@ import pandas as pd
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
+            
 
+from abc import ABC, abstractmethod
 from typing import List, Optional, Dict, Any, Tuple, ClassVar
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -10,20 +13,52 @@ from src.experiments.analysis.base import BaseAnalyser
 from src.util.constants import Directory
 
 # Set black and white style
-sns.set_style('white')
-plt.rcParams['font.size'] = 14
-plt.rcParams['axes.prop_cycle'] = plt.cycler(color=['black', 'black'])
+#sns.set_style('white')
+#plt.rcParams['font.size'] = 14
+#plt.rcParams['axes.prop_cycle'] = plt.cycler(color=['black', 'black'])
 
 
-class MultiTestingImpactData(BaseModel):
+class BaseData(ABC):
+
+    @abstractmethod
+    def to_df(self) -> pd.DataFrame:
+        raise ValueError("This method should be implemented by subclasses")
+
+class MixinData(BaseModel):
     dataset_name: str = Field(description="Name of the dataset")
-    
-    multitesting: List[bool] = Field(description="Boolean indication of whether multitesting was applied or not")
     accuracy: List[float] = Field(description="Classification accuracy for each threshold")
     number_of_features: List[int] = Field(description="Number of features selected for each threshold")
     runtime: List[float] = Field(description="Runtime in seconds for each threshold")
 
+    def get_threshold_name(self) -> str:
+
+        list_of_annotations = list(self.__annotations__.keys())
+        if len(list_of_annotations) != 1:
+            raise ValueError("There should be exactly one annotation defined.")
+        return list_of_annotations[0]
+        
+    def normalize_df(self, data: pd.DataFrame, mask: pd.Series) -> pd.DataFrame:
+
+        df_copy = data.copy(deep=True)
+
+        # Referenzwerte (Mittelwert aller "multitesting == False")
+        ref_features = df_copy.loc[mask, 'number_of_features'].mean()
+        ref_accuracy = df_copy.loc[mask, 'accuracy'].mean()
+        ref_runtime = df_copy.loc[mask, 'runtime'].mean()
+        
+        # Berechne relative Änderungen in Prozent
+        df_copy['rel_number_of_features'] = (df_copy['number_of_features'] / ref_features - 1) * 100
+        df_copy['rel_accuracy'] = (df_copy['accuracy'] / ref_accuracy - 1) * 100
+        df_copy['rel_runtime'] = (df_copy['runtime'] / ref_runtime - 1) * 100
+        return df_copy
+        
+
+
+class MultiTestingImpactData(MixinData, BaseData):
+    multitesting: List[str] = Field(description="Boolean indication of whether multitesting was applied or not")
+
     def to_df(self) -> pd.DataFrame:
+
         """Convert the data to a DataFrame with validation"""
         df = pd.DataFrame({
             'dataset_name': self.dataset_name,
@@ -33,29 +68,23 @@ class MultiTestingImpactData(BaseModel):
             'runtime': self.runtime,
         })
         
-        # Berechne relative Änderungen
-        # Verwende den Mittelwert aller "multitesting == False" als Referenzwert
-        no_correction_mask = df['multitesting'] == False
+        no_correction_mask = df['multitesting'] == str(False)
         
-        # Referenzwerte (Mittelwert aller "multitesting == False")
-        ref_features = df.loc[no_correction_mask, 'number_of_features'].mean()
-        ref_accuracy = df.loc[no_correction_mask, 'accuracy'].mean()
-        ref_runtime = df.loc[no_correction_mask, 'runtime'].mean()
+        df = df.replace({str(True): 'With Correction', str(False): 'No Correction'})
+
+           
+        # Sortiere die Kategorien, damit "No Correction" immer links und "With Correction" immer rechts ist
+        df['multitesting'] = pd.Categorical(
+            df['multitesting'], 
+            categories=["No Correction", "With Correction"], 
+            ordered=True
+        )
         
-        # Berechne relative Änderungen in Prozent
-        df['rel_number_of_features'] = (df['number_of_features'] / ref_features - 1) * 100
-        df['rel_accuracy'] = (df['accuracy'] / ref_accuracy - 1) * 100
-        df['rel_runtime'] = (df['runtime'] / ref_runtime - 1) * 100
-        
-        return df
+        return self.normalize_df(data=df, mask=no_correction_mask)
 
 
-class SupportThresholdImpactData(BaseModel):
-    dataset_name: str = Field(description="Name of the dataset")
+class SupportThresholdImpactData(MixinData, BaseData):
     min_support: List[float] = Field(description="Minimum support threshold values")
-    runtime: List[float] = Field(description="Runtime in seconds for each threshold")
-    accuracy: List[float] = Field(description="Classification accuracy for each threshold")
-    number_of_features: List[int] = Field(description="Number of features selected for each threshold", coerce=True)
     
     # Field validators (V2 style)
     @field_validator('min_support')
@@ -122,28 +151,13 @@ class SupportThresholdImpactData(BaseModel):
         min_support_value = df['min_support'].min()
         min_support_mask = df['min_support'] == min_support_value
         
-        # Calculate reference values (mean of all points with minimum support)
-        ref_runtime = df.loc[min_support_mask, 'runtime'].mean()
-        ref_accuracy = df.loc[min_support_mask, 'accuracy'].mean()
-        ref_features = df.loc[min_support_mask, 'number_of_features'].mean()
-            
-        # Berechne relative Änderungen in Prozent
-        df['rel_number_of_features'] = (df['number_of_features'] / ref_features - 1) * 100
-        
-        # Calculate relative changes in percent
-        df['rel_runtime'] = (df['runtime'] / ref_runtime - 1) * 100
-        df['rel_accuracy'] = (df['accuracy'] / ref_accuracy - 1) * 100
-        
-        return self.validate_df(df)
+        return self.normalize_df(data=df, mask=min_support_mask)
 
 
-class BufferImpactData(BaseModel):
-    dataset_name: str = Field(description="Name of the dataset")
+class BufferImpactData(MixinData, BaseData):
+
     buffer: List[float] = Field(description="Criterion buffer values")
-    accuracy: List[float] = Field(description="Classification accuracy for each threshold")
-    number_of_features: List[int] = Field(description="Number of features selected for each threshold")
-    runtime: List[float] = Field(description="Runtime in seconds for each threshold")
-
+    
     def to_df(self) -> pd.DataFrame:
         """Convert the data to a DataFrame with validation"""
         df = pd.DataFrame({
@@ -159,26 +173,12 @@ class BufferImpactData(BaseModel):
         min_buffer_value = df['buffer'].min()
         min_buffer_mask = df['buffer'] == min_buffer_value
         
-        # Calculate reference values (mean of all points with minimum buffer)
-        ref_features = df.loc[min_buffer_mask, 'number_of_features'].mean()
-        ref_accuracy = df.loc[min_buffer_mask, 'accuracy'].mean()
-        ref_runtime = df.loc[min_buffer_mask, 'runtime'].mean()
-        
-        # Calculate relative changes in percent
-        df['rel_number_of_features'] = (df['number_of_features'] / ref_features - 1) * 100
-        df['rel_runtime'] = (df['runtime'] / ref_runtime - 1) * 100
-        df['rel_accuracy'] = (df['accuracy'] / ref_accuracy - 1) * 100
-        
-        return df
+        return self.normalize_df(data=df, mask=min_buffer_mask)
 
 
-class BootstrapRoundsData(BaseModel):
-    dataset_name: str = Field(description="Name of the dataset")
+class BootstrapRoundsData(MixinData, BaseData):
     bootstrap_rounds: List[int] = Field(description="Number of bootstrap rounds")
-    accuracy: List[float] = Field(description="Classification accuracy for each number of rounds")
-    number_of_features: List[int] = Field(description="Number of features selected for each number of rounds")
-    runtime: List[float] = Field(description="Runtime in seconds for each threshold")
-
+    
     def to_df(self) -> pd.DataFrame:
         """Convert the data to a DataFrame with validation"""
         df = pd.DataFrame({
@@ -194,17 +194,7 @@ class BootstrapRoundsData(BaseModel):
         min_rounds_value = df['bootstrap_rounds'].min()
         min_rounds_mask = df['bootstrap_rounds'] == min_rounds_value
         
-        # Calculate reference values (mean of all points with minimum bootstrap rounds)
-        ref_features = df.loc[min_rounds_mask, 'number_of_features'].mean()
-        ref_accuracy = df.loc[min_rounds_mask, 'accuracy'].mean()
-        ref_runtime = df.loc[min_rounds_mask, 'runtime'].mean()
-        
-        # Calculate relative changes in percent
-        df['rel_number_of_features'] = (df['number_of_features'] / ref_features - 1) * 100
-        df['rel_runtime'] = (df['runtime'] / ref_runtime - 1) * 100
-        df['rel_accuracy'] = (df['accuracy'] / ref_accuracy - 1) * 100
-        
-        return df
+        return self.normalize_df(data=df, mask=min_rounds_mask)
         
 
 class MultiTestingImpactPlot(BaseModel):
@@ -244,7 +234,7 @@ class MultiTestingImpactPlot(BaseModel):
         dfs = self.to_df()
         
         # Set seaborn style
-        sns.set_style(style)
+        #sns.set_style(style)
         
         # Create figure and axes
         fig, axes = plt.subplots(1, len(self.data_list), figsize=figsize)
@@ -283,6 +273,7 @@ class MultiTestingImpactPlot(BaseModel):
             # Adjust y-axis to show relative changes better
             y_min = min(df['rel_number_of_features'].min() * 1.1, -5)  # Mindestens -5% anzeigen
             y_max = max(df['rel_number_of_features'].max() * 1.1, 5)   # Mindestens +5% anzeigen
+
             ax1.set_ylim(y_min, y_max)
             
             # Add accuracy line to the same axis (similar to BufferImpactPlot)
@@ -358,7 +349,7 @@ class SupportThresholdImpactPlot(BaseModel):
         dfs = self.to_df()
         
         # Set seaborn style
-        sns.set_style(style)
+        #sns.set_style(style)
         
         # Create figure and axes
         fig, axes = plt.subplots(1, len(self.data_list), figsize=figsize)
@@ -466,7 +457,7 @@ class BufferImpactPlot(BaseModel):
         dfs = self.to_df()
         
         # Set seaborn style
-        sns.set_style(style)
+        #sns.set_style(style)
         
         # Create figure and axes
         fig, axes = plt.subplots(1, len(self.data_list), figsize=figsize)
@@ -513,10 +504,6 @@ class BufferImpactPlot(BaseModel):
             buffer = 2  # 2% buffer
             y_min = min(y_min - buffer, -1)  # At least -1% display
             y_max = max(y_max + buffer, 1)   # At least +1% display
-            
-            
-            # Get unique accuracy values and create custom ticks
-            import matplotlib.ticker as ticker
             
             # Title
             ax1.set_title(title)
@@ -587,7 +574,7 @@ class BootstrapRoundsPlot(BaseModel):
         dfs = self.to_df()
         
         # Set seaborn style
-        sns.set_style(style)
+        #sns.set_style(style)
         
         # Create figure and axes
         fig, axes = plt.subplots(1, len(self.data_list), figsize=figsize)
@@ -701,236 +688,107 @@ class AllInOnePlot(BaseModel):
         
         if n_cols == 0:
             raise ValueError("No datasets provided")
-        
-        # Generate default titles if not provided
-        if titles is None:
-            titles = [f"Dataset {i+1}" for i in range(n_cols)]
-        elif len(titles) < n_cols:
-            titles.extend([f"Dataset {i+1}" for i in range(len(titles), n_cols)])
-        
-        # Set seaborn style
-        sns.set_style(style)
-        
-        # Create figure with 4 rows (one for each plot type) and n_cols columns
-        fig, axes = plt.subplots(4, n_cols, figsize=figsize)
-        
-        # Adjust spacing between subplots
-        plt.subplots_adjust(hspace=0.4, wspace=0.3)
-        
-        # Row 0: Support Threshold Impact Plot
-        if len(self.support_data_list) > 0:
-            support_dfs = [data.to_df() for data in self.support_data_list]
-            
-            for i, (df, ax) in enumerate(zip(support_dfs, axes[0, :])):
-                if i >= len(support_dfs):
-                    # Hide unused axes
-                    ax.axis('off')
-                    continue
-                    
-                # First axis (runtime - relative change)
-                ax1 = ax
-                ax1.set_xlabel("Minimum Support Threshold")
-                ax1.set_ylabel("Change (%)", color=color_runtime)
-                sns.lineplot(x="min_support", y="rel_runtime", data=df, marker="o", 
-                             color=color_runtime, ax=ax1, label="Runtime", 
-                             linestyle="-", linewidth=2)
-                
-                # Set x-ticks to 0.05 intervals
-                ax1.set_xticks(np.arange(0, 1.05, 0.05))
-                ax1.set_xticklabels([f"{x:.2f}" for x in np.arange(0, 1.05, 0.05)], rotation=45)
-                
-                # Horizontal line at 0% (no change)
-                ax1.axhline(y=0, color='gray', linestyle='-', alpha=0.3)
-                
-                # Add accuracy line to the same axis
-                sns.lineplot(x="min_support", y="rel_accuracy", data=df, marker="s", 
-                             color=color_accuracy, ax=ax1, label="AUC", 
-                             linestyle="--", linewidth=2)
 
-                # add number of features to the same axis
-                sns.lineplot(x="min_support", y="rel_number_of_features", data=df, marker="o", 
-                             color=color_num_features, ax=ax1, label="Number of Sequences", 
-                             linestyle="-.", linewidth=2)
+        data_lists = [self.support_data_list, self.multitesting_data_list, self.buffer_data_list, self.bootstrap_data_list]
+        df_to_plot = []
+        for data_list in data_lists:
+            assert isinstance(data_list, list), "All elements in data_lists must be lists"
+            for el in data_list:
+                assert isinstance(el, BaseData), "All elements in data_lists must be instances of BaseData"
+                assert isinstance(el, MixinData), "All elements in data_lists must be instances of MixinData"
                 
-                # Title
-                ax1.set_title(titles[i])
-                
-                # Remove default legends created by seaborn
-                if ax1.get_legend():
-                    ax1.get_legend().remove()
-                
-                # Add grid for better readability
-                ax1.grid(True, alpha=0.3)
+                df = el.to_df()
+                df.rename(columns={el.get_threshold_name(): 'x_axis'}, inplace=True)
+                df['scenario'] = el.__class__.__name__
+                df_melt = df.melt(id_vars=['dataset_name','scenario', 'x_axis'], value_vars=['rel_number_of_features', 'rel_accuracy', 'rel_runtime'])
+                df_to_plot.append(df_melt)
+
             
-            # Add row title
-            fig.text(0.02, 0.875, "Support Threshold", fontsize=14, fontweight='bold')
+        df_to_plot = pd.concat(df_to_plot, ignore_index=True)
+
+        grey_palette = sns.color_palette(['grey'] * df_to_plot['variable'].nunique())  # Adjust the number of grey tones based on the unique values in your hue column
+        df_to_plot['dataset_name'] = df_to_plot['dataset_name'].apply(lambda x: x.split('.')[-1])
         
-        # Row 1: Multitesting Impact Plot
-        if len(self.multitesting_data_list) > 0:
-            multitesting_dfs = [data.to_df() for data in self.multitesting_data_list]
+        df_to_plot.replace({
+
+            'rel_number_of_features': 'Number of Features',
+            'rel_accuracy': 'AUC',
+            'rel_runtime': 'Runtime',
+            'ChurnDataloader': 'Churn',
+            'MalwareDataloader': 'Malware',
+            'DataLoader': 'Synthetic',
+            'SupportThresholdImpactData': 'Min Support',
+            'MultiTestingImpactData': 'Multitesting',
+            'BufferImpactData': 'Buffer',
+            'BootstrapRoundsData': 'Bootstrap Rounds',
             
-            for i, (df, ax) in enumerate(zip(multitesting_dfs, axes[1, :])):
-                if i >= len(multitesting_dfs):
-                    # Hide unused axes
-                    ax.axis('off')
-                    continue
-                    
-                # First axis (number of features - relative change)
-                ax1 = ax
-                ax1.set_xlabel("Multitesting Correction")
-                ax1.set_ylabel("Change (%)", color=color_runtime)
-                
-                # Convert boolean to categorical labels and ensure consistent order
-                df['multitesting_label'] = df['multitesting'].apply(lambda x: "With Correction" if x else "No Correction")
-                
-                # Sort categories to ensure "No Correction" is always left and "With Correction" is always right
-                df['multitesting_label'] = pd.Categorical(df['multitesting_label'], 
-                                                         categories=["No Correction", "With Correction"], 
-                                                         ordered=True)
-                
-                # Use lineplot with relative values
-                sns.lineplot(x="multitesting_label", y="rel_number_of_features", data=df, marker="o", 
-                             color=color_runtime, ax=ax1, label="Number of Features", 
-                             linestyle="-", linewidth=2)
-                
-                # Horizontal line at 0% (no change)
-                ax1.axhline(y=0, color='gray', linestyle='-', alpha=0.3)
-                
-                # Add accuracy line to the same axis
-                sns.lineplot(x="multitesting_label", y="rel_accuracy", data=df, marker="s", 
-                             color=color_accuracy, ax=ax1, label="AUC", 
-                             linestyle="--", linewidth=2)
-                
-                # Title
-                ax1.set_title(titles[i])
-                
-                # Remove default legends created by seaborn
-                if ax1.get_legend():
-                    ax1.get_legend().remove()
-                
-                # Add grid for better readability
-                ax1.grid(True, alpha=0.3)
-            
-            # Add row title
-            fig.text(0.02, 0.625, "Multitesting", fontsize=14, fontweight='bold')
+                       
+        }, inplace=True)
+
+        # Define markers for different categories in your hue column
+        markers = {
+            'Number of Features': 'o', 
+            'AUC': 'D',
+            'Runtime': 's',
+        }
+
+        sns.set(font_scale=1.5)
         
-        # Row 2: Buffer Impact Plot
-        if len(self.buffer_data_list) > 0:
-            buffer_dfs = [data.to_df() for data in self.buffer_data_list]
-            
-            for i, (df, ax) in enumerate(zip(buffer_dfs, axes[2, :])):
-                if i >= len(buffer_dfs):
-                    # Hide unused axes
-                    ax.axis('off')
-                    continue
-                    
-                # First axis (number of features - relative change)
-                ax1 = ax
-                ax1.set_xlabel("Buffer Threshold")
-                ax1.set_ylabel("Change (%)", color=color_runtime)
-                sns.lineplot(x="buffer", y="rel_number_of_features", data=df, marker="o", 
-                             color=color_runtime, ax=ax1, label="Number of Features", 
-                             linestyle="-", linewidth=2)
-                
-                # Set x-ticks to 0.05 intervals
-                ax1.set_xticks(np.arange(0, 1.05, 0.05))
-                ax1.set_xticklabels([f"{x:.2f}" for x in np.arange(0, 1.05, 0.05)], rotation=45)
-                
-                # Horizontal line at 0% (no change)
-                ax1.axhline(y=0, color='gray', linestyle='-', alpha=0.3)
-                
-                # Add accuracy line to the same axis
-                sns.lineplot(x="buffer", y="rel_accuracy", data=df, marker="s", 
-                             color=color_accuracy, ax=ax1, label="AUC", 
-                             linestyle="--", linewidth=2)
-                
-                # Title
-                ax1.set_title(titles[i])
-                
-                # Remove default legends created by seaborn
-                if ax1.get_legend():
-                    ax1.get_legend().remove()
-                
-                # Add grid for better readability
-                ax1.grid(True, alpha=0.3)
-            
-            # Add row title
-            fig.text(0.02, 0.375, "Buffer Threshold", fontsize=14, fontweight='bold')
+        g = sns.FacetGrid(df_to_plot, col='dataset_name', row='scenario', sharey=False, height=4, sharex=False, despine=False)
+
+        g.map_dataframe(
+            sns.lineplot, 
+            x='x_axis', 
+            y='value',
+            hue='variable',
+            palette=grey_palette,
+            style='variable',
+            markers=markers,
+            errorbar=None,
+            dashes=False
+        )
+
         
-        # Row 3: Bootstrap Rounds Plot
-        if len(self.bootstrap_data_list) > 0:
-            bootstrap_dfs = [data.to_df() for data in self.bootstrap_data_list]
-            
-            for i, (df, ax) in enumerate(zip(bootstrap_dfs, axes[3, :])):
-                if i >= len(bootstrap_dfs):
-                    # Hide unused axes
-                    ax.axis('off')
-                    continue
-                    
-                # First axis (number of features - relative change)
-                ax1 = ax
-                ax1.set_xlabel("Bootstrap Rounds")
-                ax1.set_ylabel("Change (%)", color=color_runtime)
-                sns.lineplot(x="bootstrap_rounds", y="rel_number_of_features", data=df, marker="o", 
-                             color=color_runtime, ax=ax1, label="Number of Features", 
-                             linestyle="-", linewidth=2)
-                
-                # Set x-ticks to specific values: 1, 5, 10, 15, 20
-                ax1.set_xticks([1, 5, 10, 15, 20])
-                
-                # Horizontal line at 0% (no change)
-                ax1.axhline(y=0, color='gray', linestyle='-', alpha=0.3)
-                
-                # Add accuracy line to the same axis
-                sns.lineplot(x="bootstrap_rounds", y="rel_accuracy", data=df, marker="s", 
-                             color=color_accuracy, ax=ax1, label="AUC", 
-                             linestyle="--", linewidth=2)
-                
-                # Title
-                ax1.set_title(titles[i])
-                
-                # Remove default legends created by seaborn
-                if ax1.get_legend():
-                    ax1.get_legend().remove()
-                
-                # Add grid for better readability
-                ax1.grid(True, alpha=0.3)
-            
-            # Add row title
-            fig.text(0.02, 0.125, "Bootstrap Rounds", fontsize=14, fontweight='bold')
-        
-        # Create a common legend for all subplots
-        # Get handles and labels from the first non-empty plot
-        legend_handles = []
-        legend_labels = []
-        
-        if len(self.support_data_list) > 0:
-            lines, labels = axes[0, 0].get_legend_handles_labels()
-            legend_handles = lines
-            legend_labels = labels
-        elif len(self.multitesting_data_list) > 0:
-            lines, labels = axes[1, 0].get_legend_handles_labels()
-            legend_handles = lines
-            legend_labels = labels
-        elif len(self.buffer_data_list) > 0:
-            lines, labels = axes[2, 0].get_legend_handles_labels()
-            legend_handles = lines
-            legend_labels = labels
-        elif len(self.bootstrap_data_list) > 0:
-            lines, labels = axes[3, 0].get_legend_handles_labels()
-            legend_handles = lines
-            legend_labels = labels
-        
-        fig.legend(legend_handles, legend_labels, loc='upper center', 
-                   ncol=len(legend_labels), bbox_to_anchor=(0.5, 0.98),
-                   frameon=True, facecolor='white', edgecolor='black',
-                   handlelength=3)
-        
-        # Tight layout with space for the legend
-        fig.tight_layout(rect=[0, 0, 1, 0.95])
+        # Here we're using only '{col_name}' to display just the value of the column variable
+        g.set_titles("{row_name} | {col_name}")
+
+        handles, labels = g.axes.flat[0].get_legend_handles_labels()
+
+        # Remove any duplicate labels/handles
+        unique_labels = []
+        unique_handles = []
+        for handle, label in zip(handles, labels):
+
+            if label not in unique_labels:
+                unique_labels.append(label)
+                unique_handles.append(handle)
+
+        for ax_row, scenario in zip(g.axes, df_to_plot['scenario'].unique()):                                                                  
+            for ax in ax_row:                                                                                                                  
+                if 'Min Support' in scenario:                                                                                                  
+                    pass
+                    #ax.set_xticks(np.arange(0, 0.25, 0.1))                                                                                    
+                    #ax.set_xticklabels([f"{x:.2f}" for x in np.arange(0, 0.25, 0.05)])                                            
+                elif 'Multitesting' in scenario:                                                                                               
+                    # Für Multitesting gibt es nur zwei Werte                                                                                  
+                    pass  # Hier brauchen wir keine Anpassung                                                                                  
+                elif 'Buffer' in scenario:                                                                                                     
+                    #ax.set_xticks(np.arange(0, 0.25, 0.05))                                                                                    
+                    #ax.set_xticklabels([f"{x:.2f}" for x in np.arange(0, 0.25, 0.05)]) 
+                    pass                                           
+                elif 'Bootstrap Rounds' in scenario:                                                                                           
+                    ax.set_xticks([10, 15, 20]) 
+
+        # Draw the unique legend
+        g.fig.legend(handles=unique_handles, loc='upper center', labels=unique_labels, bbox_to_anchor=(0.5, 1.05), ncol=len(unique_labels))
+
+        # Optionally, adjust the figure to make room for the legend if needed
+        g.fig.subplots_adjust(top=0.9)
+
+        plt.tight_layout()        
         
         # Save if path is provided
-        plt.savefig(Directory.FIGURES_DIR / save_path, dpi=300, bbox_inches="tight")
+        plt.savefig(Directory.FIGURES_DIR / save_path, dpi=300, bbox_inches="tight", pad_inches=0.25)
 
 
 class Sensitivity(BaseModel, BaseAnalyser):
@@ -1018,7 +876,7 @@ class Sensitivity(BaseModel, BaseAnalyser):
             
             multitesting_data = MultiTestingImpactData(
                 dataset_name=dataset,
-                multitesting=data_copy_sub['params.export.params.experiment_name'].str.contains('True', na=False),
+                multitesting=data_copy_sub['params.export.params.experiment_name'].str.contains('True', na=False).astype(str),
                 number_of_features=data_copy_sub['N Features Selected'],
                 accuracy=data_copy_sub[metric_col_auc_v],
                 runtime=data_copy_sub[metric_duration],
