@@ -779,6 +779,15 @@ class AllInOnePlot(BaseModel):
                 elif 'Bootstrap Rounds' in scenario:                                                                                           
                     ax.set_xticks([10, 15, 20]) 
 
+        # Füge schwarze Rahmen um alle Plots hinzu
+        for ax_row in g.axes:
+            for ax in ax_row:
+                # Füge einen schwarzen Rahmen um jeden Plot hinzu
+                for spine in ax.spines.values():
+                    spine.set_visible(True)
+                    spine.set_color('black')
+                    spine.set_linewidth(1)
+
         # Draw the unique legend
         g.fig.legend(handles=unique_handles, loc='upper center', labels=unique_labels, bbox_to_anchor=(0.5, 1.05), ncol=len(unique_labels))
 
