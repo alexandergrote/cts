@@ -627,46 +627,18 @@ class BootstrapRoundsPlot(BaseModel):
             y_max = max(df['rel_number_of_features'].max() * 1.1, 5)   # At least +5% display
             ax1.set_ylim(y_min, y_max)
             
-            # Second axis (accuracy - relative change)
-            ax2 = ax1.twinx()
-            ax2.set_ylabel("Change in AUC (%)", color=color_accuracy)
+            # Add accuracy line to the same axis (similar to BufferImpactPlot)
             sns.lineplot(x="bootstrap_rounds", y="rel_accuracy", data=df, marker="s", 
-                         color=color_accuracy, ax=ax2, label="AUC", 
+                         color=color_accuracy, ax=ax1, label="AUC", 
                          linestyle="--", linewidth=2)
-            ax2.tick_params(axis="y", labelcolor=color_accuracy)
-            
-            # Format y-ticks to show 1 decimal place
-            ax2.yaxis.set_major_formatter(plt.FormatStrFormatter('%.1f'))
-            
-            # Horizontal line at 0% (no change)
-            ax2.axhline(y=0, color='gray', linestyle='-', alpha=0.3)
-            
-            # Get the range of relative accuracy values
-            y_min, y_max = df['rel_accuracy'].min(), df['rel_accuracy'].max()
-            # Add a larger buffer to ensure all points are visible and separated
-            buffer = 2  # 2% buffer
-            y_min = min(y_min - buffer, -1)  # At least -1% display
-            y_max = max(y_max + buffer, 1)   # At least +1% display
-            
-            # Set y-axis limits
-            ax2.set_ylim(y_min, y_max)
-            
-            # Get unique accuracy values and create custom ticks
-            import matplotlib.ticker as ticker
-            
-            # Use fewer ticks to avoid duplicates
-            ax2.yaxis.set_major_locator(ticker.LinearLocator(4))
             
             # Title
             ax1.set_title(title)
             
             # Create custom legend
-
             # Remove default legends created by seaborn
             if ax1.get_legend():
                 ax1.get_legend().remove()
-            if ax2.get_legend():
-                ax2.get_legend().remove()
             
             # Add grid for better readability
             ax1.grid(True, alpha=0.3)
@@ -674,9 +646,8 @@ class BootstrapRoundsPlot(BaseModel):
             # Store handles and labels for the common legend
             if i == 0:  # Only need to get these once
                 lines1, labels1 = ax1.get_legend_handles_labels()
-                lines2, labels2 = ax2.get_legend_handles_labels()
-                legend_handles = lines1 + lines2
-                legend_labels = labels1 + labels2
+                legend_handles = lines1
+                legend_labels = labels1
         
         # Create a common legend for all subplots
         fig.legend(legend_handles, legend_labels, loc='upper center', 
