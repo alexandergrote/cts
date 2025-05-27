@@ -102,7 +102,7 @@ class MultiTestingImpactPlot(BaseModel):
             # First axis (number of features - relative change)
             ax1 = ax
             ax1.set_xlabel("Multitesting Correction")
-            ax1.set_ylabel("Relative Change in Number of Features (%)", color=color_runtime)
+            ax1.set_ylabel("Change in Number of Features (%)", color=color_runtime)
             
             # Convert boolean to categorical labels and ensure consistent order
             df['multitesting_label'] = df['multitesting'].apply(lambda x: "With Correction" if x else "No Correction")
@@ -128,7 +128,7 @@ class MultiTestingImpactPlot(BaseModel):
             
             # Second axis (accuracy - relative change)
             ax2 = ax1.twinx()
-            ax2.set_ylabel("Relative Change in AUC (%)", color=color_accuracy)
+            ax2.set_ylabel("Change in AUC (%)", color=color_accuracy)
             
             # Add lines connecting the points for better visualization
             sns.lineplot(x="multitesting_label", y="rel_accuracy", data=df, marker="s", 
