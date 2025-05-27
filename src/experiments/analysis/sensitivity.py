@@ -108,15 +108,10 @@ class MultiTestingImpactPlot(BaseModel):
             ax2 = ax1.twinx()
             ax2.set_ylabel("AUC", color=color_accuracy)
             
-            # Add lines connecting the points with error bars for better visualization
-            # Berechne Standardfehler (kann durch einen konstanten Wert ersetzt werden, wenn keine echten Daten verfügbar sind)
-            error = 0.02  # Konstanter Fehler für die Demonstration
-            
-            # Lineplot mit Fehlerbalken
+            # Add lines connecting the points for better visualization
             sns.lineplot(x="multitesting_label", y="accuracy", data=df, marker="s", 
                          color=color_accuracy, ax=ax2, label="AUC", 
-                         linestyle="--", linewidth=2,
-                         err_style="bars", errorbar=("ci", 95), err_kws={'capsize': 5, 'capthick': 1.5, 'ecolor': color_accuracy})
+                         linestyle="--", linewidth=2)
             ax2.tick_params(axis="y", labelcolor=color_accuracy)
             
             # Format y-ticks to show 2 decimal places and only unique values
