@@ -102,7 +102,7 @@ class MultiTestingImpactPlot(BaseModel):
             # First axis (number of features - relative change)
             ax1 = ax
             ax1.set_xlabel("Multitesting Correction")
-            ax1.set_ylabel("Relative Änderung der Features (%)", color=color_runtime)
+            ax1.set_ylabel("Relative Change in Number of Features (%)", color=color_runtime)
             
             # Convert boolean to categorical labels and ensure consistent order
             df['multitesting_label'] = df['multitesting'].apply(lambda x: "With Correction" if x else "No Correction")
@@ -114,7 +114,7 @@ class MultiTestingImpactPlot(BaseModel):
             
             # Use lineplot with relative values
             sns.lineplot(x="multitesting_label", y="rel_number_of_features", data=df, marker="o", 
-                         color=color_runtime, ax=ax1, label="Relative Änderung der Features", 
+                         color=color_runtime, ax=ax1, label="Number of Features", 
                          linestyle="-", linewidth=2)
             ax1.tick_params(axis="y", labelcolor=color_runtime)
             
@@ -128,11 +128,11 @@ class MultiTestingImpactPlot(BaseModel):
             
             # Second axis (accuracy - relative change)
             ax2 = ax1.twinx()
-            ax2.set_ylabel("Relative Änderung der AUC (%)", color=color_accuracy)
+            ax2.set_ylabel("Relative Change in AUC (%)", color=color_accuracy)
             
             # Add lines connecting the points for better visualization
             sns.lineplot(x="multitesting_label", y="rel_accuracy", data=df, marker="s", 
-                         color=color_accuracy, ax=ax2, label="Relative Änderung der AUC", 
+                         color=color_accuracy, ax=ax2, label="AUC", 
                          linestyle="--", linewidth=2)
             ax2.tick_params(axis="y", labelcolor=color_accuracy)
             
