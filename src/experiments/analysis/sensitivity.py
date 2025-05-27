@@ -73,10 +73,10 @@ class MultiTestingImpactData(MixinData, BaseData):
         df = df.replace({str(True): 'With Correction', str(False): 'No Correction'})
 
            
-        # Sortiere die Kategorien, damit "No Correction" immer links und "With Correction" immer rechts ist
+        # Sortiere die Kategorien, damit "With Correction" immer links und "No Correction" immer rechts ist
         df['multitesting'] = pd.Categorical(
             df['multitesting'], 
-            categories=["No Correction", "With Correction"], 
+            categories=["With Correction", "No Correction"], 
             ordered=True
         )
         
@@ -701,14 +701,9 @@ class AllInOnePlot(BaseModel):
                 df.rename(columns={el.get_threshold_name(): 'x_axis'}, inplace=True)
                 df['scenario'] = el.__class__.__name__
             
-                # Wenn es sich um Multitesting-Daten handelt, kehre die Reihenfolge um
+                # Wenn es sich um Multitesting-Daten handelt, behalte die in to_df() festgelegte Reihenfolge bei
                 if el.__class__.__name__ == 'MultiTestingImpactData':
-                    # Erstelle eine kategorische Variable mit umgekehrter Reihenfolge
-                    df['x_axis'] = pd.Categorical(
-                        df['x_axis'],
-                        categories=["With Correction", "No Correction"],  # Umgekehrte Reihenfolge
-                        ordered=True
-                    )
+                    pass
             
                 df_melt = df.melt(id_vars=['dataset_name','scenario', 'x_axis'], value_vars=['rel_number_of_features', 'rel_accuracy', 'rel_runtime'])
                 df_to_plot.append(df_melt)
