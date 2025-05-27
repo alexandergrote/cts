@@ -47,6 +47,142 @@ class MultiTestingImpactData(BaseModel):
         
         return df
 
+class SupportThresholdImpactData(BaseModel):
+    min_support: List[float] = Field(description="Minimum support threshold values")
+    runtime: List[float] = Field(description="Runtime in seconds for each threshold")
+    accuracy: List[float] = Field(description="Classification accuracy for each threshold")
+    
+    # Field validators (V2 style)
+    @field_validator('min_support')
+    @classmethod
+    def validate_min_support(cls, v: List[float]) -> List[float]:
+        if any(x < 0 or x > 1 for x in v):
+            raise ValueError("All minimum support values must be between 0 and 1")
+        return v
+    
+    @field_validator('runtime')
+    @classmethod
+    def validate_runtime(cls, v: List[float]) -> List[float]:
+        if any(x <= 0 for x in v):
+            raise ValueError("All runtime values must be positive")
+        return v
+    
+    @field_validator('accuracy')
+    @classmethod
+    def validate_accuracy(cls, v: List[float]) -> List[float]:
+        if any(x < 0 or x > 1 for x in v):
+            raise ValueError("All accuracy values must be between 0 and 1")
+        return v
+    
+    # Model validator to check that all lists have the same length
+    @model_validator(mode='after')
+    def validate_lengths(self) -> 'SupportThresholdImpactData':
+        lists = [self.min_support, self.runtime, self.accuracy]
+        if len(set(len(lst) for lst in lists)) > 1:
+            raise ValueError("All lists must have the same length")
+        return self
+    
+    def validate_df(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Manual validation for DataFrame"""
+        # Check column existence
+        required_cols = ['min_support', 'runtime', 'accuracy']
+        for col in required_cols:
+            if col not in df.columns:
+                raise ValueError(f"Missing required column: {col}")
+        
+        # Value range checks
+        if (df['min_support'] < 0).any() or (df['min_support'] > 1).any():
+            raise ValueError("All minimum support values must be between 0 and 1")
+        
+        if (df['runtime'] <= 0).any():
+            raise ValueError("All runtime values must be positive")
+        
+        if (df['accuracy'] < 0).any() or (df['accuracy'] > 1).any():
+            raise ValueError("All accuracy values must be between 0 and 1")
+        
+        return df
+    
+    def to_df(self) -> pd.DataFrame:
+        """Convert the data to a DataFrame with validation"""
+        df = pd.DataFrame({
+            'min_support': self.min_support,
+            'runtime': self.runtime,
+            'accuracy': self.accuracy
+        })
+        
+        # Calculate relative changes
+        # Use the mean of all data points with the smallest min_support as reference
+        min_support_value = df['min_support'].min()
+        min_support_mask = df['min_support'] == min_support_value
+        
+        # Calculate reference values (mean of all points with minimum support)
+        ref_runtime = df.loc[min_support_mask, 'runtime'].mean()
+        ref_accuracy = df.loc[min_support_mask, 'accuracy'].mean()
+        
+        # Calculate relative changes in percent
+        df['rel_runtime'] = (df['runtime'] / ref_runtime - 1) * 100
+        df['rel_accuracy'] = (df['accuracy'] / ref_accuracy - 1) * 100
+        
+        return self.validate_df(df)
+
+
+class BufferImpactData(BaseModel):
+    buffer: List[float] = Field(description="Criterion buffer values")
+    accuracy: List[float] = Field(description="Classification accuracy for each threshold")
+    number_of_features: List[int] = Field(description="Number of features selected for each threshold")
+
+    def to_df(self) -> pd.DataFrame:
+        """Convert the data to a DataFrame with validation"""
+        df = pd.DataFrame({
+            'buffer': self.buffer,
+            'number_of_features': self.number_of_features,
+            'accuracy': self.accuracy
+        })
+        
+        # Calculate relative changes
+        # Use the mean of all data points with the smallest buffer value as reference
+        min_buffer_value = df['buffer'].min()
+        min_buffer_mask = df['buffer'] == min_buffer_value
+        
+        # Calculate reference values (mean of all points with minimum buffer)
+        ref_features = df.loc[min_buffer_mask, 'number_of_features'].mean()
+        ref_accuracy = df.loc[min_buffer_mask, 'accuracy'].mean()
+        
+        # Calculate relative changes in percent
+        df['rel_number_of_features'] = (df['number_of_features'] / ref_features - 1) * 100
+        df['rel_accuracy'] = (df['accuracy'] / ref_accuracy - 1) * 100
+        
+        return df
+
+
+class BootstrapRoundsData(BaseModel):
+    bootstrap_rounds: List[int] = Field(description="Number of bootstrap rounds")
+    accuracy: List[float] = Field(description="Classification accuracy for each number of rounds")
+    number_of_features: List[int] = Field(description="Number of features selected for each number of rounds")
+
+    def to_df(self) -> pd.DataFrame:
+        """Convert the data to a DataFrame with validation"""
+        df = pd.DataFrame({
+            'bootstrap_rounds': self.bootstrap_rounds,
+            'number_of_features': self.number_of_features,
+            'accuracy': self.accuracy
+        })
+        
+        # Calculate relative changes
+        # Use the mean of all data points with the smallest bootstrap_rounds as reference
+        min_rounds_value = df['bootstrap_rounds'].min()
+        min_rounds_mask = df['bootstrap_rounds'] == min_rounds_value
+        
+        # Calculate reference values (mean of all points with minimum bootstrap rounds)
+        ref_features = df.loc[min_rounds_mask, 'number_of_features'].mean()
+        ref_accuracy = df.loc[min_rounds_mask, 'accuracy'].mean()
+        
+        # Calculate relative changes in percent
+        df['rel_number_of_features'] = (df['number_of_features'] / ref_features - 1) * 100
+        df['rel_accuracy'] = (df['accuracy'] / ref_accuracy - 1) * 100
+        
+        return df
+        
 
 class MultiTestingImpactPlot(BaseModel):
 
@@ -161,84 +297,6 @@ class MultiTestingImpactPlot(BaseModel):
         plt.savefig(Directory.FIGURES_DIR / save_path, dpi=300, bbox_inches="tight")
         
 
-class SupportThresholdImpactData(BaseModel):
-    min_support: List[float] = Field(description="Minimum support threshold values")
-    runtime: List[float] = Field(description="Runtime in seconds for each threshold")
-    accuracy: List[float] = Field(description="Classification accuracy for each threshold")
-    
-    # Field validators (V2 style)
-    @field_validator('min_support')
-    @classmethod
-    def validate_min_support(cls, v: List[float]) -> List[float]:
-        if any(x < 0 or x > 1 for x in v):
-            raise ValueError("All minimum support values must be between 0 and 1")
-        return v
-    
-    @field_validator('runtime')
-    @classmethod
-    def validate_runtime(cls, v: List[float]) -> List[float]:
-        if any(x <= 0 for x in v):
-            raise ValueError("All runtime values must be positive")
-        return v
-    
-    @field_validator('accuracy')
-    @classmethod
-    def validate_accuracy(cls, v: List[float]) -> List[float]:
-        if any(x < 0 or x > 1 for x in v):
-            raise ValueError("All accuracy values must be between 0 and 1")
-        return v
-    
-    # Model validator to check that all lists have the same length
-    @model_validator(mode='after')
-    def validate_lengths(self) -> 'SupportThresholdImpactData':
-        lists = [self.min_support, self.runtime, self.accuracy]
-        if len(set(len(lst) for lst in lists)) > 1:
-            raise ValueError("All lists must have the same length")
-        return self
-    
-    def validate_df(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Manual validation for DataFrame"""
-        # Check column existence
-        required_cols = ['min_support', 'runtime', 'accuracy']
-        for col in required_cols:
-            if col not in df.columns:
-                raise ValueError(f"Missing required column: {col}")
-        
-        # Value range checks
-        if (df['min_support'] < 0).any() or (df['min_support'] > 1).any():
-            raise ValueError("All minimum support values must be between 0 and 1")
-        
-        if (df['runtime'] <= 0).any():
-            raise ValueError("All runtime values must be positive")
-        
-        if (df['accuracy'] < 0).any() or (df['accuracy'] > 1).any():
-            raise ValueError("All accuracy values must be between 0 and 1")
-        
-        return df
-    
-    def to_df(self) -> pd.DataFrame:
-        """Convert the data to a DataFrame with validation"""
-        df = pd.DataFrame({
-            'min_support': self.min_support,
-            'runtime': self.runtime,
-            'accuracy': self.accuracy
-        })
-        
-        # Calculate relative changes
-        # Use the mean of all data points with the smallest min_support as reference
-        min_support_value = df['min_support'].min()
-        min_support_mask = df['min_support'] == min_support_value
-        
-        # Calculate reference values (mean of all points with minimum support)
-        ref_runtime = df.loc[min_support_mask, 'runtime'].mean()
-        ref_accuracy = df.loc[min_support_mask, 'accuracy'].mean()
-        
-        # Calculate relative changes in percent
-        df['rel_runtime'] = (df['runtime'] / ref_runtime - 1) * 100
-        df['rel_accuracy'] = (df['accuracy'] / ref_accuracy - 1) * 100
-        
-        return self.validate_df(df)
-
 
 class SupportThresholdImpactPlot(BaseModel):
 
@@ -346,64 +404,6 @@ class SupportThresholdImpactPlot(BaseModel):
         # Save if path is provided
         plt.savefig(Directory.FIGURES_DIR / save_path, dpi=300, bbox_inches="tight")
 
-
-class BufferImpactData(BaseModel):
-    buffer: List[float] = Field(description="Criterion buffer values")
-    accuracy: List[float] = Field(description="Classification accuracy for each threshold")
-    number_of_features: List[int] = Field(description="Number of features selected for each threshold")
-
-    def to_df(self) -> pd.DataFrame:
-        """Convert the data to a DataFrame with validation"""
-        df = pd.DataFrame({
-            'buffer': self.buffer,
-            'number_of_features': self.number_of_features,
-            'accuracy': self.accuracy
-        })
-        
-        # Calculate relative changes
-        # Use the mean of all data points with the smallest buffer value as reference
-        min_buffer_value = df['buffer'].min()
-        min_buffer_mask = df['buffer'] == min_buffer_value
-        
-        # Calculate reference values (mean of all points with minimum buffer)
-        ref_features = df.loc[min_buffer_mask, 'number_of_features'].mean()
-        ref_accuracy = df.loc[min_buffer_mask, 'accuracy'].mean()
-        
-        # Calculate relative changes in percent
-        df['rel_number_of_features'] = (df['number_of_features'] / ref_features - 1) * 100
-        df['rel_accuracy'] = (df['accuracy'] / ref_accuracy - 1) * 100
-        
-        return df
-
-
-class BootstrapRoundsData(BaseModel):
-    bootstrap_rounds: List[int] = Field(description="Number of bootstrap rounds")
-    accuracy: List[float] = Field(description="Classification accuracy for each number of rounds")
-    number_of_features: List[int] = Field(description="Number of features selected for each number of rounds")
-
-    def to_df(self) -> pd.DataFrame:
-        """Convert the data to a DataFrame with validation"""
-        df = pd.DataFrame({
-            'bootstrap_rounds': self.bootstrap_rounds,
-            'number_of_features': self.number_of_features,
-            'accuracy': self.accuracy
-        })
-        
-        # Calculate relative changes
-        # Use the mean of all data points with the smallest bootstrap_rounds as reference
-        min_rounds_value = df['bootstrap_rounds'].min()
-        min_rounds_mask = df['bootstrap_rounds'] == min_rounds_value
-        
-        # Calculate reference values (mean of all points with minimum bootstrap rounds)
-        ref_features = df.loc[min_rounds_mask, 'number_of_features'].mean()
-        ref_accuracy = df.loc[min_rounds_mask, 'accuracy'].mean()
-        
-        # Calculate relative changes in percent
-        df['rel_number_of_features'] = (df['number_of_features'] / ref_features - 1) * 100
-        df['rel_accuracy'] = (df['accuracy'] / ref_accuracy - 1) * 100
-        
-        return df
-        
 
 class BufferImpactPlot(BaseModel):
 
