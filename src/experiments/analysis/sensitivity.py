@@ -19,6 +19,7 @@ class MultiTestingImpactData(BaseModel):
     multitesting: List[bool] = Field(description="Boolean indication of whether multitesting was applied or not")
     accuracy: List[float] = Field(description="Classification accuracy for each threshold")
     number_of_features: List[int] = Field(description="Number of features selected for each threshold")
+    runtime: List[float] = Field(description="Runtime in seconds for each threshold")
 
     def to_df(self) -> pd.DataFrame:
         """Convert the data to a DataFrame with validation"""
@@ -32,18 +33,15 @@ class MultiTestingImpactData(BaseModel):
         # Verwende den Mittelwert aller "multitesting == False" als Referenzwert
         no_correction_mask = df['multitesting'] == False
         
-        if no_correction_mask.any():
-            # Referenzwerte (Mittelwert aller "multitesting == False")
-            ref_features = df.loc[no_correction_mask, 'number_of_features'].mean()
-            ref_accuracy = df.loc[no_correction_mask, 'accuracy'].mean()
-        else:
-            # Fallback, wenn keine "multitesting == False" vorhanden sind
-            ref_features = df['number_of_features'].iloc[0]
-            ref_accuracy = df['accuracy'].iloc[0]
+        # Referenzwerte (Mittelwert aller "multitesting == False")
+        ref_features = df.loc[no_correction_mask, 'number_of_features'].mean()
+        ref_accuracy = df.loc[no_correction_mask, 'accuracy'].mean()
+        ref_runtime = df.loc[no_correction_mask, 'runtime'].mean()
         
         # Berechne relative Änderungen in Prozent
         df['rel_number_of_features'] = (df['number_of_features'] / ref_features - 1) * 100
         df['rel_accuracy'] = (df['accuracy'] / ref_accuracy - 1) * 100
+        df['rel_runtime'] = (df['runtime'] / ref_runtime - 1) * 100
         
         return df
 
@@ -51,6 +49,7 @@ class SupportThresholdImpactData(BaseModel):
     min_support: List[float] = Field(description="Minimum support threshold values")
     runtime: List[float] = Field(description="Runtime in seconds for each threshold")
     accuracy: List[float] = Field(description="Classification accuracy for each threshold")
+    number_of_features: List[int] = Field(description="Number of features selected for each threshold")
     
     # Field validators (V2 style)
     @field_validator('min_support')
@@ -85,7 +84,7 @@ class SupportThresholdImpactData(BaseModel):
     def validate_df(self, df: pd.DataFrame) -> pd.DataFrame:
         """Manual validation for DataFrame"""
         # Check column existence
-        required_cols = ['min_support', 'runtime', 'accuracy']
+        required_cols = ['min_support', 'runtime', 'accuracy', ]
         for col in required_cols:
             if col not in df.columns:
                 raise ValueError(f"Missing required column: {col}")
@@ -108,6 +107,7 @@ class SupportThresholdImpactData(BaseModel):
             'min_support': self.min_support,
             'runtime': self.runtime,
             'accuracy': self.accuracy
+            'number_of_features': self.number_of_features
         })
         
         # Calculate relative changes
@@ -118,6 +118,10 @@ class SupportThresholdImpactData(BaseModel):
         # Calculate reference values (mean of all points with minimum support)
         ref_runtime = df.loc[min_support_mask, 'runtime'].mean()
         ref_accuracy = df.loc[min_support_mask, 'accuracy'].mean()
+        ref_features = df.loc[min_support_mask, 'number_of_features'].mean()
+            
+        # Berechne relative Änderungen in Prozent
+        df['rel_number_of_features'] = (df['number_of_features'] / ref_features - 1) * 100
         
         # Calculate relative changes in percent
         df['rel_runtime'] = (df['runtime'] / ref_runtime - 1) * 100
@@ -130,6 +134,7 @@ class BufferImpactData(BaseModel):
     buffer: List[float] = Field(description="Criterion buffer values")
     accuracy: List[float] = Field(description="Classification accuracy for each threshold")
     number_of_features: List[int] = Field(description="Number of features selected for each threshold")
+    runtime: List[float] = Field(description="Runtime in seconds for each threshold")
 
     def to_df(self) -> pd.DataFrame:
         """Convert the data to a DataFrame with validation"""
@@ -147,9 +152,11 @@ class BufferImpactData(BaseModel):
         # Calculate reference values (mean of all points with minimum buffer)
         ref_features = df.loc[min_buffer_mask, 'number_of_features'].mean()
         ref_accuracy = df.loc[min_buffer_mask, 'accuracy'].mean()
+        ref_runtime = df.loc[min_buffer_mask, 'runtime'].mean()
         
         # Calculate relative changes in percent
         df['rel_number_of_features'] = (df['number_of_features'] / ref_features - 1) * 100
+        df['rel_runtime'] = (df['runtime'] / ref_runtime - 1) * 100
         df['rel_accuracy'] = (df['accuracy'] / ref_accuracy - 1) * 100
         
         return df
@@ -159,6 +166,7 @@ class BootstrapRoundsData(BaseModel):
     bootstrap_rounds: List[int] = Field(description="Number of bootstrap rounds")
     accuracy: List[float] = Field(description="Classification accuracy for each number of rounds")
     number_of_features: List[int] = Field(description="Number of features selected for each number of rounds")
+    runtime: List[float] = Field(description="Runtime in seconds for each threshold")
 
     def to_df(self) -> pd.DataFrame:
         """Convert the data to a DataFrame with validation"""
@@ -166,6 +174,7 @@ class BootstrapRoundsData(BaseModel):
             'bootstrap_rounds': self.bootstrap_rounds,
             'number_of_features': self.number_of_features,
             'accuracy': self.accuracy
+            'runtime': self.runtime
         })
         
         # Calculate relative changes
@@ -176,9 +185,11 @@ class BootstrapRoundsData(BaseModel):
         # Calculate reference values (mean of all points with minimum bootstrap rounds)
         ref_features = df.loc[min_rounds_mask, 'number_of_features'].mean()
         ref_accuracy = df.loc[min_rounds_mask, 'accuracy'].mean()
+        ref_runtime = df.loc[min_rounds_mask, 'runtime'].mean()
         
         # Calculate relative changes in percent
         df['rel_number_of_features'] = (df['number_of_features'] / ref_features - 1) * 100
+        df['rel_runtime'] = (df['runtime'] / ref_runtime - 1) * 100
         df['rel_accuracy'] = (df['accuracy'] / ref_accuracy - 1) * 100
         
         return df
