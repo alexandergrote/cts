@@ -700,6 +700,16 @@ class AllInOnePlot(BaseModel):
                 df = el.to_df()
                 df.rename(columns={el.get_threshold_name(): 'x_axis'}, inplace=True)
                 df['scenario'] = el.__class__.__name__
+            
+                # Wenn es sich um Multitesting-Daten handelt, kehre die Reihenfolge um
+                if el.__class__.__name__ == 'MultiTestingImpactData':
+                    # Erstelle eine kategorische Variable mit umgekehrter Reihenfolge
+                    df['x_axis'] = pd.Categorical(
+                        df['x_axis'],
+                        categories=["With Correction", "No Correction"],  # Umgekehrte Reihenfolge
+                        ordered=True
+                    )
+            
                 df_melt = df.melt(id_vars=['dataset_name','scenario', 'x_axis'], value_vars=['rel_number_of_features', 'rel_accuracy', 'rel_runtime'])
                 df_to_plot.append(df_melt)
 
