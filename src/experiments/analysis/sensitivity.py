@@ -16,6 +16,8 @@ plt.rcParams['axes.prop_cycle'] = plt.cycler(color=['black', 'black'])
 
 
 class MultiTestingImpactData(BaseModel):
+    dataset_name: str = Field(description="Name of the dataset")
+    
     multitesting: List[bool] = Field(description="Boolean indication of whether multitesting was applied or not")
     accuracy: List[float] = Field(description="Classification accuracy for each threshold")
     number_of_features: List[int] = Field(description="Number of features selected for each threshold")
@@ -24,9 +26,11 @@ class MultiTestingImpactData(BaseModel):
     def to_df(self) -> pd.DataFrame:
         """Convert the data to a DataFrame with validation"""
         df = pd.DataFrame({
+            'dataset_name': self.dataset_name,
             'multitesting': self.multitesting,
             'number_of_features': self.number_of_features,
-            'accuracy': self.accuracy
+            'accuracy': self.accuracy,
+            'runtime': self.runtime,
         })
         
         # Berechne relative Änderungen
@@ -45,11 +49,13 @@ class MultiTestingImpactData(BaseModel):
         
         return df
 
+
 class SupportThresholdImpactData(BaseModel):
+    dataset_name: str = Field(description="Name of the dataset")
     min_support: List[float] = Field(description="Minimum support threshold values")
     runtime: List[float] = Field(description="Runtime in seconds for each threshold")
     accuracy: List[float] = Field(description="Classification accuracy for each threshold")
-    number_of_features: List[int] = Field(description="Number of features selected for each threshold")
+    number_of_features: List[int] = Field(description="Number of features selected for each threshold", coerce=True)
     
     # Field validators (V2 style)
     @field_validator('min_support')
@@ -104,9 +110,10 @@ class SupportThresholdImpactData(BaseModel):
     def to_df(self) -> pd.DataFrame:
         """Convert the data to a DataFrame with validation"""
         df = pd.DataFrame({
+            'dataset_name': self.dataset_name,
             'min_support': self.min_support,
             'runtime': self.runtime,
-            'accuracy': self.accuracy
+            'accuracy': self.accuracy,
             'number_of_features': self.number_of_features
         })
         
@@ -131,6 +138,7 @@ class SupportThresholdImpactData(BaseModel):
 
 
 class BufferImpactData(BaseModel):
+    dataset_name: str = Field(description="Name of the dataset")
     buffer: List[float] = Field(description="Criterion buffer values")
     accuracy: List[float] = Field(description="Classification accuracy for each threshold")
     number_of_features: List[int] = Field(description="Number of features selected for each threshold")
@@ -139,9 +147,11 @@ class BufferImpactData(BaseModel):
     def to_df(self) -> pd.DataFrame:
         """Convert the data to a DataFrame with validation"""
         df = pd.DataFrame({
+            'dataset_name': self.dataset_name,
             'buffer': self.buffer,
             'number_of_features': self.number_of_features,
-            'accuracy': self.accuracy
+            'accuracy': self.accuracy,
+            'runtime': self.runtime,
         })
         
         # Calculate relative changes
@@ -163,6 +173,7 @@ class BufferImpactData(BaseModel):
 
 
 class BootstrapRoundsData(BaseModel):
+    dataset_name: str = Field(description="Name of the dataset")
     bootstrap_rounds: List[int] = Field(description="Number of bootstrap rounds")
     accuracy: List[float] = Field(description="Classification accuracy for each number of rounds")
     number_of_features: List[int] = Field(description="Number of features selected for each number of rounds")
@@ -171,9 +182,10 @@ class BootstrapRoundsData(BaseModel):
     def to_df(self) -> pd.DataFrame:
         """Convert the data to a DataFrame with validation"""
         df = pd.DataFrame({
+            'dataset_name': self.dataset_name,
             'bootstrap_rounds': self.bootstrap_rounds,
             'number_of_features': self.number_of_features,
-            'accuracy': self.accuracy
+            'accuracy': self.accuracy,
             'runtime': self.runtime
         })
         
@@ -962,9 +974,11 @@ class Sensitivity(BaseModel, BaseAnalyser):
             data_copy_sub = data_copy_support[data_copy_support[dataset_col] == dataset]
 
             support_impact_data = SupportThresholdImpactData(
+                dataset_name=dataset,
                 min_support=data_copy_sub[rel_support],
                 runtime=data_copy_sub[metric_duration],
-                accuracy=data_copy_sub[metric_col_auc_v]
+                accuracy=data_copy_sub[metric_col_auc_v],
+                number_of_features=data_copy_sub['N Features Selected']
             )
 
             title = f"{dataset.split('.')[2].upper()}"
@@ -996,9 +1010,11 @@ class Sensitivity(BaseModel, BaseAnalyser):
             # Keine Sortierung mehr nötig, da wir den Mittelwert aller "multitesting == False" verwenden
             
             multitesting_data = MultiTestingImpactData(
+                dataset_name=dataset,
                 multitesting=data_copy_sub['params.export.params.experiment_name'].str.contains('True', na=False),
                 number_of_features=data_copy_sub['N Features Selected'],
-                accuracy=data_copy_sub[metric_col_auc_v]
+                accuracy=data_copy_sub[metric_col_auc_v],
+                runtime=data_copy_sub[metric_duration],
             )
 
             title = f"{dataset.split('.')[2].upper()}"
@@ -1028,9 +1044,11 @@ class Sensitivity(BaseModel, BaseAnalyser):
             data_copy_sub = data_copy_buffer[data_copy_buffer[dataset_col] == dataset]
 
             buffer_data = BufferImpactData(
+                dataset_name=dataset,
                 buffer=data_copy_sub['criterion_buffer'],
                 number_of_features=data_copy_sub['N Features Selected'],
-                accuracy=data_copy_sub[metric_col_auc_v]
+                accuracy=data_copy_sub[metric_col_auc_v],
+                runtime=data_copy_sub[metric_duration]
             )
 
             title = f"{dataset.split('.')[2].upper()}"
@@ -1060,9 +1078,11 @@ class Sensitivity(BaseModel, BaseAnalyser):
             data_copy_sub = data_copy_bootstrap[data_copy_bootstrap[dataset_col] == dataset]
 
             bootstrap_data = BootstrapRoundsData(
+                dataset_name=dataset,
                 bootstrap_rounds=data_copy_sub['params.preprocess.params.extractor.params.bootstrap_repetitions'],
                 number_of_features=data_copy_sub['N Features Selected'],
-                accuracy=data_copy_sub[metric_col_auc_v]
+                accuracy=data_copy_sub[metric_col_auc_v],
+                runtime=data_copy_sub[metric_duration]
             )
 
             title = f"{dataset.split('.')[2].upper()}"
