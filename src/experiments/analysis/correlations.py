@@ -41,6 +41,7 @@ class Correlations(BaseModel, BaseAnalyser):
 
         sns.set(font_scale=2.5)
         sns.set_style('white')
+        plt.rcParams['axes.prop_cycle'] = plt.cycler(color=['black', 'black'])
 
         f, axes = plt.subplots(1, len(records), sharey=False, figsize=(24,6))
         
@@ -69,7 +70,7 @@ class Correlations(BaseModel, BaseAnalyser):
             ax_obj = axes if len(records) == 1 else axes[idx]
 
             ax_obj.title.set_text(title)
-            sns.regplot(data=data, x='Confidence Delta', y='Average Target Value', color='grey', ax=ax_obj)
+            sns.regplot(data=data, x='Confidence Delta', y='Average Target Value', color='grey', ax=ax_obj, scatter_kws={'rasterized': True})
             ax_obj.set_ylim(0, 1)
             
 
@@ -81,38 +82,60 @@ class Correlations(BaseModel, BaseAnalyser):
         #plt.show()
         plt.close()
 
-        # Define colors for consistency
-        colors = ['blue', 'green', 'purple']
+        # Define colors for consistency in black and white
+        colors = ['grey', 'grey', 'grey']
 
-        # Create a 2x3 grid of subplots
-        fig, axes = plt.subplots(2, 3, figsize=(18, 15))
-
-        for i, (exp_name, data, _, _) in enumerate(records):
-            for j, y_var in enumerate(['chi_squared', 'entropy']):
-                
+        # Filter only synthetic datasets
+        synthetic_records = [(exp_name, data, p_value, corr_value) for exp_name, data, p_value, corr_value in records if "malwa" in exp_name]
+        
+        if synthetic_records:
+            # Create a single row of subplots for all metrics
+            metrics = ['chi_squared', 'entropy', "fisher"]
+            num_plots = len(metrics)
+            fig, axes = plt.subplots(1, num_plots, figsize=(6*num_plots, 5))
+            
+            # Increase font size for the second plot
+            plt.rcParams.update({'font.size': 14})
+            
+            # Use only the first synthetic dataset
+            exp_name, data, _, _ = synthetic_records[0]
+            
+            for j, y_var in enumerate(metrics):
                 order = 2
                 lowess = False
-                
-                # Create regression plot
+
+                # Create regression plot with different line styles for black and white
+                line_styles = ['-', '--', '-.']
+                marker_styles = ['o', 's', '^']
+
                 sns.regplot(
                     x='Confidence Delta', 
                     y=y_var, 
                     data=data, 
-                    scatter_kws={'alpha': 0.5, 'color': colors[j]},
-                    line_kws={'color': colors[j]},
+                    scatter_kws={'alpha': 0.5, 'color': 'black', 'marker': marker_styles[j], 'rasterized': True},
+                    line_kws={'color': 'black', 'linestyle': line_styles[j], 'linewidth': 2},
                     order=order,
                     lowess=lowess,
-                    ax=axes[j, i]
+                    ax=axes[j],
                 )
 
-                title = f"{exp_name.split('_')[-1].capitalize()}_{y_var}"
-                
-                # Set title and labels
-                axes[j, i].set_title(title, fontsize=12)
-                axes[j, i].set_xlabel('Confidence Delta', fontsize=10)
-                axes[j, i].set_ylabel(f'{y_var}', fontsize=10)
+                y_var_mapping = {
+                    'chi_squared': 'Chi-Squared',
+                    'entropy': 'Entropy',
+                    'fisher': 'Fisher Odds Ratio'
+                }
 
-        # Adjust layout
-        plt.tight_layout()
-        plt.savefig(Directory.FIGURES_DIR / f'metrics_comparison.pdf')
-        #plt.show()
+                y_var = y_var_mapping.get(y_var, y_var)
+                
+                title = f"{y_var}"
+                
+                # Set title and labels with increased font size
+                axes[j].set_title(title, fontsize=16)
+                axes[j].set_xlabel('Confidence Delta', fontsize=14)
+                axes[j].set_ylabel(f'{y_var}', fontsize=14)
+                axes[j].tick_params(axis='both', which='major', labelsize=12)
+
+            # Adjust layout
+            plt.tight_layout()
+            plt.savefig(Directory.FIGURES_DIR / f'metrics_comparison.pdf')
+            #plt.show()

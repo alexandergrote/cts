@@ -1,13 +1,13 @@
 import mlflow
 import os
-from argparse import ArgumentParser
+from argparse import ArgumentParser, BooleanOptionalAction
 from pathlib import Path
 import re
 
 from src.util.constants import Directory
 from src.util.mlflow_util import get_tracking_uri
 
-def delete_experiments(pattern: str):
+def delete_experiments(pattern: str, skip_confirmation: bool = False):
     """
     Delete MLflow experiments matching the given pattern.
 
@@ -33,11 +33,12 @@ def delete_experiments(pattern: str):
     for experiment in filtered_experiments:
         print(f"ID: {experiment.experiment_id}, Name: {experiment.name}")
 
-    # Ask for user confirmation before deletion
-    confirmation = input(f"Are you sure you want to delete {len(filtered_experiments)} experiments matching the pattern: {pattern}? (y/n): ")
-    if confirmation.lower() != 'y':
-        print("Deletion cancelled.")
-        return
+    # Ask for user confirmation before deletion if not skipped
+    if not skip_confirmation:
+        confirmation = input(f"Are you sure you want to delete {len(filtered_experiments)} experiments matching the pattern: {pattern}? (y/n): ")
+        if confirmation.lower() != 'y':
+            print("Deletion cancelled.")
+            return
 
     # Iterate through the filtered experiments and delete them
     for experiment in filtered_experiments:
@@ -52,6 +53,7 @@ def delete_experiments(pattern: str):
 if __name__ == "__main__":
     parser = ArgumentParser(description="Delete MLflow experiments matching the given pattern.")
     parser.add_argument("pattern", type=str, help="Regular expression pattern to search for in experiment names")
+    parser.add_argument("--skip-confirmation", action=BooleanOptionalAction, help="Skip confirmation prompt and delete experiments directly")
     
     args = parser.parse_args()
-    delete_experiments(args.pattern)
+    delete_experiments(args.pattern, args.skip_confirmation)

@@ -5,7 +5,7 @@ import pandera as pa
 from pydantic import BaseModel, ConfigDict
 from typing import Optional, List, Literal, Tuple
 from pandera.typing import DataFrame, Series
-from scipy.stats import chi2_contingency
+from scipy.stats import chi2_contingency, fisher_exact
 
 from src.util.datasets import DatasetSchema
 from src.preprocess.util.types import BootstrapRound
@@ -82,6 +82,27 @@ def compute_phi_coefficient(rule_pos: int, rule_neg: int, non_rule_pos: int, non
     phi = numerator / denominator
     
     return phi
+def compute_fisher(rule_pos: int, rule_neg: int, non_rule_pos: int, non_rule_neg: int) -> Tuple[float, float]:
+    """
+    Compute Fisher's exact test for a 2x2 contingency table.
+    
+    Args:
+        rule_pos: Number of positive cases where the rule applies
+        rule_neg: Number of negative cases where the rule applies
+        non_rule_pos: Number of positive cases where the rule does not apply
+        non_rule_neg: Number of negative cases where the rule does not apply
+        
+    Returns:
+        Tuple containing the odds ratio and p-value
+    """
+    contingency_matrix = np.array([[rule_pos, rule_neg], [non_rule_pos, non_rule_neg]])
+    
+    try:
+        odds_ratio, p_value = fisher_exact(contingency_matrix)
+    except ValueError:
+        odds_ratio, p_value = float('nan'), float('nan')  # if any issue occurs
+        
+    return odds_ratio, p_value
 
 
 class DatasetAggregatedSchema(pa.DataFrameModel):
@@ -105,14 +126,16 @@ class DatasetAggregated(BaseModel):
 
         # since this column is optional, we add it here and set it to None as its default value
         if DatasetSchema.class_column not in data_copy.columns:
-            data_copy[DatasetSchema.class_column] = None
+            data_copy[DatasetSchema.class_conlumn] = None
 
         sequences = data_copy_grouped[DatasetSchema.event_column].apply(list)    
         classes = data_copy_grouped[DatasetSchema.class_column].apply(list)
         
         # check if all class values are identical for a its sequence
-        if (data_copy_grouped[DatasetSchema.class_column].nunique() > 1).any():
-            raise ValueError(f"class values for sequence {index} are not identical")
+        sequences_with_multiple_classes = data_copy_grouped[DatasetSchema.class_column].nunique() > 1
+        if sequences_with_multiple_classes.any():
+            problematic_sequences = sequences_with_multiple_classes[sequences_with_multiple_classes].index.tolist()
+            raise ValueError(f"class values for sequences {problematic_sequences} are not identical")
 
         annotated_sequence_records = []
 
@@ -148,6 +171,7 @@ class DatasetRulesSchema(pa.DataFrameModel):
     delta_confidence: Series[float]
     centered_inverse_entropy: Series[float]
     chi_squared: Series[float]
+    fisher_odds_ratio: Series[float]
     entropy: Series[float]
     phi: Series[float]
 
@@ -179,6 +203,13 @@ class DatasetRules(BaseModel):
                     non_rule_pos=total_observations_pos - pattern.support_pos,
                     non_rule_neg=total_observations_neg - pattern.support_neg,
                 )
+                
+                fisher_odds, fisher_p = compute_fisher(
+                    rule_pos=pattern.support_pos,
+                    rule_neg=pattern.support_neg,
+                    non_rule_pos=total_observations_pos - pattern.support_pos,
+                    non_rule_neg=total_observations_neg - pattern.support_neg,
+                )
 
                 phi = compute_phi_coefficient(
                     rule_pos=pattern.support_pos,
@@ -195,7 +226,8 @@ class DatasetRules(BaseModel):
                         DatasetRulesSchema.centered_inverse_entropy: pattern.centered_inverse_entropy,
                         DatasetRulesSchema.entropy: pattern.entropy,
                         DatasetRulesSchema.chi_squared: chi2,
-                        DatasetRulesSchema.phi: phi
+                        DatasetRulesSchema.phi: phi,
+                        DatasetRulesSchema.fisher_odds_ratio: fisher_odds,
                     }
                 })
 
@@ -209,6 +241,7 @@ class DatasetUniqueRulesSchema(pa.DataFrameModel):
     delta_confidence: Series[object] = pa.Field(is_list_of_floats=pa.Check.is_list_of_floats)
     centered_inverse_entropy: Series[object] = pa.Field(is_list_of_floats=pa.Check.is_list_of_floats)
     chi_squared: Series[object] = pa.Field(is_list_of_floats=pa.Check.is_list_of_floats)
+    fisher_odds_ratio: Series[object] = pa.Field(is_list_of_floats=pa.Check.is_list_of_floats)
     entropy: Series[object] = pa.Field(is_list_of_floats=pa.Check.is_list_of_floats)
     phi: Series[object] = pa.Field(is_list_of_floats=pa.Check.is_list_of_floats)
     support: Series[object] = pa.Field(is_between={"min_value": 0, "max_value": 1})
@@ -223,7 +256,7 @@ class DatasetUniqueRules(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    def rank_rules(self, criterion: Literal[DatasetRulesSchema.delta_confidence, DatasetRulesSchema.centered_inverse_entropy], ascending: bool = False, weighted_by_support: bool = False) -> List[Tuple[str, float]]:
+    def rank_rules(self, criterion: Literal[DatasetRulesSchema.delta_confidence, DatasetRulesSchema.centered_inverse_entropy, DatasetRulesSchema.fisher_odds_ratio], ascending: bool = False, weighted_by_support: bool = False) -> List[Tuple[str, float]]:
 
         # collect ids and values
         ids, values = [], []

@@ -114,7 +114,7 @@ class FeatureSelection(BaseModel, BaseAnalyser):
 
         plt.tight_layout()
 
-        for extension in ['png', 'pdf']:
+        for extension in ['pdf']:
             plt.savefig(Directory.FIGURES_DIR / f'feature_selection.{extension}', dpi=300, bbox_inches='tight', pad_inches=0.25)
         
         #plt.show()

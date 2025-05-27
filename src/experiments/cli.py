@@ -89,9 +89,17 @@ class ExperimentRunner(BaseModel):
     @environ_pickle_cache()
     def get_experiment_data_from_mlflow(experiments: List[str]):
 
-        data = pd.concat(
-            [mlflow_engine.get_results_of_single_experiment(experiment_name=el, n=100) for el in experiments]
-        )
+        dfs = []
+
+        for el in experiments:
+
+            try:
+                exp = mlflow_engine.get_results_of_single_experiment(experiment_name=el, n=100)
+                dfs.append(exp)
+            except Exception as e:
+                print(f"Error: {e}")
+
+        data = pd.concat(dfs)
 
         return data
 
@@ -152,7 +160,7 @@ class ExperimentRunner(BaseModel):
         return executeable_list    
     
 
-def execute(analyser: str, filter_name: Optional[str] = None, run_in_parallel: bool = False, skip_execution: bool = False, skip_visualization: bool = False, cache_mlflow: bool = False):
+def execute(analyser: str, filter_name: Optional[str] = None, run_in_parallel: bool = False, skip_execution: bool = False, skip_visualization: bool = False, skip_confirmation: bool = False, cache_mlflow: bool = False):
 
     if cache_mlflow:
         os.environ["src.experiments.cli.py.ExperimentRunner.get_experiment_data_from_mlflow"] = "cached"
@@ -188,16 +196,18 @@ def execute(analyser: str, filter_name: Optional[str] = None, run_in_parallel: b
         experiment_analyser.experiments = selected_exp
 
     if len(experiment_analyser.experiments) > 1:
+
+        if not skip_confirmation:
         
-        tmp_names = '\n'.join([el.name for el in experiment_analyser.experiments])
-        console.print(f"You are about to run these experiments:\n{tmp_names}")
+            tmp_names = '\n'.join([el.name for el in experiment_analyser.experiments])
+            console.print(f"You are about to run these experiments:\n{tmp_names}")
 
-        console.print("Press y to continue or n to abort.")
-        answer = input("y/n: ")
+            console.print("Press y to continue or n to abort.")
+            answer = input("y/n: ")
 
-        if answer!= "y":
-            console.print("Aborting...")
-            return
+            if answer!= "y":
+                console.print("Aborting...")
+                return
     
     experiment_analyser.run(run_in_parallel=run_in_parallel, skip_execution=skip_execution, skip_visualization=skip_visualization)
     

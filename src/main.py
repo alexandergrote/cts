@@ -106,8 +106,10 @@ def main(cfg: DictConfig) -> None:
     # adding run time and memory consumption to metrics
     key_feat_sel = 'feature_selection_duration'
     key_feat_sel_mem = 'feature_selection_max_memory'
+    key_n_feat_selected = 'n_features_selected'
     output['metrics'][key_feat_sel] = output.get(key_feat_sel, -1)
     output['metrics'][key_feat_sel_mem] = output.get(key_feat_sel_mem, -1)
+    output['metrics'][key_n_feat_selected] = output['x_test'].shape[1]
 
     if env.mode == EnvMode.PROD:
         exporter.export(output_dir=output_dir, **output)

@@ -17,6 +17,7 @@ class TestDatasetUniqueRules(unittest.TestCase):
             DatasetUniqueRulesSchema.entropy: [[0.1, 0.2], [0.3, 0.4]],
             DatasetUniqueRulesSchema.chi_squared: [[1.0], [2.0, 3.0]],
             DatasetUniqueRulesSchema.phi: [[1.0], [2.0, 3.0]],
+            DatasetUniqueRulesSchema.fisher_odds_ratio: [[1.2], [3.4, 5.6]],
         })
 
     def test_unique_rules(self):
