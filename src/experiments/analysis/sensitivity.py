@@ -29,12 +29,17 @@ class MultiTestingImpactData(BaseModel):
         })
         
         # Berechne relative Änderungen
-        # Finde den Referenzwert (ohne Multitesting-Korrektur)
-        no_correction_idx = df[df['multitesting'] == False].index[0] if False in df['multitesting'].values else 0
+        # Verwende den Mittelwert aller "multitesting == False" als Referenzwert
+        no_correction_mask = df['multitesting'] == False
         
-        # Referenzwerte
-        ref_features = df.loc[no_correction_idx, 'number_of_features']
-        ref_accuracy = df.loc[no_correction_idx, 'accuracy']
+        if no_correction_mask.any():
+            # Referenzwerte (Mittelwert aller "multitesting == False")
+            ref_features = df.loc[no_correction_mask, 'number_of_features'].mean()
+            ref_accuracy = df.loc[no_correction_mask, 'accuracy'].mean()
+        else:
+            # Fallback, wenn keine "multitesting == False" vorhanden sind
+            ref_features = df['number_of_features'].iloc[0]
+            ref_accuracy = df['accuracy'].iloc[0]
         
         # Berechne relative Änderungen in Prozent
         df['rel_number_of_features'] = (df['number_of_features'] / ref_features - 1) * 100
@@ -753,9 +758,7 @@ class Sensitivity(BaseModel, BaseAnalyser):
 
             data_copy_sub = data_copy_multitest[data_copy_multitest[dataset_col] == dataset]
 
-            # Sortiere die Daten, um sicherzustellen, dass "No Correction" zuerst kommt (als Referenz)
-            data_copy_sub = data_copy_sub.sort_values(by='params.export.params.experiment_name', 
-                                                     key=lambda x: x.str.contains('True', na=False))
+            # Keine Sortierung mehr nötig, da wir den Mittelwert aller "multitesting == False" verwenden
             
             multitesting_data = MultiTestingImpactData(
                 multitesting=data_copy_sub['params.export.params.experiment_name'].str.contains('True', na=False),
