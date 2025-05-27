@@ -6,6 +6,7 @@ import matplotlib.ticker as ticker
             
 
 from abc import ABC, abstractmethod
+from pandas.api.types import CategoricalDtype
 from typing import List, Optional, Dict, Any, Tuple, ClassVar
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -730,6 +731,10 @@ class AllInOnePlot(BaseModel):
                        
         }, inplace=True)
 
+        y_axis = 'Relative Change [%]'
+        x_axis = 'Thresholds'
+        df_to_plot.rename(columns={'x_axis': x_axis, 'value': y_axis}, inplace=True)
+
         # Define markers for different categories in your hue column
         markers = {
             'Number of Features': 'o', 
@@ -738,13 +743,23 @@ class AllInOnePlot(BaseModel):
         }
 
         sns.set(font_scale=1.5)
+
+        custom_order = [
+            '0.0', '0.05', '0.1', '0.15', '0.2', '0.25',
+            'No Correction', 'With Correction',
+            '10', '15', '20'
+        ]
+
+        cat_type = CategoricalDtype(categories=custom_order, ordered=True)
+
+        df_to_plot["Thresholds"] = df_to_plot["Thresholds"].astype(str).astype(cat_type)
         
         g = sns.FacetGrid(df_to_plot, col='dataset_name', row='scenario', sharey=False, height=4, sharex=False, despine=False)
 
         g.map_dataframe(
             sns.lineplot, 
-            x='x_axis', 
-            y='value',
+            x=x_axis, 
+            y=y_axis,
             hue='variable',
             palette=grey_palette,
             style='variable',
@@ -767,22 +782,6 @@ class AllInOnePlot(BaseModel):
             if label not in unique_labels:
                 unique_labels.append(label)
                 unique_handles.append(handle)
-
-        for ax_row, scenario in zip(g.axes, df_to_plot['scenario'].unique()):                                                                  
-            for ax in ax_row:                                                                                                                  
-                if 'Min Support' in scenario:                                                                                                  
-                    pass
-                    #ax.set_xticks(np.arange(0, 0.25, 0.1))                                                                                    
-                    #ax.set_xticklabels([f"{x:.2f}" for x in np.arange(0, 0.25, 0.05)])                                            
-                elif 'Multitesting' in scenario:                                                                                               
-                    # Für Multitesting gibt es nur zwei Werte                                                                                  
-                    pass  # Hier brauchen wir keine Anpassung                                                                                  
-                elif 'Buffer' in scenario:                                                                                                     
-                    #ax.set_xticks(np.arange(0, 0.25, 0.05))                                                                                    
-                    #ax.set_xticklabels([f"{x:.2f}" for x in np.arange(0, 0.25, 0.05)]) 
-                    pass                                           
-                elif 'Bootstrap Rounds' in scenario:                                                                                           
-                    ax.set_xticks([10, 15, 20]) 
 
         # Füge schwarze Rahmen um alle Plots hinzu
         for ax_row in g.axes:
