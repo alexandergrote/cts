@@ -119,13 +119,18 @@ class MultiTestingImpactPlot(BaseModel):
             
             # Get the range of accuracy values
             y_min, y_max = df['accuracy'].min(), df['accuracy'].max()
-            # Add a small buffer to ensure all points are visible
-            buffer = 0.02
+            # Add a larger buffer to ensure all points are visible and separated
+            buffer = 0.05
             y_min = max(0, y_min - buffer)
             y_max = min(1, y_max + buffer)
             
             # Set y-axis limits
             ax2.set_ylim(y_min, y_max)
+            
+            # Adjust y-axis for number of features to ensure separation
+            feat_min, feat_max = df['number_of_features'].min(), df['number_of_features'].max()
+            feat_buffer = (feat_max - feat_min) * 0.15  # 15% buffer
+            ax1.set_ylim(max(0, feat_min - feat_buffer), feat_max + feat_buffer)
             
             # Get unique accuracy values and create custom ticks
             import matplotlib.ticker as ticker
