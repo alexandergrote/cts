@@ -83,14 +83,14 @@ class Correlations(BaseModel, BaseAnalyser):
         plt.close()
 
         # Define colors for consistency in black and white
-        colors = ['grey', 'grey', 'grey']
+        colors = ['grey', 'grey', 'grey', 'grey']
 
         # Filter only synthetic datasets
         synthetic_records = [(exp_name, data, p_value, corr_value) for exp_name, data, p_value, corr_value in records if "malwa" in exp_name]
         
         if synthetic_records:
             # Create a single row of subplots for all metrics
-            metrics = ['chi_squared', 'entropy', "fisher"]
+            metrics = ['chi_squared', 'entropy', "fisher", "phi"]
             num_plots = len(metrics)
             fig, axes = plt.subplots(1, num_plots, figsize=(6*num_plots, 5))
             
@@ -99,20 +99,29 @@ class Correlations(BaseModel, BaseAnalyser):
             
             # Use only the first synthetic dataset
             exp_name, data, _, _ = synthetic_records[0]
-            
+
             for j, y_var in enumerate(metrics):
                 order = 2
                 lowess = False
 
+                if y_var == 'phi':
+                    order = 1
+
+                if y_var == 'fisher':
+                    order = 1#3
+                    lowess = True
+
                 # Create regression plot with different line styles for black and white
-                line_styles = ['-', '--', '-.']
-                marker_styles = ['o', 's', '^']
+                line_styles = ['-', '-', '-', '-']
+                marker_styles = ['o', 'o', 'o', 'o']
+
+                color = sns.color_palette(['grey'])
 
                 sns.regplot(
                     x='Confidence Delta', 
                     y=y_var, 
                     data=data, 
-                    scatter_kws={'alpha': 0.5, 'color': 'black', 'marker': marker_styles[j], 'rasterized': True},
+                    scatter_kws={'color': color, 'marker': marker_styles[j], 'rasterized': True},
                     line_kws={'color': 'black', 'linestyle': line_styles[j], 'linewidth': 2},
                     order=order,
                     lowess=lowess,
@@ -122,7 +131,8 @@ class Correlations(BaseModel, BaseAnalyser):
                 y_var_mapping = {
                     'chi_squared': 'Chi-Squared',
                     'entropy': 'Entropy',
-                    'fisher': 'Fisher Odds Ratio'
+                    'fisher': 'Fisher Odds Ratio',
+                    'phi': 'Phi Coefficient',
                 }
 
                 y_var = y_var_mapping.get(y_var, y_var)
@@ -134,6 +144,10 @@ class Correlations(BaseModel, BaseAnalyser):
                 axes[j].set_xlabel('Confidence Delta', fontsize=14)
                 axes[j].set_ylabel(f'{y_var}', fontsize=14)
                 axes[j].tick_params(axis='both', which='major', labelsize=12)
+
+                if y_var == 'entropy':
+                    axes[j].set_ylim(0, 1)
+                
 
             # Adjust layout
             plt.tight_layout()
