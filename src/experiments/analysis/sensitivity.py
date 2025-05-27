@@ -104,8 +104,13 @@ class MultiTestingImpactPlot(BaseModel):
             ax1.set_xlabel("Multitesting Correction")
             ax1.set_ylabel("Relative Änderung der Features (%)", color=color_runtime)
             
-            # Convert boolean to categorical labels
+            # Convert boolean to categorical labels and ensure consistent order
             df['multitesting_label'] = df['multitesting'].apply(lambda x: "With Correction" if x else "No Correction")
+            
+            # Sortiere die Kategorien, damit "No Correction" immer links und "With Correction" immer rechts ist
+            df['multitesting_label'] = pd.Categorical(df['multitesting_label'], 
+                                                     categories=["No Correction", "With Correction"], 
+                                                     ordered=True)
             
             # Use lineplot with relative values
             sns.lineplot(x="multitesting_label", y="rel_number_of_features", data=df, marker="o", 
