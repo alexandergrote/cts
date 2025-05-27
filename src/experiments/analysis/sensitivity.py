@@ -638,11 +638,269 @@ class AllInOnePlot(BaseModel):
     support_data_list: List[SupportThresholdImpactData]
     multitesting_data_list: List[MultiTestingImpactData]
     buffer_data_list: List[BufferImpactData]
-    bootstap_data_list: List[BootstrapRoundsData]
+    bootstrap_data_list: List[BootstrapRoundsData]
 
-    def plot(self) -> None:
-        # to be implemented
-        pass
+    def plot(self, 
+             titles: Optional[List[str]] = None,
+             save_path: str = "sensitivity_all_in_one_plot.pdf",
+             figsize: Tuple[int, int] = (18, 24),  # Taller figure for 4 rows
+             style: str = "whitegrid",
+             color_runtime: str = "black",
+             color_accuracy: str = "black") -> None:
+        """
+        Create a combined plot with all sensitivity analyses in one figure.
+        Each row represents one type of plot.
+        
+        Args:
+            titles: List of titles for each column (dataset). If None, default titles are used.
+            save_path: Path to save the figure
+            figsize: Figure size (width, height) in inches
+            style: Seaborn style to use
+            color_runtime: Color for runtime/number of features line
+            color_accuracy: Color for accuracy line
+        """
+        # Check if we have data for at least one plot type
+        if (len(self.support_data_list) == 0 and 
+            len(self.multitesting_data_list) == 0 and 
+            len(self.buffer_data_list) == 0 and 
+            len(self.bootstrap_data_list) == 0):
+            raise ValueError("At least one dataset must be provided for at least one plot type")
+        
+        # Determine the number of columns (datasets)
+        n_cols = max(
+            len(self.support_data_list),
+            len(self.multitesting_data_list),
+            len(self.buffer_data_list),
+            len(self.bootstrap_data_list)
+        )
+        
+        if n_cols == 0:
+            raise ValueError("No datasets provided")
+        
+        # Generate default titles if not provided
+        if titles is None:
+            titles = [f"Dataset {i+1}" for i in range(n_cols)]
+        elif len(titles) < n_cols:
+            titles.extend([f"Dataset {i+1}" for i in range(len(titles), n_cols)])
+        
+        # Set seaborn style
+        sns.set_style(style)
+        
+        # Create figure with 4 rows (one for each plot type) and n_cols columns
+        fig, axes = plt.subplots(4, n_cols, figsize=figsize)
+        
+        # Adjust spacing between subplots
+        plt.subplots_adjust(hspace=0.4, wspace=0.3)
+        
+        # Row 0: Support Threshold Impact Plot
+        if len(self.support_data_list) > 0:
+            support_dfs = [data.to_df() for data in self.support_data_list]
+            
+            for i, (df, ax) in enumerate(zip(support_dfs, axes[0, :])):
+                if i >= len(support_dfs):
+                    # Hide unused axes
+                    ax.axis('off')
+                    continue
+                    
+                # First axis (runtime - relative change)
+                ax1 = ax
+                ax1.set_xlabel("Minimum Support Threshold")
+                ax1.set_ylabel("Change (%)", color=color_runtime)
+                sns.lineplot(x="min_support", y="rel_runtime", data=df, marker="o", 
+                             color=color_runtime, ax=ax1, label="Runtime", 
+                             linestyle="-", linewidth=2)
+                
+                # Set x-ticks to 0.05 intervals
+                ax1.set_xticks(np.arange(0, 1.05, 0.05))
+                ax1.set_xticklabels([f"{x:.2f}" for x in np.arange(0, 1.05, 0.05)], rotation=45)
+                
+                # Horizontal line at 0% (no change)
+                ax1.axhline(y=0, color='gray', linestyle='-', alpha=0.3)
+                
+                # Add accuracy line to the same axis
+                sns.lineplot(x="min_support", y="rel_accuracy", data=df, marker="s", 
+                             color=color_accuracy, ax=ax1, label="AUC", 
+                             linestyle="--", linewidth=2)
+                
+                # Title
+                ax1.set_title(titles[i])
+                
+                # Remove default legends created by seaborn
+                if ax1.get_legend():
+                    ax1.get_legend().remove()
+                
+                # Add grid for better readability
+                ax1.grid(True, alpha=0.3)
+            
+            # Add row title
+            fig.text(0.02, 0.875, "Support Threshold", fontsize=14, fontweight='bold')
+        
+        # Row 1: Multitesting Impact Plot
+        if len(self.multitesting_data_list) > 0:
+            multitesting_dfs = [data.to_df() for data in self.multitesting_data_list]
+            
+            for i, (df, ax) in enumerate(zip(multitesting_dfs, axes[1, :])):
+                if i >= len(multitesting_dfs):
+                    # Hide unused axes
+                    ax.axis('off')
+                    continue
+                    
+                # First axis (number of features - relative change)
+                ax1 = ax
+                ax1.set_xlabel("Multitesting Correction")
+                ax1.set_ylabel("Change (%)", color=color_runtime)
+                
+                # Convert boolean to categorical labels and ensure consistent order
+                df['multitesting_label'] = df['multitesting'].apply(lambda x: "With Correction" if x else "No Correction")
+                
+                # Sort categories to ensure "No Correction" is always left and "With Correction" is always right
+                df['multitesting_label'] = pd.Categorical(df['multitesting_label'], 
+                                                         categories=["No Correction", "With Correction"], 
+                                                         ordered=True)
+                
+                # Use lineplot with relative values
+                sns.lineplot(x="multitesting_label", y="rel_number_of_features", data=df, marker="o", 
+                             color=color_runtime, ax=ax1, label="Number of Features", 
+                             linestyle="-", linewidth=2)
+                
+                # Horizontal line at 0% (no change)
+                ax1.axhline(y=0, color='gray', linestyle='-', alpha=0.3)
+                
+                # Add accuracy line to the same axis
+                sns.lineplot(x="multitesting_label", y="rel_accuracy", data=df, marker="s", 
+                             color=color_accuracy, ax=ax1, label="AUC", 
+                             linestyle="--", linewidth=2)
+                
+                # Title
+                ax1.set_title(titles[i])
+                
+                # Remove default legends created by seaborn
+                if ax1.get_legend():
+                    ax1.get_legend().remove()
+                
+                # Add grid for better readability
+                ax1.grid(True, alpha=0.3)
+            
+            # Add row title
+            fig.text(0.02, 0.625, "Multitesting", fontsize=14, fontweight='bold')
+        
+        # Row 2: Buffer Impact Plot
+        if len(self.buffer_data_list) > 0:
+            buffer_dfs = [data.to_df() for data in self.buffer_data_list]
+            
+            for i, (df, ax) in enumerate(zip(buffer_dfs, axes[2, :])):
+                if i >= len(buffer_dfs):
+                    # Hide unused axes
+                    ax.axis('off')
+                    continue
+                    
+                # First axis (number of features - relative change)
+                ax1 = ax
+                ax1.set_xlabel("Buffer Threshold")
+                ax1.set_ylabel("Change (%)", color=color_runtime)
+                sns.lineplot(x="buffer", y="rel_number_of_features", data=df, marker="o", 
+                             color=color_runtime, ax=ax1, label="Number of Features", 
+                             linestyle="-", linewidth=2)
+                
+                # Set x-ticks to 0.05 intervals
+                ax1.set_xticks(np.arange(0, 1.05, 0.05))
+                ax1.set_xticklabels([f"{x:.2f}" for x in np.arange(0, 1.05, 0.05)], rotation=45)
+                
+                # Horizontal line at 0% (no change)
+                ax1.axhline(y=0, color='gray', linestyle='-', alpha=0.3)
+                
+                # Add accuracy line to the same axis
+                sns.lineplot(x="buffer", y="rel_accuracy", data=df, marker="s", 
+                             color=color_accuracy, ax=ax1, label="AUC", 
+                             linestyle="--", linewidth=2)
+                
+                # Title
+                ax1.set_title(titles[i])
+                
+                # Remove default legends created by seaborn
+                if ax1.get_legend():
+                    ax1.get_legend().remove()
+                
+                # Add grid for better readability
+                ax1.grid(True, alpha=0.3)
+            
+            # Add row title
+            fig.text(0.02, 0.375, "Buffer Threshold", fontsize=14, fontweight='bold')
+        
+        # Row 3: Bootstrap Rounds Plot
+        if len(self.bootstrap_data_list) > 0:
+            bootstrap_dfs = [data.to_df() for data in self.bootstrap_data_list]
+            
+            for i, (df, ax) in enumerate(zip(bootstrap_dfs, axes[3, :])):
+                if i >= len(bootstrap_dfs):
+                    # Hide unused axes
+                    ax.axis('off')
+                    continue
+                    
+                # First axis (number of features - relative change)
+                ax1 = ax
+                ax1.set_xlabel("Bootstrap Rounds")
+                ax1.set_ylabel("Change (%)", color=color_runtime)
+                sns.lineplot(x="bootstrap_rounds", y="rel_number_of_features", data=df, marker="o", 
+                             color=color_runtime, ax=ax1, label="Number of Features", 
+                             linestyle="-", linewidth=2)
+                
+                # Set x-ticks to specific values: 1, 5, 10, 15, 20
+                ax1.set_xticks([1, 5, 10, 15, 20])
+                
+                # Horizontal line at 0% (no change)
+                ax1.axhline(y=0, color='gray', linestyle='-', alpha=0.3)
+                
+                # Add accuracy line to the same axis
+                sns.lineplot(x="bootstrap_rounds", y="rel_accuracy", data=df, marker="s", 
+                             color=color_accuracy, ax=ax1, label="AUC", 
+                             linestyle="--", linewidth=2)
+                
+                # Title
+                ax1.set_title(titles[i])
+                
+                # Remove default legends created by seaborn
+                if ax1.get_legend():
+                    ax1.get_legend().remove()
+                
+                # Add grid for better readability
+                ax1.grid(True, alpha=0.3)
+            
+            # Add row title
+            fig.text(0.02, 0.125, "Bootstrap Rounds", fontsize=14, fontweight='bold')
+        
+        # Create a common legend for all subplots
+        # Get handles and labels from the first non-empty plot
+        legend_handles = []
+        legend_labels = []
+        
+        if len(self.support_data_list) > 0:
+            lines, labels = axes[0, 0].get_legend_handles_labels()
+            legend_handles = lines
+            legend_labels = labels
+        elif len(self.multitesting_data_list) > 0:
+            lines, labels = axes[1, 0].get_legend_handles_labels()
+            legend_handles = lines
+            legend_labels = labels
+        elif len(self.buffer_data_list) > 0:
+            lines, labels = axes[2, 0].get_legend_handles_labels()
+            legend_handles = lines
+            legend_labels = labels
+        elif len(self.bootstrap_data_list) > 0:
+            lines, labels = axes[3, 0].get_legend_handles_labels()
+            legend_handles = lines
+            legend_labels = labels
+        
+        fig.legend(legend_handles, legend_labels, loc='upper center', 
+                   ncol=len(legend_labels), bbox_to_anchor=(0.5, 0.98),
+                   frameon=True, facecolor='white', edgecolor='black',
+                   handlelength=3)
+        
+        # Tight layout with space for the legend
+        fig.tight_layout(rect=[0, 0, 1, 0.95])
+        
+        # Save if path is provided
+        plt.savefig(Directory.FIGURES_DIR / save_path, dpi=300, bbox_inches="tight")
 
 
 class Sensitivity(BaseModel, BaseAnalyser):
