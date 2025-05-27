@@ -179,18 +179,9 @@ class MultiTestingImpactPlot(BaseModel):
                 legend_handles = lines1 + lines2
                 legend_labels = labels1 + labels2
         
-        # Create a common legend for all subplots with updated labels
-        updated_labels = []
-        for label in legend_labels:
-            if label == "Number of Features":
-                updated_labels.append("Relative Änderung der Features")
-            elif label == "AUC":
-                updated_labels.append("Relative Änderung der AUC")
-            else:
-                updated_labels.append(label)
-                
-        fig.legend(legend_handles, updated_labels, loc='upper center', 
-                   ncol=len(updated_labels), bbox_to_anchor=(0.5, 0.98),
+        # Create a common legend for all subplots
+        fig.legend(legend_handles, legend_labels, loc='upper center', 
+                   ncol=len(legend_labels), bbox_to_anchor=(0.5, 0.98),
                    frameon=True, facecolor='white', edgecolor='black',
                    handlelength=3)
         
