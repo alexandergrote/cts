@@ -943,7 +943,7 @@ class Sensitivity(BaseModel, BaseAnalyser):
         mask = exp_names.str.contains('min_support', na=False)
         data_copy_support = data_copy[mask]
 
-        datasets = []
+        support_datasets = []
         titles = []
 
         for dataset in data_copy_support[dataset_col].unique():
@@ -959,13 +959,13 @@ class Sensitivity(BaseModel, BaseAnalyser):
             title = f"{dataset.split('.')[2].upper()}"
                 
 
-            datasets.append(support_impact_data)
+            support_datasets.append(support_impact_data)
             titles.append(title)
 
-        if len(datasets) > 0:
+        if len(support_datasets) > 0:
 
             plotter = SupportThresholdImpactPlot(
-                data_list=datasets
+                data_list=support_datasets
             )
 
             plotter.plot_multiple(
@@ -975,7 +975,7 @@ class Sensitivity(BaseModel, BaseAnalyser):
         mask = exp_names.str.contains('multitest', na=False)
         data_copy_multitest = data_copy[mask]
 
-        datasets = []
+        multitest_datasets = []
         titles = []
 
         for dataset in data_copy_multitest[dataset_col].unique():
@@ -993,13 +993,13 @@ class Sensitivity(BaseModel, BaseAnalyser):
             title = f"{dataset.split('.')[2].upper()}"
                 
 
-            datasets.append(multitesting_data)
+            multitest_datasets.append(multitesting_data)
             titles.append(title)
 
-        if len(datasets) > 0:
+        if len(multitest_datasets) > 0:
 
             plotter = MultiTestingImpactPlot(
-                data_list=datasets
+                data_list=multitest_datasets
             )
 
             plotter.plot_multiple(
@@ -1009,7 +1009,7 @@ class Sensitivity(BaseModel, BaseAnalyser):
         mask = exp_names.str.contains('buffer', na=False)
         data_copy_buffer = data_copy[mask]
 
-        datasets = []
+        buffer_datasets = []
         titles = []
 
         for dataset in data_copy_buffer[dataset_col].unique():
@@ -1025,13 +1025,13 @@ class Sensitivity(BaseModel, BaseAnalyser):
             title = f"{dataset.split('.')[2].upper()}"
                 
 
-            datasets.append(buffer_data)
+            buffer_datasets.append(buffer_data)
             titles.append(title)
 
-        if len(datasets) > 0:
+        if len(buffer_datasets) > 0:
 
             plotter = BufferImpactPlot(
-                data_list=datasets
+                data_list=buffer_datasets
             )
 
             plotter.plot_multiple(
@@ -1041,7 +1041,7 @@ class Sensitivity(BaseModel, BaseAnalyser):
         mask = exp_names.str.contains('bootstrap', na=False)
         data_copy_bootstrap = data_copy[mask]
 
-        datasets = []
+        bootstrap_datasets = []
         titles = []
 
         for dataset in data_copy_bootstrap[dataset_col].unique():
@@ -1056,18 +1056,29 @@ class Sensitivity(BaseModel, BaseAnalyser):
 
             title = f"{dataset.split('.')[2].upper()}"
                 
-            datasets.append(bootstrap_data)
+            bootstrap_datasets.append(bootstrap_data)
             titles.append(title)
 
-        if len(datasets) > 0:
+        if len(bootstrap_datasets) > 0:
 
             plotter = BootstrapRoundsPlot(
-                data_list=datasets
+                data_list=bootstrap_datasets
             )
 
             plotter.plot_multiple(
                 titles=titles
             )
+
+
+        all_in_one = AllInOnePlot(
+            bootstrap_data_list=bootstrap_datasets,
+            support_data_list=support_datasets,
+            multitesting_data_list=multitest_datasets,
+            buffer_data_list=buffer_datasets
+        )
+
+        all_in_one.plot()
+
 
 if __name__ == '__main__':
 
