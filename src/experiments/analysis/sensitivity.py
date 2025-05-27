@@ -633,6 +633,18 @@ class BootstrapRoundsPlot(BaseModel):
         plt.savefig(Directory.FIGURES_DIR / save_path, dpi=300, bbox_inches="tight")
         
 
+class AllInOnePlot(BaseModel):
+
+    support_data_list: List[SupportThresholdImpactData]
+    multitesting_data_list: List[MultiTestingImpactData]
+    buffer_data_list: List[BufferImpactData]
+    bootstap_data_list: List[BootstrapRoundsData]
+
+    def plot(self) -> None:
+        # to be implemented
+        pass
+
+
 class Sensitivity(BaseModel, BaseAnalyser):
 
     def analyse(self, data: pd.DataFrame, **kwargs):
