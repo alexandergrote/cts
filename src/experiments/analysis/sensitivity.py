@@ -669,7 +669,9 @@ class AllInOnePlot(BaseModel):
              figsize: Tuple[int, int] = (18, 24),  # Taller figure for 4 rows
              style: str = "whitegrid",
              color_runtime: str = "black",
-             color_accuracy: str = "black") -> None:
+             color_accuracy: str = "black",
+             color_num_features: str = "black",
+             ) -> None:
         """
         Create a combined plot with all sensitivity analyses in one figure.
         Each row represents one type of plot.
@@ -744,6 +746,11 @@ class AllInOnePlot(BaseModel):
                 sns.lineplot(x="min_support", y="rel_accuracy", data=df, marker="s", 
                              color=color_accuracy, ax=ax1, label="AUC", 
                              linestyle="--", linewidth=2)
+
+                # add number of features to the same axis
+                sns.lineplot(x="min_support", y="rel_number_of_features", data=df, marker="o", 
+                             color=color_num_features, ax=ax1, label="Number of Sequences", 
+                             linestyle="-.", linewidth=2)
                 
                 # Title
                 ax1.set_title(titles[i])
