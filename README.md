@@ -13,7 +13,7 @@ To obtain the data for the two real-world datasts, you need to go to the followi
 
 ## Structure
 
-![Repository structure](./static/images/ml2mlfow2vis.png)
+![Repository structure](/static/images/ml2mlflow2vis.png)
 
 Broadly speaking, the repository contains two pipelines that serve different purposes:
 1) Executing the Machine Learning experiments and storing the result of each run in a MlFlow database
