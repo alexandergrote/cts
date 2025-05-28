@@ -124,18 +124,8 @@ class ExperimentFactory(BaseModel):
         multitesting_methods = [True, False]
         buffers = [0, 0.05, 0.1, 0.15]
         bootstrap_rounds = [1, 5, 10, 15, 20]
-        random_seeds = [5] #[0, 1, 2, 3, 4]
+        random_seeds = [0, 1, 2, 3, 4]
         random_seed_str = ','.join([str(seed) for seed in random_seeds])
-
-        cached_functions = [
-            'src.fetch_data.synthetic.py.DataLoader.get_data',
-            'src.fetch_data.churn.py.ChurnDataloader.get_data',
-            'src.fetch_data.malware.py.MalwareDataloader.get_data'
-        ]
-
-        cached_functions_str = "[" + ','.join(cached_functions) + "]" # without the square brackets, hydra does not recognize it as a list
-
-        
         
         for dataset in ["synthetic", "malware", "churn"]:
         
@@ -154,7 +144,6 @@ class ExperimentFactory(BaseModel):
                     f'evaluation=ml',
                     f'export=mlflow',
                     f'export.params.experiment_name={exp_name}',
-                    f'env.cached_functions={cached_functions_str}',
                     f'preprocess.params.extractor.params.skip_interesting_measures=True'
                 ]
 
@@ -176,7 +165,6 @@ class ExperimentFactory(BaseModel):
                     f'evaluation=ml',
                     f'export=mlflow',
                     f'export.params.experiment_name={exp_name}',
-                    f'env.cached_functions={cached_functions_str}',
                     f'preprocess.params.extractor.params.skip_interesting_measures=True'
                 ]
 
@@ -197,7 +185,6 @@ class ExperimentFactory(BaseModel):
                     f'evaluation=ml',
                     f'export=mlflow',
                     f'export.params.experiment_name={exp_name}',
-                    f'env.cached_functions={cached_functions_str}',
                     f'preprocess.params.extractor.params.skip_interesting_measures=True'
                 ]
 
@@ -222,7 +209,6 @@ class ExperimentFactory(BaseModel):
                     f'evaluation=ml',
                     f'export=mlflow',
                     f'export.params.experiment_name={exp_name}',
-                    f'env.cached_functions={cached_functions_str}',
                     f'preprocess.params.extractor.params.skip_interesting_measures=True'
                 ]
 
@@ -244,7 +230,6 @@ class ExperimentFactory(BaseModel):
                     f'evaluation=ml',
                     f'export=mlflow',
                     f'export.params.experiment_name={exp_name}',
-                    f'env.cached_functions={cached_functions_str}',
                     f'preprocess.params.extractor.params.skip_interesting_measures=True'
                 ]
 

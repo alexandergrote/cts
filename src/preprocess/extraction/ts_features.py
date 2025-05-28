@@ -213,9 +213,6 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
 
             _, pvals_corrected, _, _ = multipletests(p_values_array, **self.multitesting)
 
-            # debugging purposes
-            data_copy['p_vals'] = pvals_corrected
-
             mask = np.array(pvals_corrected) < self.p_value_threshold
 
         result = DatasetUniqueRules(

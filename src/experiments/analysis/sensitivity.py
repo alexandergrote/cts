@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import seaborn as sns
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
             
@@ -742,7 +743,10 @@ class AllInOnePlot(BaseModel):
             'Runtime': 's',
         }
 
+        mpl.rcParams['lines.markersize'] = 10
+
         sns.set(font_scale=1.5)
+        sns.set_style('white')
 
         custom_order = [
             '0.0', '0.05', '0.1', '0.15', '0.2', '0.25',
@@ -765,8 +769,12 @@ class AllInOnePlot(BaseModel):
             style='variable',
             markers=markers,
             errorbar=None,
-            dashes=False
+            dashes=True,
         )
+
+        for ax in g.axes.flat:
+            for line in ax.lines:
+                line.set_markersize(10)  # Set your desired marker size
 
         
         # Here we're using only '{col_name}' to display just the value of the column variable
