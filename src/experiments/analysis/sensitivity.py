@@ -791,7 +791,7 @@ class AllInOnePlot(BaseModel):
         }, inplace=True)
 
         y_axis = 'Relative Change [%]'
-        x_axis = 'Thresholds'
+        x_axis = 'Parameter Value'
         df_to_plot.rename(columns={'x_axis': x_axis, 'value': y_axis}, inplace=True)
 
         # Define markers for different categories in your hue column
@@ -1186,6 +1186,15 @@ class Sensitivity(BaseModel, BaseAnalyser):
         g = sns.FacetGrid(df_to_plot, col='scenario', row=None, sharey=False, 
                           height=4, aspect=1.2, sharex=False, despine=False)
         
+        # Dictionary für spezifische x-Achsenbeschriftungen je nach Szenario
+        x_labels = {
+            'Min Support': 'Support Threshold',
+            'Maximum Sequence Length': 'Sequence Length',
+            'Multitesting': 'Correction Type',
+            'Minimum Effect Size': 'Effect Size Threshold',
+            'Bootstrap Rounds': 'Number of Bootstrap Rounds'
+        }
+        
         g.map_dataframe(
             sns.lineplot, 
             x=x_axis, 
@@ -1215,8 +1224,13 @@ class Sensitivity(BaseModel, BaseAnalyser):
             # Add grid
             ax.grid(True, alpha=0.3)
         
-        # Set titles
+        # Set titles and x-labels based on scenario
         g.set_titles("{col_name}")
+        
+        # Setze spezifische x-Achsenbeschriftungen für jedes Szenario
+        for ax, scenario in zip(g.axes.flat, g.col_names):
+            if scenario in x_labels:
+                ax.set_xlabel(x_labels[scenario])
         
         # Create legend
         handles, labels = g.axes.flat[0].get_legend_handles_labels()
