@@ -155,6 +155,59 @@ class SupportThresholdImpactData(MixinData, BaseData):
         
         return self.normalize_df(data=df, mask=min_support_mask)
 
+class MaxSequenceImpactData(MixinData, BaseData):
+    max_sequence: List[int] = Field(description="Max sequence length values")
+    
+    # Field validators (V2 style)
+    @field_validator('max_sequence')
+    @classmethod
+    def validate_min_support(cls, v: List[float]) -> List[float]:
+        if any(x < 2 for x in v):
+            raise ValueError("All minimum support values must not be smaller than 2")
+        return v
+    
+    @field_validator('runtime')
+    @classmethod
+    def validate_runtime(cls, v: List[float]) -> List[float]:
+        if any(x <= 0 for x in v):
+            raise ValueError("All runtime values must be positive")
+        return v
+    
+    @field_validator('accuracy')
+    @classmethod
+    def validate_accuracy(cls, v: List[float]) -> List[float]:
+        if any(x < 0 or x > 1 for x in v):
+            raise ValueError("All accuracy values must be between 0 and 1")
+        return v
+    
+    # Model validator to check that all lists have the same length
+    @model_validator(mode='after')
+    def validate_lengths(self) -> 'SupportThresholdImpactData':
+        lists = [self.max_sequence, self.runtime, self.accuracy]
+        if len(set(len(lst) for lst in lists)) > 1:
+            raise ValueError("All lists must have the same length")
+        return self
+    
+    
+    def to_df(self) -> pd.DataFrame:
+        """Convert the data to a DataFrame with validation"""
+        df = pd.DataFrame({
+            'dataset_name': self.dataset_name,
+            'max_sequence': self.max_sequence,
+            'runtime': self.runtime,
+            'accuracy': self.accuracy,
+            'number_of_features': self.number_of_features
+        })
+        
+        # Calculate relative changes
+        # Use the mean of all data points with the smallest min_support as reference
+        max_sequence_value = df['max_sequence'].min()
+        max_sequence_mask = df['max_sequence'] == max_sequence_value
+        
+        return self.normalize_df(data=df, mask=max_sequence_mask)
+
+    
+
 
 class BufferImpactData(MixinData, BaseData):
 
@@ -651,6 +704,7 @@ class AllInOnePlot(BaseModel):
     multitesting_data_list: List[MultiTestingImpactData]
     buffer_data_list: List[BufferImpactData]
     bootstrap_data_list: List[BootstrapRoundsData]
+    max_sequence_data_list: List[MaxSequenceImpactData]
 
     def plot(self, 
              titles: Optional[List[str]] = None,
@@ -677,7 +731,8 @@ class AllInOnePlot(BaseModel):
         if (len(self.support_data_list) == 0 and 
             len(self.multitesting_data_list) == 0 and 
             len(self.buffer_data_list) == 0 and 
-            len(self.bootstrap_data_list) == 0):
+            len(self.bootstrap_data_list) == 0 and 
+            len(self.max_sequence_data_list) == 0):
             raise ValueError("At least one dataset must be provided for at least one plot type")
         
         # Determine the number of columns (datasets)
@@ -685,13 +740,14 @@ class AllInOnePlot(BaseModel):
             len(self.support_data_list),
             len(self.multitesting_data_list),
             len(self.buffer_data_list),
-            len(self.bootstrap_data_list)
+            len(self.bootstrap_data_list),
+            len(self.max_sequence_data_list)
         )
         
         if n_cols == 0:
             raise ValueError("No datasets provided")
 
-        data_lists = [self.support_data_list, self.multitesting_data_list, self.buffer_data_list, self.bootstrap_data_list]
+        data_lists = [self.support_data_list, self.max_sequence_data_list, self.multitesting_data_list, self.buffer_data_list, self.bootstrap_data_list]
         df_to_plot = []
         for data_list in data_lists:
             assert isinstance(data_list, list), "All elements in data_lists must be lists"
@@ -702,6 +758,8 @@ class AllInOnePlot(BaseModel):
                 df = el.to_df()
                 df.rename(columns={el.get_threshold_name(): 'x_axis'}, inplace=True)
                 df['scenario'] = el.__class__.__name__
+
+                print(df.head())
             
                 # Wenn es sich um Multitesting-Daten handelt, behalte die in to_df() festgelegte Reihenfolge bei
                 if el.__class__.__name__ == 'MultiTestingImpactData':
@@ -725,10 +783,10 @@ class AllInOnePlot(BaseModel):
             'MalwareDataloader': 'Malware',
             'DataLoader': 'Synthetic',
             'SupportThresholdImpactData': 'Min Support',
+            'MaxSequenceImpactData': 'Sequence Length',
             'MultiTestingImpactData': 'Multitesting',
             'BufferImpactData': 'Buffer',
             'BootstrapRoundsData': 'Bootstrap Rounds',
-            
                        
         }, inplace=True)
 
@@ -751,6 +809,7 @@ class AllInOnePlot(BaseModel):
         custom_order = [
             '0.0', '0.05', '0.1', '0.15', '0.2', '0.25',
             'No Correction', 'With Correction',
+            '2', '3', '4',
             '10', '15', '20'
         ]
 
@@ -830,6 +889,7 @@ class Sensitivity(BaseModel, BaseAnalyser):
         metric_col_auc, metric_col_auc_v = 'metrics.roc_auc_score', 'AUC'
         metric_col_f1, metric_col_f1_v = 'metrics.f1_score', 'F1 Score'
         rel_support = 'min_support_rel'
+        max_sequence = 'max_sequence_length'
         n_features_selected = 'metrics.n_features_selected'
         criterion_buffer = 'criterion_buffer'
         
@@ -839,6 +899,7 @@ class Sensitivity(BaseModel, BaseAnalyser):
             'metrics.feature_selection_duration': metric_duration,
             'metrics.feature_selection_max_memory': metric_memory,
             'params.preprocess.params.extractor.params.prefixspan_config.params.min_support_rel': rel_support,
+            'params.preprocess.params.extractor.params.prefixspan_config.params.max_sequence_length': max_sequence,
             'params.preprocess.params.extractor.params.criterion_buffer': 'criterion_buffer',
             metric_col_auc: metric_col_auc_v,
             metric_col_f1: metric_col_f1_v,
@@ -883,6 +944,33 @@ class Sensitivity(BaseModel, BaseAnalyser):
                 titles=titles
             )
 
+        # max sequence datasets
+        mask = exp_names.str.contains('max_sequence', na=False)
+        data_copy_sequence = data_copy[mask]
+
+        sequence_datasets = []
+        titles = []
+
+        for dataset in data_copy_sequence[dataset_col].unique():
+
+            data_copy_sub = data_copy_sequence[data_copy_sequence[dataset_col] == dataset]
+
+            support_impact_data = MaxSequenceImpactData(
+                dataset_name=dataset,
+                max_sequence=data_copy_sub[max_sequence],
+                runtime=data_copy_sub[metric_duration],
+                accuracy=data_copy_sub[metric_col_auc_v],
+                number_of_features=data_copy_sub['N Features Selected']
+            )
+
+            title = f"{dataset.split('.')[2].upper()}"
+                
+
+            sequence_datasets.append(support_impact_data)
+            titles.append(title)
+
+
+        # multitest datasets
         mask = exp_names.str.contains('multitest', na=False)
         data_copy_multitest = data_copy[mask]
 
@@ -991,7 +1079,8 @@ class Sensitivity(BaseModel, BaseAnalyser):
             bootstrap_data_list=bootstrap_datasets,
             support_data_list=support_datasets,
             multitesting_data_list=multitest_datasets,
-            buffer_data_list=buffer_datasets
+            buffer_data_list=buffer_datasets,
+            max_sequence_data_list=sequence_datasets,
         )
 
         all_in_one.plot()

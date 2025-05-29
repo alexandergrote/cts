@@ -123,7 +123,7 @@ class ExperimentFactory(BaseModel):
         max_sequence_lengths = [2, 3, 4]
         multitesting_methods = [True, False]
         buffers = [0, 0.05, 0.1, 0.15]
-        bootstrap_rounds = [1, 5, 10, 15, 20]
+        bootstrap_rounds = [10, 15, 20]
         random_seeds = [0, 1, 2, 3, 4]
         random_seed_str = ','.join([str(seed) for seed in random_seeds])
         
@@ -157,7 +157,7 @@ class ExperimentFactory(BaseModel):
                     f'fetch_data={dataset}',
                     f'preprocess=self_spm',
                     f'preprocess.params.extractor.params.prefixspan_config.params.min_support_abs=0',
-                    f'preprocess.params.extractor.params.prefixspan_config.params.min_support_rel=0.1',
+                    f'preprocess.params.extractor.params.prefixspan_config.params.min_support_rel=0.0',
                     f'preprocess.params.extractor.params.prefixspan_config.params.max_sequence_length={max_sequence_length}',
                     f'train_test_split=stratified',
                     f'train_test_split.params.random_state={random_seed_str}',
@@ -293,7 +293,7 @@ class ExperimentFactory(BaseModel):
                     f'fetch_data={dataset}',
                     f'preprocess={preprocess}',
                     f'train_test_split=stratified',
-                    f'train_test_split.params.random_state=0', # ,1,2,3,4
+                    f'train_test_split.params.random_state=0,1,2,3,4'
                     f'model={model}_tuned',
                     f'evaluation=ml',
                     f'export=mlflow',
