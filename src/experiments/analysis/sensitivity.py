@@ -1183,7 +1183,7 @@ class Sensitivity(BaseModel, BaseAnalyser):
         df_to_plot[x_axis] = df_to_plot[x_axis].astype(str).astype(cat_type)
         
         # Create plot
-        g = sns.FacetGrid(df_to_plot, col='scenario', row=None, sharey=True, 
+        g = sns.FacetGrid(df_to_plot, col='scenario', row=None, sharey=False, 
                           height=4, aspect=1.2, sharex=False, despine=False)
         
         # Dictionary für spezifische x-Achsenbeschriftungen je nach Szenario
@@ -1210,7 +1210,7 @@ class Sensitivity(BaseModel, BaseAnalyser):
         # Increase marker size and set y-axis label
         for i, ax in enumerate(g.axes.flat):
             for line in ax.lines:
-                line.set_markersize(15)
+                line.set_markersize(10)
             
             # Add black border around each plot
             for spine in ax.spines.values():
