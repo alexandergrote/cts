@@ -2,14 +2,18 @@
 
 ## Installation
 
+Follow these instructions to install the required packages:
+
 ```
 pip install -r requirements.txt
 pip install .
 ```
 
-To obtain the data for the two real-world datasts, you need to go to the following links:
-- malware data: https://www.kaggle.com/datasets/ang3loliveira/malware-analysis-datasets-api-call-sequences
-- churn data: https://www.coveo.com/en/ailabs/shopper-intent-prediction-from-clickstream-e-commerce-data-with-minimal-browsing-information
+The python package has been tested with Python 3.9.6.
+
+The synthetic dataset is automatically generated. However, for the remaining datasets you need to go to the following links and download them manually. Afterwards, put the raw csv files in a folder called `data` in the root directory of this project.
+- Malware data: https://www.kaggle.com/datasets/ang3loliveira/malware-analysis-datasets-api-call-sequences
+- Churn data: https://www.coveo.com/en/ailabs/shopper-intent-prediction-from-clickstream-e-commerce-data-with-minimal-browsing-information
 
 ## Structure
 
