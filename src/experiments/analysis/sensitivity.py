@@ -1086,11 +1086,11 @@ class Sensitivity(BaseModel, BaseAnalyser):
         all_in_one.plot()
 
         # Create synthetic-only plot
-        synthetic_support_datasets = [d for d in support_datasets if 'Synthetic' in d.dataset_name]
-        synthetic_buffer_datasets = [d for d in buffer_datasets if 'Synthetic' in d.dataset_name]
-        synthetic_bootstrap_datasets = [d for d in bootstrap_datasets if 'Synthetic' in d.dataset_name]
-        synthetic_multitest_datasets = [d for d in multitest_datasets if 'Synthetic' in d.dataset_name]
-        synthetic_sequence_datasets = [d for d in sequence_datasets if 'Synthetic' in d.dataset_name]
+        synthetic_support_datasets = [d for d in support_datasets if 'synthetic' in d.dataset_name]
+        synthetic_buffer_datasets = [d for d in buffer_datasets if 'synthetic' in d.dataset_name]
+        synthetic_bootstrap_datasets = [d for d in bootstrap_datasets if 'synthetic' in d.dataset_name]
+        synthetic_multitest_datasets = [d for d in multitest_datasets if 'synthetic' in d.dataset_name]
+        synthetic_sequence_datasets = [d for d in sequence_datasets if 'synthetic' in d.dataset_name]
         
         if any([synthetic_support_datasets, synthetic_buffer_datasets, synthetic_bootstrap_datasets, 
                 synthetic_multitest_datasets, synthetic_sequence_datasets]):
@@ -1124,9 +1124,9 @@ class Sensitivity(BaseModel, BaseAnalyser):
         # Process each data type
         data_lists = [
             ('Min Support', support_data_list),
-            ('Sequence Length', max_sequence_data_list),
+            ('Maximum Sequence Length', max_sequence_data_list),
             ('Multitesting', multitesting_data_list),
-            ('Buffer', buffer_data_list),
+            ('Minimum Effect Size', buffer_data_list),
             ('Bootstrap Rounds', bootstrap_data_list)
         ]
         
@@ -1169,7 +1169,6 @@ class Sensitivity(BaseModel, BaseAnalyser):
         }
         
         # Set plot style
-        mpl.rcParams['lines.markersize'] = 15
         sns.set(font_scale=1.5)
         sns.set_style('white')
         
@@ -1202,7 +1201,7 @@ class Sensitivity(BaseModel, BaseAnalyser):
         # Increase marker size
         for ax in g.axes.flat:
             for line in ax.lines:
-                line.set_markersize(15)
+                line.set_markersize(10)
             
             # Add black border around each plot
             for spine in ax.spines.values():
@@ -1229,11 +1228,11 @@ class Sensitivity(BaseModel, BaseAnalyser):
                 unique_handles.append(handle)
         
         g.fig.legend(handles=unique_handles, loc='upper center', 
-                    labels=unique_labels, bbox_to_anchor=(0.5, 1.05), 
+                    labels=unique_labels, bbox_to_anchor=(0.5, 1.15), 
                     ncol=len(unique_labels))
         
         # Adjust layout
-        g.fig.subplots_adjust(top=0.85)
+        g.fig.subplots_adjust(top=0.95)
         plt.tight_layout()
         
         # Save figure
