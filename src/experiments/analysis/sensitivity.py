@@ -1219,10 +1219,10 @@ class Sensitivity(BaseModel, BaseAnalyser):
                 spine.set_linewidth(1)
                 
             # Add horizontal line at 0%
-            ax.axhline(y=0, color='gray', linestyle='-', alpha=0.3)
+            #ax.axhline(y=0, color='gray', linestyle='-', alpha=0.3)
             
             # Add grid
-            ax.grid(True, alpha=0.3)
+            #ax.grid(True, alpha=0.3)
             
             # Y-Achsenbeschriftung für alle Plots anzeigen
             ax.set_ylabel(y_axis)
