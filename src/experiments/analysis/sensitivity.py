@@ -833,7 +833,7 @@ class AllInOnePlot(BaseModel):
 
         for ax in g.axes.flat:
             for line in ax.lines:
-                line.set_markersize(10)  # Set your desired marker size
+                line.set_markersize(15)  # Set your desired marker size
 
         
         # Here we're using only '{col_name}' to display just the value of the column variable
@@ -1084,6 +1084,160 @@ class Sensitivity(BaseModel, BaseAnalyser):
         )
 
         all_in_one.plot()
+
+        # Create synthetic-only plot
+        synthetic_support_datasets = [d for d in support_datasets if 'Synthetic' in d.dataset_name]
+        synthetic_buffer_datasets = [d for d in buffer_datasets if 'Synthetic' in d.dataset_name]
+        synthetic_bootstrap_datasets = [d for d in bootstrap_datasets if 'Synthetic' in d.dataset_name]
+        synthetic_multitest_datasets = [d for d in multitest_datasets if 'Synthetic' in d.dataset_name]
+        synthetic_sequence_datasets = [d for d in sequence_datasets if 'Synthetic' in d.dataset_name]
+        
+        if any([synthetic_support_datasets, synthetic_buffer_datasets, synthetic_bootstrap_datasets, 
+                synthetic_multitest_datasets, synthetic_sequence_datasets]):
+            self.plot_synthetic_only(
+                support_data_list=synthetic_support_datasets,
+                buffer_data_list=synthetic_buffer_datasets,
+                bootstrap_data_list=synthetic_bootstrap_datasets,
+                multitesting_data_list=synthetic_multitest_datasets,
+                max_sequence_data_list=synthetic_sequence_datasets
+            )
+
+    def plot_synthetic_only(self,
+                           support_data_list: List[SupportThresholdImpactData] = [],
+                           multitesting_data_list: List[MultiTestingImpactData] = [],
+                           buffer_data_list: List[BufferImpactData] = [],
+                           bootstrap_data_list: List[BootstrapRoundsData] = [],
+                           max_sequence_data_list: List[MaxSequenceImpactData] = [],
+                           save_path: str = "sensitivity_synthetic_only.pdf",
+                           figsize: Tuple[int, int] = (20, 5)):
+        """
+        Create a plot showing all threshold plots for the synthetic dataset in one row.
+        """
+        # Check if we have any data
+        if not any([support_data_list, multitesting_data_list, buffer_data_list, 
+                   bootstrap_data_list, max_sequence_data_list]):
+            return
+            
+        # Prepare data for plotting
+        df_to_plot = []
+        
+        # Process each data type
+        data_lists = [
+            ('Min Support', support_data_list),
+            ('Sequence Length', max_sequence_data_list),
+            ('Multitesting', multitesting_data_list),
+            ('Buffer', buffer_data_list),
+            ('Bootstrap Rounds', bootstrap_data_list)
+        ]
+        
+        for scenario_name, data_list in data_lists:
+            if not data_list:
+                continue
+                
+            for el in data_list:
+                df = el.to_df()
+                df.rename(columns={el.get_threshold_name(): 'x_axis'}, inplace=True)
+                df['scenario'] = scenario_name
+                
+                df_melt = df.melt(id_vars=['dataset_name', 'scenario', 'x_axis'], 
+                                  value_vars=['rel_number_of_features', 'rel_accuracy', 'rel_runtime'])
+                df_to_plot.append(df_melt)
+        
+        if not df_to_plot:
+            return
+            
+        df_to_plot = pd.concat(df_to_plot, ignore_index=True)
+        
+        # Prepare plot settings
+        grey_palette = sns.color_palette(['grey'] * df_to_plot['variable'].nunique())
+        
+        df_to_plot.replace({
+            'rel_number_of_features': 'Number of Features',
+            'rel_accuracy': 'AUC',
+            'rel_runtime': 'Runtime',
+        }, inplace=True)
+        
+        y_axis = 'Relative Change [%]'
+        x_axis = 'Thresholds'
+        df_to_plot.rename(columns={'x_axis': x_axis, 'value': y_axis}, inplace=True)
+        
+        # Define markers
+        markers = {
+            'Number of Features': 'o', 
+            'AUC': 'D',
+            'Runtime': 's',
+        }
+        
+        # Set plot style
+        mpl.rcParams['lines.markersize'] = 15
+        sns.set(font_scale=1.5)
+        sns.set_style('white')
+        
+        # Create categorical order for thresholds
+        custom_order = [
+            '0.0', '0.05', '0.1', '0.15', '0.2', '0.25',
+            'No Correction', 'With Correction',
+            '2', '3', '4',
+            '1', '5', '10', '15', '20'
+        ]
+        cat_type = CategoricalDtype(categories=custom_order, ordered=True)
+        df_to_plot[x_axis] = df_to_plot[x_axis].astype(str).astype(cat_type)
+        
+        # Create plot
+        g = sns.FacetGrid(df_to_plot, col='scenario', row=None, sharey=False, 
+                          height=4, aspect=1.2, sharex=False, despine=False)
+        
+        g.map_dataframe(
+            sns.lineplot, 
+            x=x_axis, 
+            y=y_axis,
+            hue='variable',
+            palette=grey_palette,
+            style='variable',
+            markers=markers,
+            errorbar=None,
+            dashes=True,
+        )
+        
+        # Increase marker size
+        for ax in g.axes.flat:
+            for line in ax.lines:
+                line.set_markersize(15)
+            
+            # Add black border around each plot
+            for spine in ax.spines.values():
+                spine.set_visible(True)
+                spine.set_color('black')
+                spine.set_linewidth(1)
+                
+            # Add horizontal line at 0%
+            ax.axhline(y=0, color='gray', linestyle='-', alpha=0.3)
+            
+            # Add grid
+            ax.grid(True, alpha=0.3)
+        
+        # Set titles
+        g.set_titles("{col_name}")
+        
+        # Create legend
+        handles, labels = g.axes.flat[0].get_legend_handles_labels()
+        unique_labels = []
+        unique_handles = []
+        for handle, label in zip(handles, labels):
+            if label not in unique_labels:
+                unique_labels.append(label)
+                unique_handles.append(handle)
+        
+        g.fig.legend(handles=unique_handles, loc='upper center', 
+                    labels=unique_labels, bbox_to_anchor=(0.5, 1.05), 
+                    ncol=len(unique_labels))
+        
+        # Adjust layout
+        g.fig.subplots_adjust(top=0.85)
+        plt.tight_layout()
+        
+        # Save figure
+        plt.savefig(Directory.FIGURES_DIR / save_path, dpi=300, bbox_inches="tight", pad_inches=0.25)
 
 
 if __name__ == '__main__':
