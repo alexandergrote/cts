@@ -1225,7 +1225,8 @@ class Sensitivity(BaseModel, BaseAnalyser):
             ax.grid(True, alpha=0.3)
         
         # Set titles and x-labels based on scenario
-        g.set_titles("{col_name}")
+        #g.set_titles("{col_name}")
+        g.set_titles("")
         
         # Setze spezifische x-Achsenbeschriftungen für jedes Szenario
         for ax, scenario in zip(g.axes.flat, g.col_names):
