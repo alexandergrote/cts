@@ -815,7 +815,7 @@ class AllInOnePlot(BaseModel):
 
         cat_type = CategoricalDtype(categories=custom_order, ordered=True)
 
-        df_to_plot["Thresholds"] = df_to_plot["Thresholds"].astype(str).astype(cat_type)
+        df_to_plot[x_axis] = df_to_plot[x_axis].astype(str).astype(cat_type)
         
         g = sns.FacetGrid(df_to_plot, col='dataset_name', row='scenario', sharey=False, height=4, sharex=False, despine=False)
 
@@ -1188,9 +1188,9 @@ class Sensitivity(BaseModel, BaseAnalyser):
         
         # Dictionary für spezifische x-Achsenbeschriftungen je nach Szenario
         x_labels = {
-            'Min Support': 'Support Threshold',
-            'Maximum Sequence Length': 'Sequence Length',
-            'Multitesting': 'Correction Type',
+            'Min Support': 'Relative Support Threshold',
+            'Maximum Sequence Length': 'Maximum Sequence Length',
+            'Multitesting': 'Multitesting',
             'Minimum Effect Size': 'Effect Size Threshold',
             'Bootstrap Rounds': 'Number of Bootstrap Rounds'
         }
