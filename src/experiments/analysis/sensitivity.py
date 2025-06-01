@@ -759,8 +759,7 @@ class AllInOnePlot(BaseModel):
                 df.rename(columns={el.get_threshold_name(): 'x_axis'}, inplace=True)
                 df['scenario'] = el.__class__.__name__
 
-                print(df.head())
-            
+                            
                 # Wenn es sich um Multitesting-Daten handelt, behalte die in to_df() festgelegte Reihenfolge bei
                 if el.__class__.__name__ == 'MultiTestingImpactData':
                     pass
@@ -1157,7 +1156,7 @@ class Sensitivity(BaseModel, BaseAnalyser):
             'rel_runtime': 'Runtime',
         }, inplace=True)
         
-        y_axis = 'Relative Change [%]'
+        y_axis = 'Change [%]'
         x_axis = 'Thresholds'
         df_to_plot.rename(columns={'x_axis': x_axis, 'value': y_axis}, inplace=True)
         
@@ -1169,7 +1168,7 @@ class Sensitivity(BaseModel, BaseAnalyser):
         }
         
         # Set plot style
-        sns.set(font_scale=1.5)
+        sns.set(font_scale=2)
         sns.set_style('white')
         
         # Create categorical order for thresholds

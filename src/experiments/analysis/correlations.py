@@ -86,19 +86,19 @@ class Correlations(BaseModel, BaseAnalyser):
         colors = ['grey', 'grey', 'grey', 'grey']
 
         # Filter only synthetic datasets
-        synthetic_records = [(exp_name, data, p_value, corr_value) for exp_name, data, p_value, corr_value in records if "malwa" in exp_name]
+        malware_records = [(exp_name, data, p_value, corr_value) for exp_name, data, p_value, corr_value in records if "malwa" in exp_name]
         
-        if synthetic_records:
+        if malware_records:
             # Create a single row of subplots for all metrics
             metrics = ['chi_squared', 'entropy', "fisher", "phi"]
             num_plots = len(metrics)
-            fig, axes = plt.subplots(1, num_plots, figsize=(6*num_plots, 5))
-            
-            # Increase font size for the second plot
-            plt.rcParams.update({'font.size': 14})
+            fig, axes = plt.subplots(1, num_plots, figsize=(6*num_plots, 6))
             
             # Use only the first synthetic dataset
-            exp_name, data, _, _ = synthetic_records[0]
+            exp_name, data, _, _ = malware_records[0]
+
+            sns.set(font_scale=2.0)
+            sns.set_style('white')
 
             for j, y_var in enumerate(metrics):
                 order = 2
@@ -140,10 +140,10 @@ class Correlations(BaseModel, BaseAnalyser):
                 title = f"{y_var}"
                 
                 # Set title and labels with increased font size
-                axes[j].set_title(title, fontsize=16)
-                axes[j].set_xlabel('Confidence Delta', fontsize=14)
-                axes[j].set_ylabel(f'{y_var}', fontsize=14)
-                axes[j].tick_params(axis='both', which='major', labelsize=12)
+                axes[j].set_title(title)
+                axes[j].set_xlabel('Confidence Delta')
+                axes[j].set_ylabel(f'{y_var}')
+                axes[j].tick_params(axis='both', which='major')
 
                 if y_var == 'entropy':
                     axes[j].set_ylim(0, 1)
