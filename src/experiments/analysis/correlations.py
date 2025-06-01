@@ -145,7 +145,8 @@ class Correlations(BaseModel, BaseAnalyser):
                 axes[j].set_ylabel(f'{y_var}')
                 axes[j].tick_params(axis='both', which='major')
 
-                if y_var == 'entropy':
+
+                if y_var == 'Entropy':
                     axes[j].set_ylim(0, 1)
                 
 
