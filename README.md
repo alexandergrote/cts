@@ -1,4 +1,4 @@
-# Interpretable Process Analysis Through Sequential Pattern Mining
+# Finding the Needle in the Haystack - An Interpretable Sequential Pattern Mining Method for Classification Problems
 
 This repository is associated with the paper "Finding the Needle in the Haystack - An Interpretable Sequential Pattern Mining Method for Classification Problems", which is currently under review.
 
