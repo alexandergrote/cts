@@ -54,6 +54,7 @@ Next, navigate to the repository directory and install the package using pip:
 - `pip install -r requirements.txt`
 - `pip install .`
 
+
 ### Datasets
 
 The synthetic dataset is automatically generated. However, for the remaining datasets you need to go to the following links and download them manually. Afterwards, put the raw csv files in a folder called `data` in the root directory of this project.
@@ -78,6 +79,11 @@ The resulting figures are then saved in a folder called `figures`. The output of
 - `python src/fetch_data/util/eda.py --dataset synthetic`
 - `python src/fetch_data/util/eda.py --dataset malware`
 - `python src/fetch_data/util/eda.py --dataset churn`
+
+### Special Files of Interest
+
+- Feature Extraction and Selection with Delta Confidence: `src/preprocess/extraction/ts_features.py`
+- Feature Extraction with PrefixSpan: `src/preprocess/extraction/spm.py`
 
 ## Tests
 
