@@ -12,7 +12,7 @@ setup(
     version="0.1.0",
     description="Categorical Time Series Analysis with Sequential Pattern Mining",
     author="Alexander Grote",
-    author_email="grote@fzi.de",
+    author_email="alexander.grote@kit.edu",
     url="",
     packages=find_packages(exclude=("tests", "docs")),
 )
