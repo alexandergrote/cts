@@ -140,6 +140,7 @@ class HyperTuner(BaseModel, BaseProcessModel):
         params = self.hyperparams.get_params_for_study(study.best_trial)
 
         with open('best_params.yaml', 'w') as file:
+            print("best params: ", params, "saving to file: best_params.yaml")
             yaml.dump(params, file)
 
         # update model with new params

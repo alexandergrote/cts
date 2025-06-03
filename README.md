@@ -22,6 +22,7 @@ Overall, there are four different setups, as defined in `src/experiments/factory
 2) Feature Extraction 
 3) Cost Sensitivity Analysis 
 4) Sensitivity Analysis
+5) Benchmarking
 
 ### Machine Learning Pipeline
 
@@ -71,6 +72,7 @@ To reproduce all experiments, including the figures and tables, you need to exec
 - `python src/experiments/cli.py feat --filter-name "oh.*"`
 - `python src/experiments/cli.py cost`
 - `python src/experiments/cli.py sens`
+- `python src/experiments/cli.py bench`
 
 The resulting figures are then saved in a folder called `figures`. The output of the exploratory data analysis can be obtained by running
 - `python src/fetch_data/util/eda.py --dataset synthetic`
