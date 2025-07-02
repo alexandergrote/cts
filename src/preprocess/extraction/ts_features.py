@@ -135,8 +135,10 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
             DatasetRulesSchema.centered_inverse_entropy,
             DatasetRulesSchema.entropy,
             DatasetRulesSchema.chi_squared,
+            DatasetRulesSchema.chi_squared_p_values,
             DatasetRulesSchema.phi,
             DatasetRulesSchema.fisher_odds_ratio,
+            DatasetRulesSchema.fisher_odds_ratio_p_values,
             DatasetRulesSchema.support
         ]
 

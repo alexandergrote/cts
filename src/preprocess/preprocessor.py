@@ -8,6 +8,7 @@ from src.util.dynamic_import import DynamicImport
 from src.util.custom_logging import console
 from src.util.datasets import DatasetSchema
 from src.util.profile import max_memory_tracker, time_tracker, Tracker
+from src.preprocess.util.datasets import DatasetRulesSchema
 
 
 class FeatureMaker(BaseModel):
@@ -69,18 +70,22 @@ class FeatureMaker(BaseModel):
 
             rules = kwargs['rules'].data.copy(deep=True)
             rules['id_column'] = rules['id_column'].apply(lambda x: '_'.join(x))
-            rules['avg_delta_confidence'] = rules['delta_confidence'].apply(lambda x: sum(x)/len(x))
-            rules['avg_chi_squared'] = rules['chi_squared'].apply(lambda x: sum(x)/len(x))
-            rules['avg_entropy'] = rules['entropy'].apply(lambda x: sum(x)/len(x))
-            rules['avg_fisher'] = rules['fisher_odds_ratio'].apply(lambda x: sum(x)/len(x))
+            rules['avg_delta_confidence'] = rules[DatasetRulesSchema.delta_confidence].apply(lambda x: sum(x)/len(x))
+            rules['avg_chi_squared'] = rules[DatasetRulesSchema.chi_squared].apply(lambda x: sum(x)/len(x))
+            rules['avg_chi_squared_p'] = rules[DatasetRulesSchema.chi_squared_p_values].apply(lambda x: sum(x)/len(x))
+            rules['avg_entropy'] = rules[DatasetRulesSchema.entropy].apply(lambda x: sum(x)/len(x))
+            rules['avg_fisher'] = rules[DatasetRulesSchema.fisher_odds_ratio].apply(lambda x: sum(x)/len(x))
+            rules['avg_fisher_p'] = rules[DatasetRulesSchema.fisher_odds_ratio_p_values].apply(lambda x: sum(x)/len(x))
             rules['avg_phi'] = rules['phi'].apply(lambda x: sum(x)/len(x))
             
             
 
             delta_conf_mapping = dict(zip(rules['id_column'], rules['avg_delta_confidence']))
             chi_quared_mapping = dict(zip(rules['id_column'], rules['avg_chi_squared']))
+            chi_squared_p_mapping = dict(zip(rules['id_column'], rules['avg_chi_squared_p']))
             entropy_mapping = dict(zip(rules['id_column'], rules['avg_entropy']))
             fisher_mapping = dict(zip(rules['id_column'], rules['avg_fisher']))
+            fisher_p_mapping = dict(zip(rules['id_column'], rules['avg_fisher_p']))
             phi_mapping = dict(zip(rules['id_column'], rules['avg_phi']))
 
             y_train = kwargs['y_train'].copy(deep=True)
@@ -93,16 +98,21 @@ class FeatureMaker(BaseModel):
                 avg_target = y_train[x_train[col]].mean()
                 delta_conf = delta_conf_mapping[col]
                 chi_squared = chi_quared_mapping[col]
+                chi_squared_p = chi_squared_p_mapping[col]
                 entropy = entropy_mapping[col]
                 phi = phi_mapping[col]
+                fisher = fisher_mapping[col]
+                fisher_p = fisher_p_mapping[col]
 
                 records.append({
                     'pattern': col,
                     'avg_target': avg_target,
                     'delta_conf': delta_conf,
                     'chi_squared': chi_squared,
+                    'chi_squared_p': chi_squared_p,
                     'entropy': entropy,
-                    'fisher': fisher_mapping[col],
+                    'fisher': fisher,
+                    'fisher_p': fisher_p,
                     'phi': phi,
                 })
 

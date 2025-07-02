@@ -171,7 +171,9 @@ class DatasetRulesSchema(pa.DataFrameModel):
     delta_confidence: Series[float]
     centered_inverse_entropy: Series[float]
     chi_squared: Series[float]
+    chi_squared_p_values: Series[float]
     fisher_odds_ratio: Series[float]
+    fisher_odds_ratio_p_values: Series[float]
     entropy: Series[float]
     phi: Series[float]
 
@@ -208,14 +210,17 @@ class DatasetRules(BaseModel):
                             DatasetRulesSchema.centered_inverse_entropy: pattern.centered_inverse_entropy,
                             DatasetRulesSchema.entropy: pattern.entropy,
                             DatasetRulesSchema.chi_squared: -999.0,
-                            DatasetRulesSchema.phi: -999.0,
+                            DatasetRulesSchema.chi_squared_p_values: -999.0,
+                            DatasetRulesSchema.phi: -999.0, 
                             DatasetRulesSchema.fisher_odds_ratio: -999.0,
+                            DatasetRulesSchema.fisher_odds_ratio_p_values: -999.0,
+
                         }
                     })
 
                     continue
 
-                chi2, p = compute_chi_square(
+                chi2, chi2_p = compute_chi_square(
                     rule_pos=pattern.support_pos,
                     rule_neg=pattern.support_neg,
                     non_rule_pos=total_observations_pos - pattern.support_pos,
@@ -244,8 +249,10 @@ class DatasetRules(BaseModel):
                         DatasetRulesSchema.centered_inverse_entropy: pattern.centered_inverse_entropy,
                         DatasetRulesSchema.entropy: pattern.entropy,
                         DatasetRulesSchema.chi_squared: chi2,
+                        DatasetRulesSchema.chi_squared_p_values: chi2_p,
                         DatasetRulesSchema.phi: phi,
                         DatasetRulesSchema.fisher_odds_ratio: fisher_odds,
+                        DatasetRulesSchema.fisher_odds_ratio_p_values: fisher_p
                     }
                 })
 
