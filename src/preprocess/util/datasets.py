@@ -82,6 +82,7 @@ def compute_phi_coefficient(rule_pos: int, rule_neg: int, non_rule_pos: int, non
     phi = numerator / denominator
     
     return phi
+
 def compute_fisher(rule_pos: int, rule_neg: int, non_rule_pos: int, non_rule_neg: int) -> Tuple[float, float]:
     """
     Compute Fisher's exact test for a 2x2 contingency table.
@@ -104,6 +105,36 @@ def compute_fisher(rule_pos: int, rule_neg: int, non_rule_pos: int, non_rule_neg
         
     return odds_ratio, p_value
 
+
+def compute_leverage(num_observations: int, num_pos: int, num_seq: int, num_pos_seq: int):
+    """"
+    With this function, we calculate the leverage of a dataset.
+    It is also known as 1-quality for subgroup discovery and can be used to measure the importance of a subgroup.
+    One downside is that leverage is also known to slightly favors itemsets with larger support.
+
+    parameters:
+       num_observations: int, the total number of observations in the dataset.
+       num_pos: int, the number of positive observations in the dataset.
+       num_seq: int, the frequency of a target sequence in the dataset.
+       num_pos_seq: int, the frequency of a target sequence with positive labels. 
+
+    See this paper for more information: https://www.vldb.org/pvldb/vol17/p2668-vandin.pdf
+
+    """
+
+    assert num_observations > 0, "Number of observations must be greater than 0"
+    assert num_pos >= 0, "Number of positive observations must be non-negative"
+    assert num_seq >= 0, "Number of sequences must be non negative"
+    assert num_observations >= num_seq, "Number of observations must be greater than or equal to the number of sequences"
+    assert num_pos_seq >= 0, "Number of positive observations in the target sequence must be non-negative"
+    assert num_pos_seq <= num_pos, "Number of positive observations in the target sequence"
+    assert num_pos_seq <= num_seq, "Number of positive observations in the target sequence must be less than or equal to the number of sequences"
+
+    joint_proba = num_pos_seq / num_observations
+    class_proba = num_pos / num_observations
+    seq_proba = num_seq / num_observations
+
+    return joint_proba - class_proba * seq_proba
 
 class DatasetAggregatedSchema(pa.DataFrameModel):
     id_column: Series[str] = pa.Field(coerce=True)
@@ -176,6 +207,7 @@ class DatasetRulesSchema(pa.DataFrameModel):
     fisher_odds_ratio_p_values: Series[float]
     entropy: Series[float]
     phi: Series[float]
+    leverage: Series[float]
 
     total_observations: Series[int]
 
@@ -214,6 +246,7 @@ class DatasetRules(BaseModel):
                             DatasetRulesSchema.phi: -999.0, 
                             DatasetRulesSchema.fisher_odds_ratio: -999.0,
                             DatasetRulesSchema.fisher_odds_ratio_p_values: -999.0,
+                            DatasetRulesSChema.leverage: -999.0,
 
                         }
                     })
@@ -241,6 +274,13 @@ class DatasetRules(BaseModel):
                     non_rule_neg=total_observations_neg - pattern.support_neg,
                 )
 
+                leverage = compute_leverage(
+                    num_observations=total_observations, 
+                    num_pos=total_observations_pos, 
+                    num_seq=pattern.support_pos + pattern.support_neg, 
+                    num_pos_seq=pattern.support_pos
+                )
+
                 records.append({
                     **pattern.model_dump(),
                     **{
@@ -248,6 +288,7 @@ class DatasetRules(BaseModel):
                         DatasetRulesSchema.delta_confidence: pattern.delta_confidence,
                         DatasetRulesSchema.centered_inverse_entropy: pattern.centered_inverse_entropy,
                         DatasetRulesSchema.entropy: pattern.entropy,
+                        DatasetRulesSchema.leverage: leverage,
                         DatasetRulesSchema.chi_squared: chi2,
                         DatasetRulesSchema.chi_squared_p_values: chi2_p,
                         DatasetRulesSchema.phi: phi,

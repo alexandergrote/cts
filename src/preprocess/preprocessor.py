@@ -77,6 +77,7 @@ class FeatureMaker(BaseModel):
             rules['avg_fisher'] = rules[DatasetRulesSchema.fisher_odds_ratio].apply(lambda x: sum(x)/len(x))
             rules['avg_fisher_p'] = rules[DatasetRulesSchema.fisher_odds_ratio_p_values].apply(lambda x: sum(x)/len(x))
             rules['avg_phi'] = rules['phi'].apply(lambda x: sum(x)/len(x))
+            rules['avg_leverage'] = rules[DatasetRulesSchema.leverage].apply(lambda x: sum(x)/len(x))
             
             
 
@@ -87,6 +88,7 @@ class FeatureMaker(BaseModel):
             fisher_mapping = dict(zip(rules['id_column'], rules['avg_fisher']))
             fisher_p_mapping = dict(zip(rules['id_column'], rules['avg_fisher_p']))
             phi_mapping = dict(zip(rules['id_column'], rules['avg_phi']))
+            leverage_mapping = dict(zip(rules['id_column'], rules['avg_leverage']))
 
             y_train = kwargs['y_train'].copy(deep=True)
             x_train = kwargs['x_train'].copy(deep=True)
@@ -103,6 +105,7 @@ class FeatureMaker(BaseModel):
                 phi = phi_mapping[col]
                 fisher = fisher_mapping[col]
                 fisher_p = fisher_p_mapping[col]
+                leverage = leverage_mapping[col]
 
                 records.append({
                     'pattern': col,
@@ -114,6 +117,7 @@ class FeatureMaker(BaseModel):
                     'fisher': fisher,
                     'fisher_p': fisher_p,
                     'phi': phi,
+                    'leverage': leverage,
                 })
 
             data = pd.DataFrame(records)
