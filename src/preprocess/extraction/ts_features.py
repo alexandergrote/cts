@@ -3,7 +3,7 @@ import numpy as np
 import pandera as pa
 
 from pydantic import  BaseModel, field_validator, confloat
-from typing import List, Literal, Optional
+from typing import List, Literal, Optional, Tuple
 from pandera.typing import DataFrame
 from tqdm import tqdm
 from sklearn.model_selection import StratifiedShuffleSplit
@@ -16,7 +16,7 @@ from src.preprocess.extraction.spm import PrefixSpan
 from src.preprocess.util.types import BootstrapRound
 from src.preprocess.util.rules import RuleEncoder
 from src.util.datasets import Dataset, DatasetSchema
-from src.preprocess.util.datasets import DatasetRulesSchema, DatasetRules, DatasetUniqueRules, DatasetUniqueRulesSchema, DatasetAggregated, DatasetAggregatedSchema
+from src.preprocess.util.datasets import DatasetRulesSchema, DatasetRules, DatasetUniqueRules, DatasetUniqueRulesSchema, DatasetAggregated, DatasetAggregatedSchema, DatasetDeltaConfidencePValues
 from src.preprocess.base import BaseFeatureEncoder
 from src.util.caching import environ_pickle_cache
 from src.util.profile import max_memory_tracker, time_tracker, Tracker
@@ -174,7 +174,7 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
 
         return data
     
-    def _select_significant_greater_than_zero(self, *, data: DatasetUniqueRules, **kwargs) -> DatasetUniqueRules:
+    def _select_significant_greater_than_zero(self, *, data: DatasetUniqueRules, **kwargs) -> Tuple[DatasetUniqueRules, DatasetDeltaConfidencePValues]:
 
         """
         Conduct statistical tests to select informative rules
@@ -206,6 +206,7 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
             p_values.append(test.pvalue)
 
         p_values_array = np.array(p_values)
+        pvals_corrected = np.array(p_values)
 
         if self.multitesting is None:
 
@@ -222,9 +223,13 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
             data=data_copy[mask]
         )
 
+        result_p_values = DatasetDeltaConfidencePValues.create_from_unique_rules(
+            data=DatasetUniqueRules(data=data_copy), pvalues=p_values_array, corrected_pvalues=pvals_corrected, mask=p_values_array < self.p_value_threshold
+        )
+
         console.log("Number of unique rules after selection: {}".format(result.data.shape[0]))
 
-        return result
+        return result, result_p_values
 
     @environ_pickle_cache()
     def _encode_train(self, *args, data: pd.DataFrame, **kwargs) -> dict:
@@ -246,7 +251,7 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
 
             # select informative rules
             console.log(f"{self.__class__.__name__}: Selecting rules")
-            selected_patterns = self._select_significant_greater_than_zero(data=unique_patterns)
+            selected_patterns, p_values = self._select_significant_greater_than_zero(data=unique_patterns)
 
         # encode rules as a binary feature
         console.log(f"{self.__class__.__name__}: Encoding rules")
@@ -275,6 +280,7 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
 
         # save output
         kwargs['rules'] = selected_patterns
+        kwargs['pvalues'] = p_values
         kwargs['data'] = encoded_dataframe
 
         # add tracker metrics to kwargs, needed for paper analysis

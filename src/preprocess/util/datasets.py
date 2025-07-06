@@ -357,3 +357,32 @@ class DatasetUniqueRules(BaseModel):
 
         return list(zip(values_df[DatasetUniqueRulesSchema.id_column], values_df[criterion]))
 
+
+class DatasetDeltaConfidencePValuesSchema(pa.DataFrameModel):
+    id_column: Series[str]
+    
+    p_values: Series[float]
+    corrected_p_values: Series[float]
+    mask: Series[bool]  # mask for the p-values that are significant
+
+    class Config:
+        unique=["id_column"]
+
+
+class DatasetDeltaConfidencePValues(BaseModel):
+
+    data: DataFrame[DatasetDeltaConfidencePValuesSchema]
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    @classmethod
+    def create_from_unique_rules(cls, data: DatasetUniqueRules, pvalues: np.ndarray, corrected_pvalues: np.ndarray, mask: np.ndarray):
+
+        df = pd.DataFrame({
+            DatasetDeltaConfidencePValuesSchema.id_column: data.data[DatasetUniqueRulesSchema.id_column],
+            DatasetDeltaConfidencePValuesSchema.p_values: pvalues,
+            DatasetDeltaConfidencePValuesSchema.corrected_p_values: corrected_pvalues,
+            DatasetDeltaConfidencePValuesSchema.mask: mask
+        })
+
+        return cls(data=df)

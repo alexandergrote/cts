@@ -78,8 +78,6 @@ class FeatureMaker(BaseModel):
             rules['avg_fisher_p'] = rules[DatasetRulesSchema.fisher_odds_ratio_p_values].apply(lambda x: sum(x)/len(x))
             rules['avg_phi'] = rules['phi'].apply(lambda x: sum(x)/len(x))
             rules['avg_leverage'] = rules[DatasetRulesSchema.leverage].apply(lambda x: sum(x)/len(x))
-            
-            
 
             delta_conf_mapping = dict(zip(rules['id_column'], rules['avg_delta_confidence']))
             chi_quared_mapping = dict(zip(rules['id_column'], rules['avg_chi_squared']))

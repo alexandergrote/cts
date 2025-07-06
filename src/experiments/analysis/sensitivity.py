@@ -57,6 +57,7 @@ class MixinData(BaseModel):
 
 
 class MultiTestingImpactData(MixinData, BaseData):
+
     multitesting: List[str] = Field(description="Boolean indication of whether multitesting was applied or not")
 
     def to_df(self) -> pd.DataFrame:
@@ -207,8 +208,6 @@ class MaxSequenceImpactData(MixinData, BaseData):
         return self.normalize_df(data=df, mask=max_sequence_mask)
 
     
-
-
 class BufferImpactData(MixinData, BaseData):
 
     buffer: List[float] = Field(description="Criterion buffer values")
