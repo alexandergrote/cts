@@ -69,7 +69,16 @@ class FeatureMaker(BaseModel):
                 raise ValueError("Feature maker must be SPMFeatureSelector")
 
             rules = kwargs['rules'].data.copy(deep=True)
+            pvalues = kwargs['pvalues'].data.copy(deep=True)
+
+
             rules['id_column'] = rules['id_column'].apply(lambda x: '_'.join(x))
+            pvalues['id_column'] = pvalues['id_column'].apply(lambda x: '_'.join(x))
+            pvalues.columns = ['delta_conf_' + el for el in pvalues.columns]
+
+            rules = rules.merge(pvalues, left_on='id_column', right_on='delta_conf_id_column')
+
+
             rules['avg_delta_confidence'] = rules[DatasetRulesSchema.delta_confidence].apply(lambda x: sum(x)/len(x))
             rules['avg_chi_squared'] = rules[DatasetRulesSchema.chi_squared].apply(lambda x: sum(x)/len(x))
             rules['avg_chi_squared_p'] = rules[DatasetRulesSchema.chi_squared_p_values].apply(lambda x: sum(x)/len(x))
@@ -80,6 +89,7 @@ class FeatureMaker(BaseModel):
             rules['avg_leverage'] = rules[DatasetRulesSchema.leverage].apply(lambda x: sum(x)/len(x))
 
             delta_conf_mapping = dict(zip(rules['id_column'], rules['avg_delta_confidence']))
+            delta_conf_p_mapping = dict(zip(rules['id_column'], rules['delta_conf_p_values']))
             chi_quared_mapping = dict(zip(rules['id_column'], rules['avg_chi_squared']))
             chi_squared_p_mapping = dict(zip(rules['id_column'], rules['avg_chi_squared_p']))
             entropy_mapping = dict(zip(rules['id_column'], rules['avg_entropy']))
@@ -97,6 +107,7 @@ class FeatureMaker(BaseModel):
 
                 avg_target = y_train[x_train[col]].mean()
                 delta_conf = delta_conf_mapping[col]
+                delta_conf_p = delta_conf_p_mapping[col]
                 chi_squared = chi_quared_mapping[col]
                 chi_squared_p = chi_squared_p_mapping[col]
                 entropy = entropy_mapping[col]
@@ -109,6 +120,7 @@ class FeatureMaker(BaseModel):
                     'pattern': col,
                     'avg_target': avg_target,
                     'delta_conf': delta_conf,
+                    'delta_conf_p': delta_conf_p,
                     'chi_squared': chi_squared,
                     'chi_squared_p': chi_squared_p,
                     'entropy': entropy,

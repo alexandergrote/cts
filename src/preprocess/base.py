@@ -21,7 +21,9 @@ class BaseFeatureEncoder(ABC):
         assert len(data_train_processed) > 0
 
         rules = result_train.get('rules', {})
+        pvalues = result_train.get('pvalues', {})
         kwargs['rules'] = rules
+        kwargs['pvalues'] = pvalues
         kwargs['delta_confidence_duration'] = result_train.get('delta_confidence_duration')
         kwargs['delta_confidence_max_memory'] = result_train.get('delta_confidence_max_memory')
         
@@ -32,6 +34,7 @@ class BaseFeatureEncoder(ABC):
         kwargs['data_train'] = data_train_processed
         kwargs['data_test'] = data_test_processed
         kwargs['rules'] = rules
+        kwargs['pvalues'] = pvalues
 
         return kwargs
         

@@ -267,6 +267,10 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
             selected_patterns.data[DatasetUniqueRulesSchema.id_column]\
                 .apply(lambda x: x.replace("'", '').split(', '))
 
+        p_values.data[DatasetUniqueRulesSchema.id_column] = \
+            p_values.data[DatasetUniqueRulesSchema.id_column]\
+                .apply(lambda x: x.replace("'", '').split(', '))
+
         encoded_dataframe = RuleEncoder.encode(
             rules=selected_patterns.data[DatasetUniqueRulesSchema.id_column].to_list(), 
             sequences2classify=sequences_values
