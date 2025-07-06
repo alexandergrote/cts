@@ -15,6 +15,7 @@ from src.experiments.analysis.cost_benefit import CostBenefit
 from src.experiments.analysis.correlations import Correlations
 from src.experiments.analysis.benchmark import Benchmark
 from src.experiments.analysis.sensitivity import Sensitivity
+from src.experiments.analysis.subgroup import SubGroupBenchmark
 from src.fetch_data.mlflow_engine import QueryEngine
 from src.experiments.util.factory import ExperimentFactory
 from src.experiments.util.types import Experiment
@@ -142,7 +143,8 @@ class ExperimentRunner(BaseModel):
             (ExperimentFactory.create_cost_benefit_experiments(), CostBenefit()),
             (ExperimentFactory.create_correlation_experiments(), Correlations()),
             (ExperimentFactory.create_benchmark_experiments(), Benchmark()),
-            (ExperimentFactory.create_parameter_experiments(), Sensitivity())
+            (ExperimentFactory.create_parameter_experiments(), Sensitivity()),
+            (ExperimentFactory.create_subgroup_benchmark_experiments(), SubGroupBenchmark())
         ]
 
         for experiments, analyser in combinations:

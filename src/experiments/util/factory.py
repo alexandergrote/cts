@@ -115,6 +115,38 @@ class ExperimentFactory(BaseModel):
         return experiments
 
     @classmethod
+    def create_subgroup_benchmark_experiments(cls) -> List[Experiment]:
+
+        experiments = []
+
+        random_seeds = [0, 1, 2, 3, 4]
+        random_seed_str = ','.join([str(seed) for seed in random_seeds])        
+
+        for dataset in ["synthetic", "malware", "churn"]:
+
+            for algorithm in ['chi_squared', 'fisher_exact']:
+            
+                exp_name = f'subgroup_benchmark_{dataset}_model_{algorithm}'
+
+                overrides = [
+                    f'fetch_data={dataset}',
+                    f'preprocess=self_spm',
+                    'preprocess.params.extractor.params.prefixspan_config.params.min_support_abs=100',
+                    'preprocess.params.extractor.params.prefixspan_config.params.min_support_rel=0.05',
+                    f'train_test_split=stratified',
+                    f'train_test_split.params.random_state={random_seed_str}',
+                    f'model=random_chance',
+                    f'evaluation=ml',
+                    #f'export=mlflow',
+                    #f'export.params.experiment_name={exp_name}'
+                    'export=dummy'
+                ]
+
+                experiments.append(Experiment(name=exp_name, overrides=overrides))
+
+        return experiments
+
+    @classmethod
     def create_parameter_experiments(cls) -> List[Experiment]:
 
         experiments = []
