@@ -137,6 +137,7 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
             DatasetRulesSchema.chi_squared,
             DatasetRulesSchema.chi_squared_p_values,
             DatasetRulesSchema.phi,
+            DatasetRulesSchema.leverage,
             DatasetRulesSchema.fisher_odds_ratio,
             DatasetRulesSchema.fisher_odds_ratio_p_values,
             DatasetRulesSchema.support
