@@ -1,0 +1,26 @@
+class_name: src.preprocess.preprocessor.FeatureMaker
+params:
+  extractor:
+    class_name: src.preprocess.extraction.subgroup.SubgroupSelector
+    params:
+      bootstrap_repetitions: 1
+      bootstrap_sampling_fraction: 1
+      p_value_threshold: 0.01
+      criterion_buffer: 0.05
+      criterion: chi
+      skip_interesting_measures: False
+      prefixspan_config:
+        class_name: 'src.preprocess.extraction.ts_features.PrefixSpan'
+        params:
+          min_support_abs: 20
+          min_support_rel: 0.00
+          max_sequence_length: 3
+      multitesting:
+        method: 'fdr_by' # 'bonferroni'
+        alpha: 0.01
+  selector:
+    class_name: src.preprocess.selection.ts_features.TimeSeriesFeatureSelection
+    params:
+      splitting_symbol: " --> "
+      n_features: null
+      

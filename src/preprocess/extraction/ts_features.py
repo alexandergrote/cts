@@ -25,7 +25,7 @@ from src.util.profile import max_memory_tracker, time_tracker, Tracker
 class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
 
     prefixspan_config: dict
-
+    
     criterion: Literal[
         DatasetUniqueRulesSchema.delta_confidence, 
         DatasetUniqueRulesSchema.centered_inverse_entropy
@@ -51,6 +51,9 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
         return v
 
     def _bootstrap_id_selection(self, data: pd.DataFrame, random_state: int) -> pd.DataFrame:
+
+        if self.bootstrap_sampling_fraction == 1:
+            return data
 
         data_unique = data[[DatasetSchema.id_column, DatasetSchema.class_column]].drop_duplicates()
         

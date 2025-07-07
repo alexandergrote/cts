@@ -28,7 +28,6 @@ class SubGroupBenchmark(BaseModel, BaseAnalyser):
 
         # exclude none results
         data_copy.reset_index(inplace=True, drop=True)
-
         
         # format result
         data_copy[dataset_col] = data_copy[dataset_col].apply(lambda x: x.split('.')[-1])

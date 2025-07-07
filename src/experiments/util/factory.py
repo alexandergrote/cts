@@ -130,12 +130,13 @@ class ExperimentFactory(BaseModel):
 
                 overrides = [
                     f'fetch_data={dataset}',
-                    f'preprocess=self_spm',
+                    f'preprocess=self_subgroup',
+                    f'preprocess.params.extractor.params.criterion={algorithm}',
                     'preprocess.params.extractor.params.prefixspan_config.params.min_support_abs=100',
                     'preprocess.params.extractor.params.prefixspan_config.params.min_support_rel=0.05',
                     f'train_test_split=stratified',
                     f'train_test_split.params.random_state={random_seed_str}',
-                    f'model=random_chance',
+                    f'model=xgb',
                     f'evaluation=ml',
                     #f'export=mlflow',
                     #f'export.params.experiment_name={exp_name}'
