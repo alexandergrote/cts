@@ -1,0 +1,9 @@
+class_name: src.preprocess.preprocessor.FeatureMaker
+params:
+  extractor:
+    class_name: src.preprocess.extraction.onehot.OneHotEncoder
+    params:
+  selector:
+    class_name: src.preprocess.selection.chi.Chi2FeatSelection
+    params:
+      n_features: null

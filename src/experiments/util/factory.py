@@ -15,7 +15,7 @@ class ExperimentFactory(BaseModel):
 
             for model in ["logistic_regression", "xgb", "nb"]:
 
-                for selection_method in ["mutinfo", "rf", "mrmr", "self"]:
+                for selection_method in ["chi2", "mutinfo", "rf", "mrmr", "self"]:
 
                     for encoding in ["oh", 'spm']:
 
@@ -38,7 +38,7 @@ class ExperimentFactory(BaseModel):
                                 f'preprocess={selection_method}_{encoding}',
                                 f'preprocess.params.selector.params.n_features={n_features}',
                                 f'train_test_split=stratified',
-                                f'train_test_split.params.random_state=0,1,2,3,4'
+                                f'train_test_split.params.random_state=0,1,2,3,4',
                                 f'model={model}',
                                 f'evaluation=ml',
                                 f'export=mlflow',

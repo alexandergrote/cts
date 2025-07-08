@@ -1,0 +1,11 @@
+class_name: src.preprocess.preprocessor.FeatureMaker
+params:
+  extractor:
+    class_name: 'src.preprocess.extraction.ts_features.PrefixSpan'
+    params:
+      min_support_abs: 20
+      max_sequence_length: 3
+  selector:
+    class_name: src.preprocess.selection.chi.Chi2FeatSelection
+    params:
+      n_features: null
