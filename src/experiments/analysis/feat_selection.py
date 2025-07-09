@@ -50,6 +50,7 @@ class FeatureSelection(BaseModel, BaseAnalyser):
         df_to_plot.replace({
 
             'MRMRFeatSelection': 'mRMR',
+            'Chi2FeatSelection': 'Chi2',
             'MutInfoFeatSelection': 'Mutual Information',
             'RFFeatSelection': 'Random Forest',
             'SPMFeatureSelector': 'Delta Confidence',
@@ -68,6 +69,7 @@ class FeatureSelection(BaseModel, BaseAnalyser):
         # Define markers for different categories in your hue column
         markers = {
             'mRMR': 'o', 
+            'Chi2': '^',
             'Mutual Information': 'D',
             'Random Forest': 's',  
             'Delta Confidence': 'X' 
