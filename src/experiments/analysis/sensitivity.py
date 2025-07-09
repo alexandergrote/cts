@@ -1190,7 +1190,7 @@ class Sensitivity(BaseModel, BaseAnalyser):
             'Maximum Sequence Length': 'Maximum Sequence Length',
             'Multitesting': 'Multitesting',
             'Minimum Effect Size': 'Effect Size Threshold',
-            'Bootstrap Rounds': 'Number of Bootstrap Rounds'
+            'Bootstrap Rounds': 'Bootstrap Rounds'
         }
         
         g.map_dataframe(
