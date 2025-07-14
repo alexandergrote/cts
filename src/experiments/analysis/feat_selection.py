@@ -96,7 +96,7 @@ class FeatureSelection(BaseModel, BaseAnalyser):
             ax.set_xticks([i + 1 for i in range(10)])                    # Set x-tick positions
             ax.set_xticklabels([str(i + 1) for i in range(10)])  # Custom x-tick labels
             ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%.2f'))
-
+            
         handles, labels = g.axes.flat[0].get_legend_handles_labels()
 
         # Remove any duplicate labels/handles

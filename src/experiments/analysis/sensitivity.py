@@ -1208,7 +1208,7 @@ class Sensitivity(BaseModel, BaseAnalyser):
         # Increase marker size and set y-axis label
         for i, ax in enumerate(g.axes.flat):
             for line in ax.lines:
-                line.set_markersize(10)
+                line.set_markersize(14)
             
             # Add black border around each plot
             for spine in ax.spines.values():

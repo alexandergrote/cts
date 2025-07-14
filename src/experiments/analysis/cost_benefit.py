@@ -118,6 +118,7 @@ class CostBenefit(BaseModel, BaseAnalyser):
 
                 for idx, line in enumerate(plot.get_lines()):
                     line.set_marker(marker_styles[idx % len(marker_styles)])
+                    line.set_markersize(10)  # Set your desired marker size
 
 
                 #axs[i, j].set_title(title)

@@ -135,7 +135,7 @@ class Correlations(BaseModel, BaseAnalyser):
                     'entropy': 'Entropy',
                     'fisher': 'Fisher Odds Ratio',
                     'phi': 'Phi Coefficient',
-                    'leverage': 'Leverage',
+                    'leverage': '1-Quality',
                 }
 
                 y_var = y_var_mapping.get(y_var, y_var)
