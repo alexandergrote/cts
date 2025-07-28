@@ -20,19 +20,22 @@ class Dataset(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
+    def get_number_observations(self) -> int:
+        return self.raw_data[DatasetSchema.id_column].nunique()
+
     def get_number_positives(self) -> int:
 
         if DatasetSchema.class_column not in self.raw_data.columns:
             raise ValueError("Dataset does not have class column")
 
-        return self.raw_data[self.raw_data[DatasetSchema.class_column] == 1].shape[0]
+        return self.raw_data[self.raw_data[DatasetSchema.class_column] == 1][DatasetSchema.id_column].nunique()
     
     def get_number_negatives(self) -> int:
 
         if DatasetSchema.class_column not in self.raw_data.columns:
             raise ValueError("Dataset does not have class column")
 
-        return self.raw_data[self.raw_data[DatasetSchema.class_column] == 0].shape[0]
+        return self.raw_data[self.raw_data[DatasetSchema.class_column] == 0][DatasetSchema.id_column].nunique()
 
     def get_sequences(self) -> List[AnnotatedSequence]:
 

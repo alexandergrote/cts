@@ -96,6 +96,7 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
             sequences = prefix_df.get_sequences()
             n_pos = prefix_df.get_number_positives()
             n_neg = prefix_df.get_number_negatives()
+            n_total = prefix_df.get_number_observations()
 
             frequent_patterns = prefix.get_frequent_patterns(sequences)
 
@@ -105,7 +106,7 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
             )
     
             predictions.append(BootstrapRound(
-                n_samples=len(data_sub),
+                n_samples=n_total,
                 n_samples_pos=n_pos,
                 n_samples_neg=n_neg,
                 freq_patterns=prediction
