@@ -22,8 +22,10 @@ class BaseFeatureEncoder(ABC):
 
         rules = result_train.get('rules', {})
         pvalues = result_train.get('pvalues', {})
+        bootstrap_rounds = result_train.get('bootstrap_rounds', [])
         kwargs['rules'] = rules
         kwargs['pvalues'] = pvalues
+        kwargs['bootstrap_rounds'] = bootstrap_rounds
         kwargs['delta_confidence_duration'] = result_train.get('delta_confidence_duration')
         kwargs['delta_confidence_max_memory'] = result_train.get('delta_confidence_max_memory')
         

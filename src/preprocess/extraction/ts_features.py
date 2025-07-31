@@ -290,6 +290,7 @@ class SPMFeatureSelector(BaseModel, BaseFeatureEncoder):
         kwargs['rules'] = selected_patterns
         kwargs['pvalues'] = p_values
         kwargs['data'] = encoded_dataframe
+        kwargs['bootstrap_rounds'] = bootsrap_rounds
 
         # add tracker metrics to kwargs, needed for paper analysis
         kwargs['delta_confidence_duration'] = tracker.time_taken_seconds
