@@ -3,7 +3,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 from pydantic import BaseModel
-from scipy.stats import pearsonr
+from scipy.stats import pearsonr, spearmanr                
 
 from src.experiments.analysis.base import BaseAnalyser
 from src.util.constants import Directory
@@ -82,19 +82,90 @@ class Correlations(BaseModel, BaseAnalyser):
         #plt.show()
         plt.close()
 
-        # Filter only malware datasets
-        malware_records = [(exp_name, data, p_value, corr_value) for exp_name, data, p_value, corr_value in records if "malwa" in exp_name]
-        
-        if malware_records:
+        for dataset_verbose in ['malware', 'synthetic', 'churn']:
+
+            # Filter only malware datasets
+            malware_records = [(exp_name, data, p_value, corr_value) for exp_name, data, p_value, corr_value in records if dataset_verbose in exp_name]
+            
+            if malware_records:
+                # Create a single row of subplots for all metrics
+                metrics = ['chi_squared', 'entropy', "fisher", "phi", "leverage"]
+                num_plots = len(metrics)
+                fig, axes = plt.subplots(1, num_plots, figsize=(6*num_plots, 6))
+                
+                # Use only the first synthetic dataset
+                exp_name, data, _, _ = malware_records[0]
+
+                sns.set(font_scale=2.0)
+                sns.set_style('white')
+
+                for j, y_var in enumerate(metrics):
+                    order = 2
+                    lowess = False
+
+                    if y_var == 'phi':
+                        order = 1
+                    
+                    if y_var == 'leverage':
+                        order = 1
+
+                    if y_var == 'fisher':
+                        order = 1#3
+                        lowess = True
+
+                    # Create regression plot with different line styles for black and white
+                    line_styles = ['-', '-', '-', '-', '-']
+                    marker_styles = ['o', 'o', 'o', 'o', 'o']
+
+                    color = sns.color_palette(['grey'])
+
+                    sns.regplot(
+                        x='Confidence Delta', 
+                        y=y_var, 
+                        data=data, 
+                        scatter_kws={'color': color, 'marker': marker_styles[j], 'rasterized': True},
+                        line_kws={'color': 'black', 'linestyle': line_styles[j], 'linewidth': 2},
+                        order=order,
+                        lowess=lowess,
+                        ax=axes[j],
+                    )
+
+                    y_var_mapping = {
+                        'chi_squared': 'Chi-Squared',
+                        'entropy': 'Entropy',
+                        'fisher': 'Fisher Odds Ratio',
+                        'phi': 'Phi Coefficient',
+                        'leverage': '1-Quality',
+                    }
+
+                    y_var = y_var_mapping.get(y_var, y_var)
+                    
+                    title = f"{y_var}"
+                    
+                    # Set title and labels with increased font size
+                    axes[j].set_title(title)
+                    axes[j].set_xlabel('Confidence Delta')
+                    axes[j].set_ylabel(f'{y_var}')
+                    axes[j].tick_params(axis='both', which='major')
+
+
+                    if y_var == 'Entropy':
+                        axes[j].set_ylim(0, 1)
+            
+
+                # Adjust layout
+                plt.tight_layout()
+                for filetype in ['png', 'pdf']:
+                    plt.savefig(Directory.FIGURES_DIR / f'metrics_comparison_{dataset_verbose}.{filetype}')
+                #plt.show()
+
             # Create a single row of subplots for all metrics
-            metrics = ['chi_squared', 'entropy', "fisher", "phi", "leverage"]
+            metrics = ['chi_squared_p', "fisher_p", "phi_p", "leverage_p"]
             num_plots = len(metrics)
             fig, axes = plt.subplots(1, num_plots, figsize=(6*num_plots, 6))
             
             # Use only the first synthetic dataset
             exp_name, data, _, _ = malware_records[0]
-
-            print(data.columns)
 
             sns.set(font_scale=2.0)
             sns.set_style('white')
@@ -119,110 +190,55 @@ class Correlations(BaseModel, BaseAnalyser):
 
                 color = sns.color_palette(['grey'])
 
-                sns.regplot(
-                    x='Confidence Delta', 
-                    y=y_var, 
-                    data=data, 
-                    scatter_kws={'color': color, 'marker': marker_styles[j], 'rasterized': True},
-                    line_kws={'color': 'black', 'linestyle': line_styles[j], 'linewidth': 2},
-                    order=order,
-                    lowess=lowess,
-                    ax=axes[j],
-                )
-
-                y_var_mapping = {
-                    'chi_squared': 'Chi-Squared',
-                    'entropy': 'Entropy',
-                    'fisher': 'Fisher Odds Ratio',
-                    'phi': 'Phi Coefficient',
-                    'leverage': '1-Quality',
-                }
-
-                y_var = y_var_mapping.get(y_var, y_var)
+                #print(data.sort_values(by='chi_squared_p')[['pattern', 'Average Target Value', 'delta_conf_p', 'chi_squared_p', 'Confidence Delta', 'chi_squared']])
                 
-                title = f"{y_var}"
-                
-                # Set title and labels with increased font size
-                axes[j].set_title(title)
-                axes[j].set_xlabel('Confidence Delta')
-                axes[j].set_ylabel(f'{y_var}')
-                axes[j].tick_params(axis='both', which='major')
+                pearson_corr, p_pearson = pearsonr(data['delta_conf_p'], data[y_var])
+                spearman_corr, p_spearman = spearmanr(data['delta_conf_p'], data[y_var])
 
+                print(dataset_verbose, y_var, 'Pearson:', round(pearson_corr, 4), round(p_pearson, 4), 'spearman:', round(spearman_corr, 4), round(p_spearman, 4))
+                corr_value, p_value = spearmanr(data['delta_conf_p'], data[y_var])
+                p_value_verbose = f"p<{p_value:.2f}"
 
-                if y_var == 'Entropy':
-                    axes[j].set_ylim(0, 1)
-                
+                if p_value < 0.01:
+                    p_value_verbose = "p<0.01"
 
-            # Adjust layout
-            plt.tight_layout()
-            plt.savefig(Directory.FIGURES_DIR / f'metrics_comparison.pdf')
-            #plt.show()
+                if p_value < 0.001:
+                    p_value_verbose = "p<0.001"
 
-            # Create a single row of subplots for all metrics
-            metrics = ['chi_squared_p', "fisher_p"]
-            num_plots = len(metrics)
-            fig, axes = plt.subplots(1, num_plots, figsize=(6*num_plots, 6))
-            
-            # Use only the first synthetic dataset
-            exp_name, data, _, _ = malware_records[0]
+                corr_verbose = '$r_s$=' + str(round(corr_value, 2))
 
-            print(data.columns)
-
-            sns.set(font_scale=2.0)
-            sns.set_style('white')
-
-            for j, y_var in enumerate(metrics):
-                order = 2
-                lowess = False
-
-                if y_var == 'phi':
-                    order = 1
-                
-                if y_var == 'leverage':
-                    order = 1
-
-                if y_var == 'fisher':
-                    order = 1#3
-                    lowess = True
-
-                # Create regression plot with different line styles for black and white
-                line_styles = ['-', '-', '-', '-', '-']
-                marker_styles = ['o', 'o', 'o', 'o', 'o']
-
-                color = sns.color_palette(['grey'])
-
-                print(data.sort_values(by='chi_squared_p')[['pattern', 'Average Target Value', 'delta_conf_p', 'chi_squared_p', 'Confidence Delta', 'chi_squared']])
-
-                sns.regplot(
+                sns.scatterplot(
                     x='delta_conf_p', 
                     y=y_var, 
                     data=data, 
-                    scatter_kws={'color': color, 'marker': marker_styles[j], 'rasterized': True},
-                    line_kws={'color': 'black', 'linestyle': line_styles[j], 'linewidth': 2},
+                    #scatter_kws={'color': color, 'marker': marker_styles[j], 'rasterized': True},
+                    #line_kws={'color': 'black', 'linestyle': line_styles[j], 'linewidth': 2},
                     #order=order,
                     #lowess=lowess,
+                    color=color,
+                    rasterized=True,
                     ax=axes[j],
                 )
 
                 y_var_mapping = {
-                    'chi_squared': 'Chi-Squared',
-                    'entropy': 'Entropy',
-                    'fisher': 'Fisher Odds Ratio',
-                    'phi': 'Phi Coefficient',
-                    'leverage': 'Leverage',
+                    'chi_squared_p': 'Chi-Squared',
+                    'fisher_p': 'Fisher Exact Test',
+                    'phi_p': 'Phi Coefficient + MWU Test',
+                    'leverage_p': '1-Quality + MWU Test',
                 }
 
                 y_var = y_var_mapping.get(y_var, y_var)
                 
-                title = f"{y_var}"
+                title = f"P-Values\n{corr_verbose}, {p_value_verbose}"
                 
                 # Set title and labels with increased font size
                 axes[j].set_title(title)
-                axes[j].set_xlabel('Mann Whitney P-Values')
+                axes[j].set_xlabel('Delta Confidence + MWU Test')
                 axes[j].set_ylabel(f'{y_var}')
                 axes[j].tick_params(axis='both', which='major')
                 
 
             # Adjust layout
             plt.tight_layout()
-            plt.savefig(Directory.FIGURES_DIR / f'p_values_comparison.pdf')
+            for filetype in ['png', 'pdf']:
+                plt.savefig(Directory.FIGURES_DIR / f'p_values_comparison_{dataset_verbose}.{filetype}')
